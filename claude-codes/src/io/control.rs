@@ -842,6 +842,49 @@ impl From<ControlResponse> for ControlResponseMessage {
     }
 }
 
+/// SDK control message to gracefully interrupt a running Claude session.
+///
+/// When written to the CLI subprocess's stdin, this tells Claude to stop its
+/// current response and return control to the caller without killing the session.
+///
+/// This corresponds to the TypeScript SDK's `SDKControlInterruptRequest` type
+/// and is distinct from closing or aborting the subprocess.
+///
+/// # Example
+///
+/// ```
+/// use claude_codes::SDKControlInterruptRequest;
+///
+/// let interrupt = SDKControlInterruptRequest::new();
+/// let json = serde_json::to_string(&interrupt).unwrap();
+/// assert_eq!(json, r#"{"subtype":"interrupt"}"#);
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SDKControlInterruptRequest {
+    subtype: SDKControlInterruptSubtype,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+enum SDKControlInterruptSubtype {
+    #[serde(rename = "interrupt")]
+    Interrupt,
+}
+
+impl SDKControlInterruptRequest {
+    /// Create a new interrupt request.
+    pub fn new() -> Self {
+        SDKControlInterruptRequest {
+            subtype: SDKControlInterruptSubtype::Interrupt,
+        }
+    }
+}
+
+impl Default for SDKControlInterruptRequest {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Wrapper for outgoing control requests (includes type tag)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ControlRequestMessage {

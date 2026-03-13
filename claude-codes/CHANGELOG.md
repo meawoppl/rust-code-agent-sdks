@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.52] - 2026-03-12
+
+### Added
+
+- **`SDKControlInterruptRequest`** — Typed struct for the `{ "subtype": "interrupt" }` SDK control message, used to gracefully stop a running Claude session without killing the process
+- **`ClaudeInput::interrupt()`** — Constructor for creating interrupt messages
+- **`AsyncClient::interrupt()`** and **`SyncClient::interrupt()`** — Convenience methods to send an interrupt to the CLI subprocess
+
 ## [2.1.51] - 2026-02-27
 
 ### Changed

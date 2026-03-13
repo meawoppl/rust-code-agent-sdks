@@ -140,7 +140,7 @@ pub use io::{
     ControlResponseMessage, ControlResponsePayload, HookCallbackRequest, InitializeRequest,
     McpMessageRequest, Permission, PermissionBehavior, PermissionDenial, PermissionDestination,
     PermissionModeName, PermissionResult, PermissionRule, PermissionSuggestion, PermissionType,
-    ToolPermissionRequest, ToolUseBlock,
+    SDKControlInterruptRequest, ToolPermissionRequest, ToolUseBlock,
 };
 
 // System message and assistant message types

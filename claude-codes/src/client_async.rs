@@ -185,6 +185,14 @@ impl AsyncClient {
         Ok(())
     }
 
+    /// Send an interrupt to gracefully stop the current response.
+    ///
+    /// This writes `{ "subtype": "interrupt" }` to stdin, telling Claude
+    /// to stop without killing the session.
+    pub async fn interrupt(&mut self) -> Result<()> {
+        self.send(&ClaudeInput::interrupt()).await
+    }
+
     /// Receive a single response from Claude.
     ///
     /// # Important: Polling Frequency
