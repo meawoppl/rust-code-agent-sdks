@@ -348,6 +348,16 @@ impl SyncClient {
         Ok(())
     }
 
+    /// Send an interrupt to gracefully stop the current response.
+    ///
+    /// This writes `{ "subtype": "interrupt" }` to stdin, telling Claude
+    /// to stop without killing the session.
+    pub fn interrupt(&mut self) -> Result<()> {
+        let input = ClaudeInput::interrupt();
+        Protocol::write_sync(&mut self.stdin, &input)?;
+        Ok(())
+    }
+
     /// Check if tool approval protocol is enabled
     pub fn is_tool_approval_enabled(&self) -> bool {
         self.tool_approval_enabled

@@ -47,6 +47,15 @@ impl ClaudeInput {
         })
     }
 
+    /// Create an interrupt control message.
+    ///
+    /// Sends `{ "subtype": "interrupt" }` to the CLI subprocess's stdin,
+    /// telling Claude to stop its current response and return control
+    /// without killing the session.
+    pub fn interrupt() -> Self {
+        ClaudeInput::Raw(serde_json::to_value(super::SDKControlInterruptRequest::new()).unwrap())
+    }
+
     /// Create a user message with an image and optional text
     /// Only supports JPEG, PNG, GIF, and WebP media types
     pub fn user_message_with_image(
