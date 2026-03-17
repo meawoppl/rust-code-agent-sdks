@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.53] - 2026-03-17
+
+### Added
+
+- **Binary path resolution via `which`** — `ClaudeCliBuilder::spawn()`, `spawn_sync()`, and `build_command()` now resolve non-absolute binary paths using `which` at spawn time, producing a clear `BinaryNotFound` error instead of an opaque OS "file not found" (#102)
+- **`Error::BinaryNotFound`** — New error variant for when the CLI binary isn't found on PATH
+
+### Changed
+
+- **`spawn_sync()` return type** — Now returns `crate::error::Result<Child>` instead of `std::io::Result<Child>` for consistent error handling
+- **`build_command()` return type** — Now returns `Result<Command>` instead of `Command` to surface binary resolution errors
+
 ## [2.1.52] - 2026-03-12
 
 ### Added

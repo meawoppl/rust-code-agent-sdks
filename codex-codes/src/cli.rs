@@ -46,6 +46,16 @@ impl AppServerBuilder {
         self
     }
 
+    /// Resolve the command path, using `which` for non-absolute paths.
+    fn resolve_command(&self) -> crate::error::Result<PathBuf> {
+        if self.command.is_absolute() {
+            return Ok(self.command.clone());
+        }
+        which::which(&self.command).map_err(|_| crate::error::Error::BinaryNotFound {
+            name: self.command.display().to_string(),
+        })
+    }
+
     /// Build the command arguments.
     fn build_args(&self) -> Vec<String> {
         vec![
@@ -58,15 +68,16 @@ impl AppServerBuilder {
     /// Spawn the app-server process asynchronously.
     #[cfg(feature = "async-client")]
     pub async fn spawn(self) -> crate::error::Result<tokio::process::Child> {
+        let resolved = self.resolve_command()?;
         let args = self.build_args();
 
         debug!(
             "[CLI] Spawning async app-server: {} {}",
-            self.command.display(),
+            resolved.display(),
             args.join(" ")
         );
 
-        let mut cmd = tokio::process::Command::new(&self.command);
+        let mut cmd = tokio::process::Command::new(&resolved);
         cmd.args(&args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -80,16 +91,17 @@ impl AppServerBuilder {
     }
 
     /// Spawn the app-server process synchronously.
-    pub fn spawn_sync(self) -> std::io::Result<std::process::Child> {
+    pub fn spawn_sync(self) -> crate::error::Result<std::process::Child> {
+        let resolved = self.resolve_command()?;
         let args = self.build_args();
 
         debug!(
             "[CLI] Spawning sync app-server: {} {}",
-            self.command.display(),
+            resolved.display(),
             args.join(" ")
         );
 
-        let mut cmd = std::process::Command::new(&self.command);
+        let mut cmd = std::process::Command::new(&resolved);
         cmd.args(&args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -99,7 +111,7 @@ impl AppServerBuilder {
             cmd.current_dir(dir);
         }
 
-        cmd.spawn()
+        cmd.spawn().map_err(crate::error::Error::Io)
     }
 }
 

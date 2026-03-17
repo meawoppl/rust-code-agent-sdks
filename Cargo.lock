@@ -138,7 +138,7 @@ dependencies = [
 
 [[package]]
 name = "claude-codes"
-version = "2.1.51"
+version = "2.1.53"
 dependencies = [
  "anyhow",
  "base64",
@@ -150,11 +150,12 @@ dependencies = [
  "thiserror",
  "tokio",
  "uuid",
+ "which",
 ]
 
 [[package]]
 name = "codex-codes"
-version = "0.101.0"
+version = "0.101.1"
 dependencies = [
  "env_logger",
  "log",
@@ -162,6 +163,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+ "which",
 ]
 
 [[package]]
@@ -813,6 +815,15 @@ dependencies = [
  "hashbrown 0.15.5",
  "indexmap",
  "semver",
+]
+
+[[package]]
+name = "which"
+version = "8.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81995fafaaaf6ae47a7d0cc83c67caf92aeb7e5331650ae6ff856f7c0c60c459"
+dependencies = [
+ "libc",
 ]
 
 [[package]]
