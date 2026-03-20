@@ -55,7 +55,7 @@ impl SyncClient {
         //   let child = ClaudeCliBuilder::new().spawn_sync()?;
         //   SyncClient::new(child)
         crate::version::check_claude_version()?;
-        let child = ClaudeCliBuilder::new().spawn_sync().map_err(Error::Io)?;
+        let child = ClaudeCliBuilder::new().spawn_sync()?;
         Self::new(child)
     }
 
@@ -64,8 +64,7 @@ impl SyncClient {
     pub fn resume_session(session_uuid: Uuid) -> Result<Self> {
         let child = ClaudeCliBuilder::new()
             .resume(Some(session_uuid.to_string()))
-            .spawn_sync()
-            .map_err(Error::Io)?;
+            .spawn_sync()?;
 
         debug!("Resuming Claude session with UUID: {}", session_uuid);
         let mut client = Self::new(child)?;
@@ -79,8 +78,7 @@ impl SyncClient {
         let child = ClaudeCliBuilder::new()
             .model(model)
             .resume(Some(session_uuid.to_string()))
-            .spawn_sync()
-            .map_err(Error::Io)?;
+            .spawn_sync()?;
 
         debug!(
             "Resuming Claude session with UUID: {} and model: {}",

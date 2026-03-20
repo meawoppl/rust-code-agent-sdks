@@ -1,6 +1,6 @@
 [package]
 name = "codex-codes"
-version = "0.101.0"
+version = "0.101.1"
 edition = "2021"
 rust-version = "1.85"
 authors = ["Matthew Goodman <d3a6d0cec0c16f3e@inboxnegative.com>"]
@@ -24,6 +24,7 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.143"
 thiserror = "2.0.16"
 tokio = { version = "1.49.0", features = ["full"], optional = true }
+which = { version = "8.0.2", optional = true }
 
 [dev-dependencies]
 env_logger = "0.11.9"
@@ -33,8 +34,8 @@ tokio = { version = "1.49.0", features = ["full"] }
 [features]
 default = ["types", "sync-client", "async-client"]
 types = []
-sync-client = ["types", "dep:log"]
-async-client = ["types", "dep:tokio", "dep:log"]
+sync-client = ["types", "dep:log", "dep:which"]
+async-client = ["types", "dep:tokio", "dep:log", "dep:which"]
 integration-tests = ["async-client", "sync-client"]
 
 [[example]]

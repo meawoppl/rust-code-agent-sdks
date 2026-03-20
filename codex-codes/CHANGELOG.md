@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.101.1] - 2026-03-17
+
+### Added
+
+- **Binary path resolution via `which`** — `AppServerBuilder::spawn()` and `spawn_sync()` now resolve non-absolute binary paths using `which` at spawn time, producing a clear `BinaryNotFound` error instead of an opaque OS "file not found" (#102)
+- **`Error::BinaryNotFound`** — New error variant for when the CLI binary isn't found on PATH
+
+### Changed
+
+- **`spawn_sync()` return type** — Now returns `crate::error::Result<Child>` instead of `std::io::Result<Child>` for consistent error handling
+
 ## [0.101.0] - 2026-02-23
 
 ### Added

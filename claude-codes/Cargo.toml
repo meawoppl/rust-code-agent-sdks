@@ -1,6 +1,6 @@
 [package]
 name = "claude-codes"
-version = "2.1.52"
+version = "2.1.53"
 edition = "2021"
 rust-version = "1.85"
 authors = ["Matthew Goodman <d3a6d0cec0c16f3e@inboxnegative.com>"]
@@ -29,12 +29,13 @@ uuid = { version = "1.18.0", default-features = false, features = ["serde"] }
 anyhow = { version = "1.0.99", optional = true }
 tokio = { version = "1.47.1", features = ["full"], optional = true }
 log = { version = "0.4.27", optional = true }
+which = { version = "8.0.2", optional = true }
 
 [features]
 default = ["types", "sync-client", "async-client"]
 types = []
-sync-client = ["types", "anyhow", "log", "uuid/v4"]
-async-client = ["types", "anyhow", "tokio", "log", "uuid/v4"]
+sync-client = ["types", "anyhow", "log", "uuid/v4", "dep:which"]
+async-client = ["types", "anyhow", "tokio", "log", "uuid/v4", "dep:which"]
 integration-tests = []
 log = ["dep:log"]
 

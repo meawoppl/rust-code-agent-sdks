@@ -54,6 +54,10 @@ pub enum Error {
     #[error("Server closed connection")]
     ServerClosed,
 
+    /// The CLI binary could not be found on PATH.
+    #[error("Binary not found: '{name}' is not on PATH. Is it installed?")]
+    BinaryNotFound { name: String },
+
     /// An unclassified error.
     #[error("Unknown error: {0}")]
     Unknown(String),

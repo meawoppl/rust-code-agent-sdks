@@ -35,6 +35,9 @@ pub enum Error {
     #[error("Session UUID not yet available - no response received")]
     SessionNotInitialized,
 
+    #[error("Binary not found: '{name}' is not on PATH. Is it installed?")]
+    BinaryNotFound { name: String },
+
     #[error("Unknown error: {0}")]
     Unknown(String),
 }

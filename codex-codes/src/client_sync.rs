@@ -124,7 +124,7 @@ impl SyncClient {
     pub fn spawn(builder: AppServerBuilder) -> Result<Self> {
         crate::version::check_codex_version()?;
 
-        let mut child = builder.spawn_sync().map_err(Error::Io)?;
+        let mut child = builder.spawn_sync()?;
 
         let stdin = child
             .stdin

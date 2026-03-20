@@ -9,7 +9,6 @@
 //! - OAuth token and API key environment variables for authentication
 //!
 
-#[cfg(feature = "async-client")]
 use crate::error::{Error, Result};
 use log::debug;
 use std::path::PathBuf;
@@ -619,6 +618,16 @@ impl ClaudeCliBuilder {
         self
     }
 
+    /// Resolve the command path, using `which` for non-absolute paths.
+    fn resolve_command(&self) -> Result<PathBuf> {
+        if self.command.is_absolute() {
+            return Ok(self.command.clone());
+        }
+        which::which(&self.command).map_err(|_| Error::BinaryNotFound {
+            name: self.command.display().to_string(),
+        })
+    }
+
     /// Build the command arguments (always includes JSON streaming flags)
     fn build_args(&self) -> Vec<String> {
         // Always add JSON streaming mode flags
@@ -736,16 +745,16 @@ impl ClaudeCliBuilder {
     /// Spawn the Claude process
     #[cfg(feature = "async-client")]
     pub async fn spawn(self) -> Result<tokio::process::Child> {
+        let resolved = self.resolve_command()?;
         let args = self.build_args();
 
-        // Log the full command being executed
         debug!(
             "[CLI] Executing command: {} {}",
-            self.command.display(),
+            resolved.display(),
             args.join(" ")
         );
 
-        let mut cmd = tokio::process::Command::new(&self.command);
+        let mut cmd = tokio::process::Command::new(&resolved);
         cmd.args(&args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -770,9 +779,10 @@ impl ClaudeCliBuilder {
 
     /// Build a Command without spawning (for testing or manual execution)
     #[cfg(feature = "async-client")]
-    pub fn build_command(self) -> tokio::process::Command {
+    pub fn build_command(self) -> Result<tokio::process::Command> {
+        let resolved = self.resolve_command()?;
         let args = self.build_args();
-        let mut cmd = tokio::process::Command::new(&self.command);
+        let mut cmd = tokio::process::Command::new(&resolved);
         cmd.args(&args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -790,20 +800,21 @@ impl ClaudeCliBuilder {
             cmd.env("ANTHROPIC_API_KEY", key);
         }
 
-        cmd
+        Ok(cmd)
     }
 
     /// Spawn the Claude process using synchronous std::process
-    pub fn spawn_sync(self) -> std::io::Result<std::process::Child> {
+    pub fn spawn_sync(self) -> Result<std::process::Child> {
+        let resolved = self.resolve_command()?;
         let args = self.build_args();
 
         debug!(
             "[CLI] Executing sync command: {} {}",
-            self.command.display(),
+            resolved.display(),
             args.join(" ")
         );
 
-        let mut cmd = std::process::Command::new(&self.command);
+        let mut cmd = std::process::Command::new(&resolved);
         cmd.args(&args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -821,7 +832,7 @@ impl ClaudeCliBuilder {
             cmd.env("ANTHROPIC_API_KEY", key);
         }
 
-        cmd.spawn()
+        cmd.spawn().map_err(Error::Io)
     }
 }
 
