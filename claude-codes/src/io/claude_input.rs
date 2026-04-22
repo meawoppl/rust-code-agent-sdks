@@ -36,6 +36,8 @@ impl ClaudeInput {
                 })],
             },
             session_id: Some(session_id),
+            parent_tool_use_id: None,
+            uuid: None,
         })
     }
 
@@ -47,6 +49,8 @@ impl ClaudeInput {
                 content: blocks,
             },
             session_id: Some(session_id),
+            parent_tool_use_id: None,
+            uuid: None,
         })
     }
 

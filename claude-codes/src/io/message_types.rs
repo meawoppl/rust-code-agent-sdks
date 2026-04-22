@@ -446,6 +446,12 @@ pub struct UserMessage {
         deserialize_with = "deserialize_optional_uuid"
     )]
     pub session_id: Option<Uuid>,
+    /// Parent tool use ID for nested agent messages
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_tool_use_id: Option<String>,
+    /// Message-level unique identifier
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uuid: Option<String>,
 }
 
 /// Message content with role
@@ -551,6 +557,9 @@ pub struct PluginInfo {
     pub name: String,
     /// Path to the plugin on disk
     pub path: String,
+    /// Plugin registry source (e.g., "rust-analyzer-lsp@claude-plugins-official")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
 
 /// Init system message data - sent at session start
@@ -594,6 +603,18 @@ pub struct InitMessage {
     /// Permission mode
     #[serde(skip_serializing_if = "Option::is_none", rename = "permissionMode")]
     pub permission_mode: Option<InitPermissionMode>,
+
+    /// Message-level unique identifier
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uuid: Option<String>,
+
+    /// Memory storage paths (e.g., {"auto": "/path/to/memory/"})
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memory_paths: Option<Value>,
+
+    /// Fast mode toggle state (e.g., "off")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fast_mode_state: Option<String>,
 }
 
 /// Status system message - sent during operations like context compaction
@@ -727,6 +748,12 @@ pub struct AssistantMessageContent {
     pub stop_sequence: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<AssistantUsage>,
+    /// Details about why generation stopped
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stop_details: Option<Value>,
+    /// Context management metadata
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_management: Option<Value>,
 }
 
 /// Usage information for assistant messages
@@ -755,6 +782,10 @@ pub struct AssistantUsage {
     /// Detailed cache creation breakdown
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cache_creation: Option<CacheCreationDetails>,
+
+    /// Inference geography (e.g., "not_available")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inference_geo: Option<String>,
 }
 
 /// Detailed cache creation information
@@ -1080,6 +1111,100 @@ mod tests {
             );
         } else {
             panic!("Expected System message");
+        }
+    }
+
+    #[test]
+    fn test_init_message_with_new_fields() {
+        let json = r#"{
+            "type": "system",
+            "subtype": "init",
+            "session_id": "test-session",
+            "cwd": "/home/user",
+            "model": "claude-opus-4-7",
+            "tools": ["Bash"],
+            "mcp_servers": [],
+            "permissionMode": "default",
+            "apiKeySource": "none",
+            "uuid": "44841a0d-182d-493a-86b5-79800d3d9665",
+            "memory_paths": {"auto": "/home/user/.claude/projects/memory/"},
+            "fast_mode_state": "off",
+            "plugins": [{"name": "lsp", "path": "/plugins/lsp", "source": "lsp@official"}],
+            "claude_code_version": "2.1.117"
+        }"#;
+
+        let output: ClaudeOutput = serde_json::from_str(json).unwrap();
+        if let ClaudeOutput::System(sys) = output {
+            let init = sys.as_init().expect("Should parse as init");
+            assert_eq!(
+                init.uuid.as_deref(),
+                Some("44841a0d-182d-493a-86b5-79800d3d9665")
+            );
+            assert!(init.memory_paths.is_some());
+            assert_eq!(init.fast_mode_state.as_deref(), Some("off"));
+            assert_eq!(init.plugins[0].source.as_deref(), Some("lsp@official"));
+            assert_eq!(init.claude_code_version.as_deref(), Some("2.1.117"));
+        } else {
+            panic!("Expected System message");
+        }
+    }
+
+    #[test]
+    fn test_assistant_message_with_new_fields() {
+        let json = r#"{
+            "type": "assistant",
+            "message": {
+                "id": "msg_1",
+                "type": "message",
+                "role": "assistant",
+                "model": "claude-opus-4-7",
+                "content": [{"type": "text", "text": "Hello"}],
+                "stop_reason": "end_turn",
+                "stop_details": null,
+                "context_management": null,
+                "usage": {
+                    "input_tokens": 100,
+                    "output_tokens": 10,
+                    "cache_creation_input_tokens": 50,
+                    "cache_read_input_tokens": 0,
+                    "service_tier": "standard",
+                    "inference_geo": "not_available"
+                }
+            },
+            "session_id": "abc",
+            "uuid": "msg-uuid-123"
+        }"#;
+
+        let output: ClaudeOutput = serde_json::from_str(json).unwrap();
+        if let ClaudeOutput::Assistant(asst) = output {
+            assert_eq!(asst.message.stop_details, None);
+            assert_eq!(asst.message.context_management, None);
+            let usage = asst.message.usage.unwrap();
+            assert_eq!(usage.inference_geo.as_deref(), Some("not_available"));
+        } else {
+            panic!("Expected Assistant message");
+        }
+    }
+
+    #[test]
+    fn test_user_message_with_new_fields() {
+        let json = r#"{
+            "type": "user",
+            "message": {
+                "role": "user",
+                "content": [{"type": "text", "text": "Hello"}]
+            },
+            "session_id": "9abbc466-dad0-4b8e-b6b0-cad5eb7a16b9",
+            "parent_tool_use_id": "toolu_123",
+            "uuid": "user-msg-456"
+        }"#;
+
+        let output: ClaudeOutput = serde_json::from_str(json).unwrap();
+        if let ClaudeOutput::User(user) = output {
+            assert_eq!(user.parent_tool_use_id.as_deref(), Some("toolu_123"));
+            assert_eq!(user.uuid.as_deref(), Some("user-msg-456"));
+        } else {
+            panic!("Expected User message");
         }
     }
 }
