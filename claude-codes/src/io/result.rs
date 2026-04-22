@@ -32,6 +32,26 @@ pub struct ResultMessage {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
+
+    /// HTTP status code when the result is an API error (e.g., 429, 500, 529)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_error_status: Option<u16>,
+
+    /// Why generation stopped (e.g., end_turn, max_tokens)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stop_reason: Option<String>,
+
+    /// Why the session ended (e.g., "completed")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub terminal_reason: Option<String>,
+
+    /// Fast mode toggle state (e.g., "off")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fast_mode_state: Option<String>,
+
+    /// Per-model cost breakdown, keyed by model name
+    #[serde(skip_serializing_if = "Option::is_none", rename = "modelUsage")]
+    pub model_usage: Option<Value>,
 }
 
 /// A record of a tool permission that was denied during the session.
@@ -62,18 +82,44 @@ pub enum ResultSubtype {
 /// Usage information for the request
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UsageInfo {
+    #[serde(default)]
     pub input_tokens: u32,
+    #[serde(default)]
     pub cache_creation_input_tokens: u32,
+    #[serde(default)]
     pub cache_read_input_tokens: u32,
+    #[serde(default)]
     pub output_tokens: u32,
+    #[serde(default)]
     pub server_tool_use: ServerToolUse,
+    #[serde(default)]
     pub service_tier: String,
+
+    /// Cache creation breakdown
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_creation: Option<super::message_types::CacheCreationDetails>,
+
+    /// Inference geography (e.g., "not_available")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inference_geo: Option<String>,
+
+    /// Per-turn usage breakdown
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub iterations: Vec<Value>,
+
+    /// Speed tier (e.g., "standard")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub speed: Option<String>,
 }
 
 /// Server tool usage information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ServerToolUse {
+    #[serde(default)]
     pub web_search_requests: u32,
+    /// Number of web fetch requests made
+    #[serde(default)]
+    pub web_fetch_requests: u32,
 }
 
 #[cfg(test)]
@@ -222,5 +268,90 @@ mod tests {
 
         assert!(reserialized.contains("Error 1"));
         assert!(reserialized.contains("Error 2"));
+    }
+
+    #[test]
+    fn test_result_with_new_fields() {
+        let json = r#"{
+            "type": "result",
+            "subtype": "success",
+            "is_error": false,
+            "duration_ms": 5000,
+            "duration_api_ms": 4500,
+            "num_turns": 1,
+            "result": "Done",
+            "session_id": "abc",
+            "total_cost_usd": 0.06,
+            "api_error_status": null,
+            "stop_reason": "end_turn",
+            "terminal_reason": "completed",
+            "fast_mode_state": "off",
+            "modelUsage": {
+                "claude-opus-4-7[1m]": {
+                    "inputTokens": 3817,
+                    "outputTokens": 14,
+                    "costUSD": 0.06
+                }
+            },
+            "usage": {
+                "input_tokens": 3817,
+                "output_tokens": 14,
+                "cache_creation_input_tokens": 3540,
+                "cache_read_input_tokens": 0,
+                "server_tool_use": {
+                    "web_search_requests": 0,
+                    "web_fetch_requests": 2
+                },
+                "service_tier": "standard",
+                "inference_geo": "not_available",
+                "speed": "standard",
+                "iterations": [
+                    {"input_tokens": 3817, "output_tokens": 14, "type": "turn"}
+                ]
+            }
+        }"#;
+
+        let output: ClaudeOutput = serde_json::from_str(json).unwrap();
+        if let ClaudeOutput::Result(res) = output {
+            assert_eq!(res.stop_reason.as_deref(), Some("end_turn"));
+            assert_eq!(res.terminal_reason.as_deref(), Some("completed"));
+            assert_eq!(res.fast_mode_state.as_deref(), Some("off"));
+            assert!(res.model_usage.is_some());
+            assert!(res.api_error_status.is_none());
+
+            let usage = res.usage.unwrap();
+            assert_eq!(usage.server_tool_use.web_fetch_requests, 2);
+            assert_eq!(usage.inference_geo.as_deref(), Some("not_available"));
+            assert_eq!(usage.speed.as_deref(), Some("standard"));
+            assert_eq!(usage.iterations.len(), 1);
+        } else {
+            panic!("Expected Result");
+        }
+    }
+
+    #[test]
+    fn test_result_backwards_compatible_without_new_fields() {
+        // Verify old-format messages still parse fine
+        let json = r#"{
+            "type": "result",
+            "subtype": "success",
+            "is_error": false,
+            "duration_ms": 100,
+            "duration_api_ms": 200,
+            "num_turns": 1,
+            "session_id": "abc",
+            "total_cost_usd": 0.01
+        }"#;
+
+        let output: ClaudeOutput = serde_json::from_str(json).unwrap();
+        if let ClaudeOutput::Result(res) = output {
+            assert!(res.api_error_status.is_none());
+            assert!(res.stop_reason.is_none());
+            assert!(res.terminal_reason.is_none());
+            assert!(res.fast_mode_state.is_none());
+            assert!(res.model_usage.is_none());
+        } else {
+            panic!("Expected Result");
+        }
     }
 }
