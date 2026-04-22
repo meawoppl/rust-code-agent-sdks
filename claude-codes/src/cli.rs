@@ -138,6 +138,8 @@ pub enum CliFlag {
     JsonSchema(String),
     /// Maximum dollar amount for API calls
     MaxBudgetUsd(f64),
+    /// Maximum number of tokens for extended thinking
+    MaxThinkingTokens(u32),
     /// Load MCP servers from JSON files or strings
     McpConfig(Vec<String>),
     /// Enable MCP debug mode (deprecated, use Debug instead)
@@ -204,6 +206,7 @@ impl CliFlag {
             CliFlag::InputFormat(_) => "--input-format",
             CliFlag::JsonSchema(_) => "--json-schema",
             CliFlag::MaxBudgetUsd(_) => "--max-budget-usd",
+            CliFlag::MaxThinkingTokens(_) => "--max-thinking-tokens",
             CliFlag::McpConfig(_) => "--mcp-config",
             CliFlag::McpDebug => "--mcp-debug",
             CliFlag::Model(_) => "--model",
@@ -276,6 +279,7 @@ impl CliFlag {
 
             // Numeric flags
             CliFlag::MaxBudgetUsd(amount) => vec![flag, amount.to_string()],
+            CliFlag::MaxThinkingTokens(tokens) => vec![flag, tokens.to_string()],
 
             // Path flags
             CliFlag::DebugFile(p) => vec![flag, p.to_string_lossy().to_string()],
@@ -343,6 +347,7 @@ impl CliFlag {
             ("InputFormat", "--input-format"),
             ("JsonSchema", "--json-schema"),
             ("MaxBudgetUsd", "--max-budget-usd"),
+            ("MaxThinkingTokens", "--max-thinking-tokens"),
             ("McpConfig", "--mcp-config"),
             ("McpDebug", "--mcp-debug"),
             ("Model", "--model"),
@@ -400,6 +405,8 @@ pub struct ClaudeCliBuilder {
     permission_prompt_tool: Option<String>,
     /// Allow spawning inside another Claude Code session by unsetting CLAUDECODE env var
     allow_recursion: bool,
+    /// Maximum number of tokens for extended thinking
+    max_thinking_tokens: Option<u32>,
 }
 
 impl Default for ClaudeCliBuilder {
@@ -435,6 +442,7 @@ impl ClaudeCliBuilder {
             api_key: None,
             permission_prompt_tool: None,
             allow_recursion: false,
+            max_thinking_tokens: None,
         }
     }
 
@@ -534,6 +542,12 @@ impl ClaudeCliBuilder {
     /// Set fallback model for overload situations
     pub fn fallback_model<S: Into<String>>(mut self, model: S) -> Self {
         self.fallback_model = Some(model.into());
+        self
+    }
+
+    /// Set maximum number of tokens for extended thinking
+    pub fn max_thinking_tokens(mut self, tokens: u32) -> Self {
+        self.max_thinking_tokens = Some(tokens);
         self
     }
 
@@ -694,6 +708,11 @@ impl ClaudeCliBuilder {
         if let Some(ref model) = self.fallback_model {
             args.push("--fallback-model".to_string());
             args.push(model.clone());
+        }
+
+        if let Some(tokens) = self.max_thinking_tokens {
+            args.push("--max-thinking-tokens".to_string());
+            args.push(tokens.to_string());
         }
 
         if let Some(ref settings) = self.settings {
