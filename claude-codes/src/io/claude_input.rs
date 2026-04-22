@@ -30,7 +30,10 @@ impl ClaudeInput {
         ClaudeInput::User(UserMessage {
             message: MessageContent {
                 role: super::MessageRole::User,
-                content: vec![ContentBlock::Text(TextBlock { text: text.into() })],
+                content: vec![ContentBlock::Text(TextBlock {
+                    text: text.into(),
+                    citations: Vec::new(),
+                })],
             },
             session_id: Some(session_id),
         })
@@ -87,7 +90,10 @@ impl ClaudeInput {
         })];
 
         if let Some(text_content) = text {
-            blocks.push(ContentBlock::Text(TextBlock { text: text_content }));
+            blocks.push(ContentBlock::Text(TextBlock {
+                text: text_content,
+                citations: Vec::new(),
+            }));
         }
 
         Ok(Self::user_message_blocks(blocks, session_id))
