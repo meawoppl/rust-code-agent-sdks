@@ -30,6 +30,18 @@ pub enum ContentBlock {
     Thinking(ThinkingBlock),
     ToolUse(ToolUseBlock),
     ToolResult(ToolResultBlock),
+    /// Server-side tool use (e.g., web search, code execution).
+    ServerToolUse(ServerToolUseBlock),
+    /// Result from a web search server tool.
+    WebSearchToolResult(WebSearchToolResultBlock),
+    /// Result from server-side code execution.
+    CodeExecutionToolResult(CodeExecutionToolResultBlock),
+    /// MCP tool invocation as a content block.
+    McpToolUse(McpToolUseBlock),
+    /// MCP tool result as a content block.
+    McpToolResult(McpToolResultBlock),
+    /// Container file upload content block.
+    ContainerUpload(ContainerUploadBlock),
     /// A content block type not yet known to this version of the crate.
     /// Contains the raw JSON value for caller inspection.
     Unknown(Value),
@@ -44,6 +56,12 @@ impl ContentBlock {
             Self::Thinking(_) => "thinking",
             Self::ToolUse(_) => "tool_use",
             Self::ToolResult(_) => "tool_result",
+            Self::ServerToolUse(_) => "server_tool_use",
+            Self::WebSearchToolResult(_) => "web_search_tool_result",
+            Self::CodeExecutionToolResult(_) => "code_execution_tool_result",
+            Self::McpToolUse(_) => "mcp_tool_use",
+            Self::McpToolResult(_) => "mcp_tool_result",
+            Self::ContainerUpload(_) => "container_upload",
             Self::Unknown(v) => v.get("type").and_then(|t| t.as_str()).unwrap_or("unknown"),
         }
     }
@@ -62,6 +80,16 @@ impl Serialize for ContentBlock {
             Self::Thinking(v) => serialize_tagged("thinking", v, serializer),
             Self::ToolUse(v) => serialize_tagged("tool_use", v, serializer),
             Self::ToolResult(v) => serialize_tagged("tool_result", v, serializer),
+            Self::ServerToolUse(v) => serialize_tagged("server_tool_use", v, serializer),
+            Self::WebSearchToolResult(v) => {
+                serialize_tagged("web_search_tool_result", v, serializer)
+            }
+            Self::CodeExecutionToolResult(v) => {
+                serialize_tagged("code_execution_tool_result", v, serializer)
+            }
+            Self::McpToolUse(v) => serialize_tagged("mcp_tool_use", v, serializer),
+            Self::McpToolResult(v) => serialize_tagged("mcp_tool_result", v, serializer),
+            Self::ContainerUpload(v) => serialize_tagged("container_upload", v, serializer),
             Self::Unknown(v) => v.serialize(serializer),
         }
     }
@@ -90,6 +118,24 @@ impl<'de> Deserialize<'de> for ContentBlock {
                 .map_err(serde::de::Error::custom),
             "tool_result" => serde_json::from_value(value)
                 .map(ContentBlock::ToolResult)
+                .map_err(serde::de::Error::custom),
+            "server_tool_use" => serde_json::from_value(value)
+                .map(ContentBlock::ServerToolUse)
+                .map_err(serde::de::Error::custom),
+            "web_search_tool_result" => serde_json::from_value(value)
+                .map(ContentBlock::WebSearchToolResult)
+                .map_err(serde::de::Error::custom),
+            "code_execution_tool_result" => serde_json::from_value(value)
+                .map(ContentBlock::CodeExecutionToolResult)
+                .map_err(serde::de::Error::custom),
+            "mcp_tool_use" => serde_json::from_value(value)
+                .map(ContentBlock::McpToolUse)
+                .map_err(serde::de::Error::custom),
+            "mcp_tool_result" => serde_json::from_value(value)
+                .map(ContentBlock::McpToolResult)
+                .map_err(serde::de::Error::custom),
+            "container_upload" => serde_json::from_value(value)
+                .map(ContentBlock::ContainerUpload)
                 .map_err(serde::de::Error::custom),
             _ => Ok(ContentBlock::Unknown(value)),
         }
@@ -301,6 +347,63 @@ pub enum ToolResultContent {
     Structured(Vec<Value>),
 }
 
+/// Server-side tool use content block (e.g., web search, code execution).
+///
+/// Emitted when the model invokes an Anthropic-hosted server tool.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServerToolUseBlock {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub input: Value,
+}
+
+/// Result from a web search server tool.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WebSearchToolResultBlock {
+    pub tool_use_id: String,
+    #[serde(default)]
+    pub content: Value,
+}
+
+/// Result from server-side code execution.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CodeExecutionToolResultBlock {
+    pub tool_use_id: String,
+    #[serde(default)]
+    pub content: Value,
+}
+
+/// MCP tool invocation content block.
+///
+/// Emitted when the model invokes a tool provided by an MCP server.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpToolUseBlock {
+    pub id: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub server_name: Option<String>,
+    #[serde(default)]
+    pub input: Value,
+}
+
+/// MCP tool result content block.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpToolResultBlock {
+    pub tool_use_id: String,
+    #[serde(default)]
+    pub content: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_error: Option<bool>,
+}
+
+/// Container file upload content block.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContainerUploadBlock {
+    #[serde(flatten)]
+    pub data: Value,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -309,18 +412,15 @@ mod tests {
     #[test]
     fn test_unknown_content_block_deserializes() {
         let json = json!({
-            "type": "server_tool_use",
-            "id": "srvtu_1",
-            "name": "web_search",
-            "input": {"query": "rust serde"}
+            "type": "some_future_block_type",
+            "data": "arbitrary"
         });
 
         let block: ContentBlock = serde_json::from_value(json.clone()).unwrap();
         assert!(block.is_unknown());
-        assert_eq!(block.block_type(), "server_tool_use");
+        assert_eq!(block.block_type(), "some_future_block_type");
         if let ContentBlock::Unknown(v) = &block {
-            assert_eq!(v["id"], "srvtu_1");
-            assert_eq!(v["name"], "web_search");
+            assert_eq!(v["data"], "arbitrary");
         } else {
             panic!("Expected Unknown variant");
         }
@@ -329,14 +429,121 @@ mod tests {
     #[test]
     fn test_unknown_block_roundtrips() {
         let json = json!({
+            "type": "some_future_type",
+            "tool_use_id": "x",
+            "content": [{"nested": true}]
+        });
+
+        let block: ContentBlock = serde_json::from_value(json.clone()).unwrap();
+        let reserialized = serde_json::to_value(&block).unwrap();
+        assert_eq!(json, reserialized);
+    }
+
+    #[test]
+    fn test_server_tool_use_deserializes() {
+        let json = json!({
+            "type": "server_tool_use",
+            "id": "srvtu_1",
+            "name": "web_search",
+            "input": {"query": "rust serde"}
+        });
+
+        let block: ContentBlock = serde_json::from_value(json).unwrap();
+        assert!(!block.is_unknown());
+        assert_eq!(block.block_type(), "server_tool_use");
+        if let ContentBlock::ServerToolUse(b) = &block {
+            assert_eq!(b.id, "srvtu_1");
+            assert_eq!(b.name, "web_search");
+            assert_eq!(b.input["query"], "rust serde");
+        } else {
+            panic!("Expected ServerToolUse variant");
+        }
+    }
+
+    #[test]
+    fn test_web_search_tool_result_deserializes() {
+        let json = json!({
             "type": "web_search_tool_result",
             "tool_use_id": "srvtu_1",
             "content": [{"type": "web_search_result", "url": "https://example.com"}]
         });
 
         let block: ContentBlock = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(block.block_type(), "web_search_tool_result");
+        if let ContentBlock::WebSearchToolResult(b) = &block {
+            assert_eq!(b.tool_use_id, "srvtu_1");
+        } else {
+            panic!("Expected WebSearchToolResult variant");
+        }
+        // roundtrip
         let reserialized = serde_json::to_value(&block).unwrap();
         assert_eq!(json, reserialized);
+    }
+
+    #[test]
+    fn test_code_execution_tool_result_deserializes() {
+        let json = json!({
+            "type": "code_execution_tool_result",
+            "tool_use_id": "exec_1",
+            "content": {"stdout": "hello", "exit_code": 0}
+        });
+
+        let block: ContentBlock = serde_json::from_value(json).unwrap();
+        assert_eq!(block.block_type(), "code_execution_tool_result");
+        assert!(matches!(block, ContentBlock::CodeExecutionToolResult(_)));
+    }
+
+    #[test]
+    fn test_mcp_tool_use_deserializes() {
+        let json = json!({
+            "type": "mcp_tool_use",
+            "id": "mcp_tu_1",
+            "name": "custom_tool",
+            "server_name": "my-mcp-server",
+            "input": {"arg": "value"}
+        });
+
+        let block: ContentBlock = serde_json::from_value(json).unwrap();
+        assert_eq!(block.block_type(), "mcp_tool_use");
+        if let ContentBlock::McpToolUse(b) = &block {
+            assert_eq!(b.id, "mcp_tu_1");
+            assert_eq!(b.name, "custom_tool");
+            assert_eq!(b.server_name.as_deref(), Some("my-mcp-server"));
+        } else {
+            panic!("Expected McpToolUse variant");
+        }
+    }
+
+    #[test]
+    fn test_mcp_tool_result_deserializes() {
+        let json = json!({
+            "type": "mcp_tool_result",
+            "tool_use_id": "mcp_tu_1",
+            "content": "tool output text",
+            "is_error": false
+        });
+
+        let block: ContentBlock = serde_json::from_value(json).unwrap();
+        assert_eq!(block.block_type(), "mcp_tool_result");
+        if let ContentBlock::McpToolResult(b) = &block {
+            assert_eq!(b.tool_use_id, "mcp_tu_1");
+            assert_eq!(b.is_error, Some(false));
+        } else {
+            panic!("Expected McpToolResult variant");
+        }
+    }
+
+    #[test]
+    fn test_container_upload_deserializes() {
+        let json = json!({
+            "type": "container_upload",
+            "file_name": "output.csv",
+            "url": "https://storage.example.com/file"
+        });
+
+        let block: ContentBlock = serde_json::from_value(json).unwrap();
+        assert_eq!(block.block_type(), "container_upload");
+        assert!(matches!(block, ContentBlock::ContainerUpload(_)));
     }
 
     #[test]
@@ -363,7 +570,7 @@ mod tests {
     }
 
     #[test]
-    fn test_assistant_message_with_unknown_block_survives() {
+    fn test_assistant_message_with_server_tool_use() {
         let json = r#"{
             "type": "assistant",
             "message": {
@@ -389,19 +596,19 @@ mod tests {
         ));
         assert!(matches!(
             &assistant.message.content[1],
-            ContentBlock::Unknown(_)
+            ContentBlock::ServerToolUse(_)
         ));
         assert!(matches!(
             &assistant.message.content[2],
             ContentBlock::ToolUse(_)
         ));
 
-        // text_content() still works, skipping unknown blocks
+        // text_content() still works, skipping non-text blocks
         assert_eq!(
             output.text_content(),
             Some("Let me search for that.".to_string())
         );
-        // tool_uses() still works
+        // tool_uses() only returns regular tool_use
         assert_eq!(output.tool_uses().count(), 1);
     }
 
