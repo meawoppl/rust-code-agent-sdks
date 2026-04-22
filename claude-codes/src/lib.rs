@@ -130,8 +130,9 @@ pub use types::*;
 
 // Content block types for message parsing
 pub use io::{
-    ContentBlock, ImageBlock, ImageSource, ImageSourceType, MediaType, TextBlock, ThinkingBlock,
-    ToolResultBlock, ToolResultContent,
+    CodeExecutionToolResultBlock, ContainerUploadBlock, ContentBlock, ImageBlock, ImageSource,
+    ImageSourceType, McpToolResultBlock, McpToolUseBlock, MediaType, ServerToolUseBlock, TextBlock,
+    ThinkingBlock, ToolResultBlock, ToolResultContent, WebSearchToolResultBlock,
 };
 
 // Control protocol types for tool permission handling

@@ -203,6 +203,24 @@ fn handle_output(output: ClaudeOutput) {
                             image.source.data.len()
                         );
                     }
+                    claude_codes::io::ContentBlock::ServerToolUse(tool) => {
+                        println!("\n[Server Tool: {} ({})]", tool.name, tool.id);
+                    }
+                    claude_codes::io::ContentBlock::WebSearchToolResult(result) => {
+                        println!("\n[Web Search Result for {}]", result.tool_use_id);
+                    }
+                    claude_codes::io::ContentBlock::CodeExecutionToolResult(result) => {
+                        println!("\n[Code Execution Result for {}]", result.tool_use_id);
+                    }
+                    claude_codes::io::ContentBlock::McpToolUse(tool) => {
+                        println!("\n[MCP Tool: {} ({})]", tool.name, tool.id);
+                    }
+                    claude_codes::io::ContentBlock::McpToolResult(result) => {
+                        println!("\n[MCP Tool Result for {}]", result.tool_use_id);
+                    }
+                    claude_codes::io::ContentBlock::ContainerUpload(_) => {
+                        println!("\n[Container Upload]");
+                    }
                     claude_codes::io::ContentBlock::Unknown(value) => {
                         println!(
                             "\n[Unknown block: {}]",
