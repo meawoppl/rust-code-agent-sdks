@@ -203,6 +203,12 @@ fn handle_output(output: ClaudeOutput) {
                             image.source.data.len()
                         );
                     }
+                    claude_codes::io::ContentBlock::Unknown(value) => {
+                        println!(
+                            "\n[Unknown block: {}]",
+                            serde_json::to_string_pretty(value).unwrap_or_default()
+                        );
+                    }
                 }
             }
         }
