@@ -11,7 +11,10 @@ where
 {
     let value: Value = Value::deserialize(deserializer)?;
     match value {
-        Value::String(s) => Ok(vec![ContentBlock::Text(TextBlock { text: s })]),
+        Value::String(s) => Ok(vec![ContentBlock::Text(TextBlock {
+            text: s,
+            citations: Vec::new(),
+        })]),
         Value::Array(_) => serde_json::from_value(value).map_err(serde::de::Error::custom),
         _ => Err(serde::de::Error::custom(
             "content must be a string or array",
@@ -159,6 +162,10 @@ fn serialize_tagged<S: Serializer, T: Serialize>(
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TextBlock {
     pub text: String,
+    /// Citations associated with this text block, if any.
+    /// Populated when the model references web search results or other sources.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub citations: Vec<Value>,
 }
 
 /// Image content block (follows Anthropic API structure)
@@ -552,7 +559,7 @@ mod tests {
         let block: ContentBlock = serde_json::from_value(text_json).unwrap();
         assert!(!block.is_unknown());
         assert_eq!(block.block_type(), "text");
-        assert!(matches!(block, ContentBlock::Text(TextBlock { text }) if text == "hello"));
+        assert!(matches!(block, ContentBlock::Text(TextBlock { text, .. }) if text == "hello"));
 
         let tool_json =
             json!({"type": "tool_use", "id": "tu_1", "name": "Bash", "input": {"command": "ls"}});
@@ -610,6 +617,43 @@ mod tests {
         );
         // tool_uses() only returns regular tool_use
         assert_eq!(output.tool_uses().count(), 1);
+    }
+
+    #[test]
+    fn test_text_block_with_citations() {
+        let json = json!({
+            "type": "text",
+            "text": "According to the documentation...",
+            "citations": [
+                {"type": "web_search_result_location", "url": "https://example.com", "title": "Example"}
+            ]
+        });
+
+        let block: ContentBlock = serde_json::from_value(json.clone()).unwrap();
+        if let ContentBlock::Text(t) = &block {
+            assert_eq!(t.text, "According to the documentation...");
+            assert_eq!(t.citations.len(), 1);
+            assert_eq!(t.citations[0]["url"], "https://example.com");
+        } else {
+            panic!("Expected Text variant");
+        }
+        // roundtrip preserves citations
+        let reserialized = serde_json::to_value(&block).unwrap();
+        assert_eq!(json, reserialized);
+    }
+
+    #[test]
+    fn test_text_block_without_citations_defaults_empty() {
+        let json = json!({"type": "text", "text": "no citations"});
+        let block: ContentBlock = serde_json::from_value(json).unwrap();
+        if let ContentBlock::Text(t) = &block {
+            assert!(t.citations.is_empty());
+        } else {
+            panic!("Expected Text variant");
+        }
+        // serialization omits empty citations
+        let reserialized = serde_json::to_value(&block).unwrap();
+        assert!(reserialized.get("citations").is_none());
     }
 
     #[test]
