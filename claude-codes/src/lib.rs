@@ -164,10 +164,11 @@ pub use io::{AssistantUsage, CacheCreationDetails};
 // Typed tool input types
 pub use tool_inputs::{
     AllowedPrompt, AskUserQuestionInput, BashInput, EditInput, EnterPlanModeInput,
-    ExitPlanModeInput, GlobInput, GrepInput, GrepOutputMode, KillShellInput, NotebookCellType,
-    NotebookEditInput, NotebookEditMode, Question, QuestionMetadata, QuestionOption, ReadInput,
+    ExitPlanModeInput, GlobInput, GrepInput, GrepOutputMode, KillShellInput, LsInput,
+    MultiEditInput, MultiEditOperation, NotebookCellType, NotebookEditInput, NotebookEditMode,
+    NotebookReadInput, Question, QuestionMetadata, QuestionOption, ReadInput, ScheduleWakeupInput,
     SkillInput, SubagentType, TaskInput, TaskOutputInput, TodoItem, TodoStatus, TodoWriteInput,
-    ToolInput, WebFetchInput, WebSearchInput, WriteInput,
+    ToolInput, ToolSearchInput, WebFetchInput, WebSearchInput, WriteInput,
 };
 
 // Client exports

@@ -672,6 +672,67 @@ pub struct AllowedPrompt {
     pub prompt: String,
 }
 
+/// Input for the MultiEdit tool - batch file edits.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MultiEditInput {
+    /// The absolute path to the file to modify
+    pub file_path: String,
+
+    /// Array of edit operations to apply
+    pub edits: Vec<MultiEditOperation>,
+}
+
+/// A single edit operation within a MultiEdit.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MultiEditOperation {
+    /// The text to replace
+    pub old_string: String,
+
+    /// The text to replace it with
+    pub new_string: String,
+}
+
+/// Input for the LS tool - lists files and directories.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct LsInput {
+    /// The absolute path to the directory to list
+    pub path: String,
+}
+
+/// Input for the NotebookRead tool - reads notebook cells.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NotebookReadInput {
+    /// The absolute path to the notebook file
+    pub notebook_path: String,
+}
+
+/// Input for the ScheduleWakeup tool - schedules delayed loop actions.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ScheduleWakeupInput {
+    /// Seconds from now to wake up (clamped to [60, 3600])
+    #[serde(rename = "delaySeconds")]
+    pub delay_seconds: f64,
+
+    /// Short explanation of the chosen delay
+    pub reason: String,
+
+    /// The /loop prompt to fire on wake-up
+    pub prompt: String,
+}
+
+/// Input for the ToolSearch tool - fetches deferred tool schemas.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ToolSearchInput {
+    /// Query to find deferred tools
+    pub query: String,
+
+    /// Maximum number of results to return
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_results: Option<u32>,
+}
+
 // ============================================================================
 // ToolInput Enum - Unified type for all tool inputs
 // ============================================================================
@@ -713,6 +774,9 @@ pub enum ToolInput {
     /// Write tool - file_path + content
     Write(WriteInput),
 
+    /// MultiEdit tool - batch file edits (file_path + edits, before Read)
+    MultiEdit(MultiEditInput),
+
     /// AskUserQuestion tool - has questions array
     AskUserQuestion(AskUserQuestionInput),
 
@@ -743,6 +807,9 @@ pub enum ToolInput {
     /// Grep tool - has pattern field plus many optional fields
     Grep(GrepInput),
 
+    /// ToolSearch tool - fetch deferred tool schemas (query + max_results)
+    ToolSearch(ToolSearchInput),
+
     /// WebSearch tool - has query field
     WebSearch(WebSearchInput),
 
@@ -754,6 +821,15 @@ pub enum ToolInput {
 
     /// ExitPlanMode tool
     ExitPlanMode(ExitPlanModeInput),
+
+    /// ScheduleWakeup tool - schedule delayed wakeup (3 required fields)
+    ScheduleWakeup(ScheduleWakeupInput),
+
+    /// NotebookRead tool - read notebook cells (notebook_path required)
+    NotebookRead(NotebookReadInput),
+
+    /// LS tool - list files and directories
+    LS(LsInput),
 
     /// EnterPlanMode tool (empty input)
     EnterPlanMode(EnterPlanModeInput),
@@ -792,6 +868,11 @@ impl ToolInput {
             ToolInput::Skill(_) => Some("Skill"),
             ToolInput::EnterPlanMode(_) => Some("EnterPlanMode"),
             ToolInput::ExitPlanMode(_) => Some("ExitPlanMode"),
+            ToolInput::MultiEdit(_) => Some("MultiEdit"),
+            ToolInput::ScheduleWakeup(_) => Some("ScheduleWakeup"),
+            ToolInput::NotebookRead(_) => Some("NotebookRead"),
+            ToolInput::ToolSearch(_) => Some("ToolSearch"),
+            ToolInput::LS(_) => Some("LS"),
             ToolInput::Unknown(_) => None,
         }
     }
@@ -1296,5 +1377,80 @@ mod tests {
         let input: SkillInput = serde_json::from_value(json).unwrap();
         assert_eq!(input.skill, "commit");
         assert_eq!(input.args, Some("-m 'Fix bug'".to_string()));
+    }
+
+    #[test]
+    fn test_multi_edit_input_parsing() {
+        let json = serde_json::json!({
+            "file_path": "/tmp/test.rs",
+            "edits": [
+                {"old_string": "foo", "new_string": "bar"},
+                {"old_string": "baz", "new_string": "qux"}
+            ]
+        });
+
+        let input: MultiEditInput = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(input.file_path, "/tmp/test.rs");
+        assert_eq!(input.edits.len(), 2);
+        assert_eq!(input.edits[0].old_string, "foo");
+        assert_eq!(input.edits[1].new_string, "qux");
+
+        // Also test via ToolInput enum
+        let tool_input: ToolInput = serde_json::from_value(json).unwrap();
+        assert_eq!(tool_input.tool_name(), Some("MultiEdit"));
+    }
+
+    #[test]
+    fn test_ls_input_parsing() {
+        let json = serde_json::json!({"path": "/home/user/project"});
+
+        let input: LsInput = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(input.path, "/home/user/project");
+
+        let tool_input: ToolInput = serde_json::from_value(json).unwrap();
+        assert_eq!(tool_input.tool_name(), Some("LS"));
+    }
+
+    #[test]
+    fn test_notebook_read_input_parsing() {
+        let json = serde_json::json!({"notebook_path": "/tmp/analysis.ipynb"});
+
+        let input: NotebookReadInput = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(input.notebook_path, "/tmp/analysis.ipynb");
+
+        let tool_input: ToolInput = serde_json::from_value(json).unwrap();
+        assert_eq!(tool_input.tool_name(), Some("NotebookRead"));
+    }
+
+    #[test]
+    fn test_schedule_wakeup_input_parsing() {
+        let json = serde_json::json!({
+            "delaySeconds": 270.0,
+            "reason": "checking build status",
+            "prompt": "check the build"
+        });
+
+        let input: ScheduleWakeupInput = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(input.delay_seconds, 270.0);
+        assert_eq!(input.reason, "checking build status");
+        assert_eq!(input.prompt, "check the build");
+
+        let tool_input: ToolInput = serde_json::from_value(json).unwrap();
+        assert_eq!(tool_input.tool_name(), Some("ScheduleWakeup"));
+    }
+
+    #[test]
+    fn test_tool_search_input_parsing() {
+        let json = serde_json::json!({
+            "query": "select:Read,Edit,Grep",
+            "max_results": 5
+        });
+
+        let input: ToolSearchInput = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(input.query, "select:Read,Edit,Grep");
+        assert_eq!(input.max_results, Some(5));
+
+        let tool_input: ToolInput = serde_json::from_value(json).unwrap();
+        assert_eq!(tool_input.tool_name(), Some("ToolSearch"));
     }
 }
