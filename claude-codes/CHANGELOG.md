@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.54] - 2026-04-15
+
+### Added
+
+- **`ContentBlock::Unknown(Value)`** — Fallback variant for forward compatibility with new content block types from the CLI. Prevents deserialization failures when encountering unknown block types (#104)
+- **Typed content block variants** — `ServerToolUse`, `WebSearchToolResult`, `CodeExecutionToolResult`, `McpToolUse`, `McpToolResult`, `ContainerUpload` for the new server-side and MCP content blocks emitted by CLI 2.1.117 (#105, #106, #107)
+- **`TextBlock.citations`** — `Vec<Value>` field for web search citations on text blocks (#108)
+- **`ResultMessage` fields** — `api_error_status`, `stop_reason`, `terminal_reason`, `fast_mode_state`, `model_usage` (#109)
+- **`UsageInfo` fields** — `cache_creation`, `inference_geo`, `iterations`, `speed` (#110)
+- **`ServerToolUse.web_fetch_requests`** — Tracks web fetch request count (#110)
+- **`InitMessage` fields** — `uuid`, `memory_paths`, `fast_mode_state` (#111)
+- **`PluginInfo.source`** — Plugin registry source identifier (#111)
+- **`AssistantMessageContent` fields** — `stop_details`, `context_management` (#112)
+- **`AssistantUsage.inference_geo`** — Inference geography field (#112)
+- **`UserMessage` fields** — `parent_tool_use_id`, `uuid` (#113)
+- **New `ToolInput` types** — `MultiEdit`, `LS`, `NotebookRead`, `ScheduleWakeup`, `ToolSearch` with typed structs (#114)
+- **`ClaudeCliBuilder.max_thinking_tokens()`** — Builder method and `CliFlag::MaxThinkingTokens` for extended thinking control (#115)
+- **`ContentBlock.block_type()`** and **`ContentBlock.is_unknown()`** — Helper methods for content block introspection
+
+### Changed
+
+- Updated `TESTED_VERSION` to `2.1.117`
+- `UsageInfo` fields now use `#[serde(default)]` for robustness
+- `ServerToolUse` now derives `Default`
+
 ## [2.1.53] - 2026-03-17
 
 ### Added
