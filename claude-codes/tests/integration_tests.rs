@@ -294,6 +294,7 @@ async fn test_tool_use_blocks() {
                                 claude_codes::io::ContentBlock::Image(_) => {
                                     // Images might appear in assistant messages for generated images
                                 }
+                                _ => {}
                             }
                         }
                     }
@@ -630,6 +631,7 @@ async fn test_mixed_content_blocks() {
     let blocks = vec![
         ContentBlock::Text(claude_codes::io::TextBlock {
             text: "Here's a question with an image:".to_string(),
+            citations: Vec::new(),
         }),
         ContentBlock::Image(claude_codes::io::ImageBlock {
             source: claude_codes::io::ImageSource {
@@ -640,6 +642,7 @@ async fn test_mixed_content_blocks() {
         }),
         ContentBlock::Text(claude_codes::io::TextBlock {
             text: "What color is this pixel?".to_string(),
+            citations: Vec::new(),
         }),
     ];
 
@@ -1906,4 +1909,478 @@ async fn test_clear_resets_session() {
     }
 
     client.shutdown().await.expect("Failed to shutdown client");
+}
+
+/// Probe the AskUserQuestion round-trip end-to-end.
+///
+/// Prompts Claude to invoke AskUserQuestion, then captures every message that
+/// flows back: the `tool_use` (with its typed input), any `tool_result` echoed
+/// back as a user message, and the assistant text that follows. Logs the raw
+/// shape so we can see whether the answer is "munged" anywhere in the path.
+///
+/// Bounded by a wall-clock timeout because AskUserQuestion in non-interactive
+/// subprocess mode may hang waiting for a UI that doesn't exist.
+#[tokio::test]
+async fn test_ask_user_question_round_trip() {
+    use claude_codes::AskUserQuestionInput;
+    use std::time::Duration;
+
+    let _ = env_logger::builder().is_test(true).try_init();
+
+    let child = ClaudeCliBuilder::new()
+        .model("sonnet")
+        .allow_recursion()
+        .allowed_tools(["AskUserQuestion"])
+        .spawn()
+        .await
+        .expect("Failed to spawn Claude");
+    let mut client = AsyncClient::new(child).expect("Failed to create async client");
+
+    let prompt = "Invoke the AskUserQuestion tool exactly once with the following payload, \
+                  then wait for my answer and write a single sentence telling me which color I picked.\n\
+                  questions: [\n  {\n    question: 'Which color do you prefer?',\n    \
+                  header: 'Color',\n    options: [\n      {label: 'Red', description: 'A warm color'},\n      \
+                  {label: 'Blue', description: 'A cool color'}\n    ],\n    multiSelect: false\n  }\n]";
+
+    let mut stream = client
+        .query_stream(prompt)
+        .await
+        .expect("Failed to send query");
+
+    #[derive(Default, Debug)]
+    struct Trace {
+        message_count: usize,
+        parse_errors: Vec<(String, Option<serde_json::Value>)>,
+        tool_use_id: Option<String>,
+        tool_use_input_raw: Option<serde_json::Value>,
+        tool_use_input_typed: Option<Result<AskUserQuestionInput, String>>,
+        tool_result_for_id: Option<(String, Option<bool>, Option<String>)>,
+        post_tool_assistant_text: String,
+        message_type_log: Vec<String>,
+        saw_result: bool,
+    }
+
+    let mut trace = Trace::default();
+
+    let result = tokio::time::timeout(Duration::from_secs(90), async {
+        while let Some(item) = stream.next().await {
+            trace.message_count += 1;
+            match item {
+                Ok(output) => {
+                    trace
+                        .message_type_log
+                        .push(output.message_type().to_string());
+                    eprintln!("[TRACE #{}] {}", trace.message_count, output.message_type());
+
+                    match output {
+                        ClaudeOutput::Assistant(msg) => {
+                            for block in msg.message.content {
+                                match block {
+                                    ContentBlock::ToolUse(tu) if tu.name == "AskUserQuestion" => {
+                                        eprintln!(
+                                            "[TRACE]   tool_use AskUserQuestion id={} input={}",
+                                            tu.id,
+                                            serde_json::to_string(&tu.input).unwrap_or_default()
+                                        );
+                                        trace.tool_use_id = Some(tu.id.clone());
+                                        trace.tool_use_input_raw = Some(tu.input.clone());
+                                        trace.tool_use_input_typed = Some(
+                                            serde_json::from_value::<AskUserQuestionInput>(
+                                                tu.input.clone(),
+                                            )
+                                            .map_err(|e| e.to_string()),
+                                        );
+                                    }
+                                    ContentBlock::ToolUse(tu) => {
+                                        eprintln!("[TRACE]   tool_use other name={}", tu.name);
+                                    }
+                                    ContentBlock::Text(t) => {
+                                        let snippet = t.text.chars().take(200).collect::<String>();
+                                        eprintln!("[TRACE]   text: {}", snippet);
+                                        if trace.tool_use_id.is_some() {
+                                            trace.post_tool_assistant_text.push_str(&t.text);
+                                            trace.post_tool_assistant_text.push('\n');
+                                        }
+                                    }
+                                    ContentBlock::Thinking(_) => {
+                                        eprintln!("[TRACE]   thinking block");
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                        ClaudeOutput::User(msg) => {
+                            for block in msg.message.content {
+                                if let ContentBlock::ToolResult(tr) = block {
+                                    let preview = match &tr.content {
+                                        Some(claude_codes::ToolResultContent::Text(s)) => {
+                                            let p = s.chars().take(200).collect::<String>();
+                                            Some(p)
+                                        }
+                                        Some(claude_codes::ToolResultContent::Structured(v)) => {
+                                            Some(
+                                                serde_json::to_string(v)
+                                                    .unwrap_or_default()
+                                                    .chars()
+                                                    .take(400)
+                                                    .collect::<String>(),
+                                            )
+                                        }
+                                        None => None,
+                                    };
+                                    eprintln!(
+                                        "[TRACE]   tool_result id={} is_error={:?} preview={:?}",
+                                        tr.tool_use_id, tr.is_error, preview
+                                    );
+                                    if Some(&tr.tool_use_id) == trace.tool_use_id.as_ref() {
+                                        trace.tool_result_for_id =
+                                            Some((tr.tool_use_id.clone(), tr.is_error, preview));
+                                    }
+                                }
+                            }
+                        }
+                        ClaudeOutput::Result(r) => {
+                            eprintln!(
+                                "[TRACE]   result subtype={:?} is_error={}",
+                                r.subtype, r.is_error
+                            );
+                            trace.saw_result = true;
+                            break;
+                        }
+                        ClaudeOutput::ControlRequest(cr) => {
+                            eprintln!("[TRACE]   control_request: {:?}", cr);
+                        }
+                        _ => {}
+                    }
+                }
+                Err(e) => {
+                    let (msg, raw_json) = match &e {
+                        claude_codes::Error::Deserialization(pe) => {
+                            (pe.error_message.clone(), pe.raw_json.clone())
+                        }
+                        other => (other.to_string(), None),
+                    };
+                    eprintln!("[TRACE] parse error: {} raw_json={:?}", msg, raw_json);
+                    trace.parse_errors.push((msg, raw_json));
+                }
+            }
+        }
+    })
+    .await;
+
+    eprintln!("=== AskUserQuestion round-trip trace ===");
+    eprintln!("timed_out: {}", result.is_err());
+    eprintln!("messages: {}", trace.message_count);
+    eprintln!("message_types: {:?}", trace.message_type_log);
+    eprintln!("parse_errors: {}", trace.parse_errors.len());
+    for (i, (msg, raw)) in trace.parse_errors.iter().enumerate() {
+        eprintln!("  [{}] {}", i, msg);
+        if let Some(r) = raw {
+            eprintln!(
+                "      raw: {}",
+                serde_json::to_string(r).unwrap_or_default()
+            );
+        }
+    }
+    eprintln!("tool_use_seen: {}", trace.tool_use_id.is_some());
+    eprintln!(
+        "tool_use_input_typed_ok: {:?}",
+        trace.tool_use_input_typed.as_ref().map(|r| r.is_ok())
+    );
+    if let Some(Err(e)) = &trace.tool_use_input_typed {
+        eprintln!("tool_use_input_typed_err: {}", e);
+    }
+    if let Some(input) = &trace.tool_use_input_raw {
+        eprintln!(
+            "tool_use_input_raw: {}",
+            serde_json::to_string(input).unwrap_or_default()
+        );
+    }
+    eprintln!("tool_result_for_id: {:?}", trace.tool_result_for_id);
+    eprintln!(
+        "post_tool_assistant_text: {:?}",
+        trace.post_tool_assistant_text
+    );
+    eprintln!("saw_result: {}", trace.saw_result);
+
+    // No hard assertions on coherence yet — first run is exploratory so we can
+    // see what the wire actually looks like. We do require that parsing
+    // succeeds for everything we got, since the user's complaint is "things
+    // get munged in processing".
+    assert!(
+        trace.parse_errors.is_empty(),
+        "AskUserQuestion round-trip produced {} parse errors (see stderr trace above)",
+        trace.parse_errors.len()
+    );
+    assert!(
+        trace.tool_use_id.is_some(),
+        "Expected an AskUserQuestion tool_use block; types seen: {:?}",
+        trace.message_type_log
+    );
+    if let Some(Err(e)) = &trace.tool_use_input_typed {
+        panic!(
+            "AskUserQuestion tool_use.input did not deserialize into AskUserQuestionInput: {}",
+            e
+        );
+    }
+}
+
+/// End-to-end probe: sub-Claude asks an AskUserQuestion, we *answer* it via
+/// the permission control protocol, then we check whether the conversation
+/// converges — i.e. sub-Claude's subsequent reply demonstrates it received
+/// and understood our answer.
+///
+/// Wire flow under test:
+/// 1. spawn with `permission_prompt_tool("stdio")` so the CLI asks before invoking tools
+/// 2. send a prompt telling sub-Claude to ask a color question
+/// 3. when the CLI sends `can_use_tool` for AskUserQuestion, parse the input,
+///    inject `answers: {header -> chosen_label}`, and reply `allow_with(updated_input)`
+/// 4. drain remaining messages and look for an assistant text that references
+///    our chosen answer ("Blue")
+#[tokio::test]
+async fn test_ask_user_question_answered_and_converges() {
+    use claude_codes::{AskUserQuestionInput, ControlRequestPayload};
+    use std::collections::HashMap;
+    use std::time::Duration;
+
+    let _ = env_logger::builder().is_test(true).try_init();
+
+    let child = ClaudeCliBuilder::new()
+        .model("sonnet")
+        .allow_recursion()
+        .permission_prompt_tool("stdio")
+        .spawn()
+        .await
+        .expect("Failed to spawn Claude");
+    let mut client = AsyncClient::new(child).expect("Failed to create async client");
+
+    client
+        .enable_tool_approval()
+        .await
+        .expect("enable_tool_approval");
+
+    const CHOSEN: &str = "Blue";
+
+    let prompt = format!(
+        "Invoke the AskUserQuestion tool exactly once with this exact payload:\n\
+         questions = [{{ question: 'Which color do you prefer?', header: 'Color', \
+         options: [{{label: 'Red', description: 'A warm color'}}, \
+         {{label: '{CHOSEN}', description: 'A cool color'}}], multiSelect: false }}]\n\
+         After you receive my answer, reply with exactly one sentence that names the color I picked."
+    );
+
+    let input = ClaudeInput::user_message(&prompt, Uuid::new_v4());
+    client.send(&input).await.expect("send query");
+
+    let mut trace_lines: Vec<String> = Vec::new();
+    let mut tool_use_id: Option<String> = None;
+    let mut tool_use_input_seen: Option<AskUserQuestionInput> = None;
+    let mut control_req_handled = false;
+    let mut answered_with: Option<HashMap<String, String>> = None;
+    let mut post_answer_assistant_text = String::new();
+    let mut saw_result = false;
+    let mut result_is_error = None;
+    let mut got_post_answer_assistant = false;
+    let mut tool_use_result_field: Option<serde_json::Value> = None;
+    let mut user_msg_timestamp: Option<String> = None;
+    let mut user_msg_roundtrip_diff: Option<String> = None;
+
+    let outcome = tokio::time::timeout(Duration::from_secs(120), async {
+        loop {
+            match client.receive().await {
+                Ok(output) => {
+                    let mt = output.message_type();
+                    trace_lines.push(mt.clone());
+                    eprintln!("[TRACE] {}", mt);
+
+                    match output {
+                        ClaudeOutput::ControlRequest(req) => {
+                            if let ControlRequestPayload::CanUseTool(perm_req) = &req.request {
+                                eprintln!(
+                                    "[TRACE]   can_use_tool: {} input={}",
+                                    perm_req.tool_name,
+                                    serde_json::to_string(&perm_req.input).unwrap_or_default()
+                                );
+                                if perm_req.tool_name == "AskUserQuestion" {
+                                    let parsed: AskUserQuestionInput = serde_json::from_value(
+                                        perm_req.input.clone(),
+                                    )
+                                    .expect("AskUserQuestion input must deserialize");
+                                    let mut answers = HashMap::new();
+                                    for q in &parsed.questions {
+                                        answers.insert(q.header.clone(), CHOSEN.to_string());
+                                    }
+                                    tool_use_input_seen = Some(parsed);
+                                    answered_with = Some(answers.clone());
+
+                                    let mut updated_input = perm_req.input.clone();
+                                    updated_input
+                                        .as_object_mut()
+                                        .expect("input is object")
+                                        .insert(
+                                            "answers".to_string(),
+                                            serde_json::to_value(&answers).unwrap(),
+                                        );
+                                    eprintln!(
+                                        "[TRACE]   replying allow_with: {}",
+                                        serde_json::to_string(&updated_input).unwrap_or_default()
+                                    );
+                                    let response =
+                                        perm_req.allow_with(updated_input, &req.request_id);
+                                    client
+                                        .send_control_response(response)
+                                        .await
+                                        .expect("send_control_response");
+                                    control_req_handled = true;
+                                } else {
+                                    // Allow anything else through unchanged
+                                    let response = perm_req.allow(&req.request_id);
+                                    let _ = client.send_control_response(response).await;
+                                }
+                            }
+                        }
+                        ClaudeOutput::Assistant(msg) => {
+                            for block in msg.message.content {
+                                match block {
+                                    ContentBlock::ToolUse(tu) if tu.name == "AskUserQuestion" => {
+                                        eprintln!(
+                                            "[TRACE]   tool_use AskUserQuestion id={}",
+                                            tu.id
+                                        );
+                                        tool_use_id = Some(tu.id.clone());
+                                    }
+                                    ContentBlock::Text(t) => {
+                                        let snippet =
+                                            t.text.chars().take(300).collect::<String>();
+                                        eprintln!("[TRACE]   text: {}", snippet);
+                                        if control_req_handled {
+                                            got_post_answer_assistant = true;
+                                            post_answer_assistant_text.push_str(&t.text);
+                                            post_answer_assistant_text.push('\n');
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                        ClaudeOutput::User(msg) => {
+                            // Capture the top-level fields before iterating
+                            // (avoids partial-move issues).
+                            if control_req_handled && msg.tool_use_result.is_some() {
+                                tool_use_result_field = msg.tool_use_result.clone();
+                                user_msg_timestamp = msg.timestamp.clone();
+
+                                // Regression check: re-serialize the entire
+                                // parsed UserMessage and verify the
+                                // tool_use_result field round-trips exactly.
+                                if let Ok(reser) = serde_json::to_value(&msg) {
+                                    let original = msg.tool_use_result.as_ref().unwrap();
+                                    let echoed = &reser["tool_use_result"];
+                                    if echoed != original {
+                                        user_msg_roundtrip_diff = Some(format!(
+                                            "tool_use_result round-trip diverged.\noriginal: {}\necho:    {}",
+                                            serde_json::to_string(original).unwrap_or_default(),
+                                            serde_json::to_string(echoed).unwrap_or_default()
+                                        ));
+                                    }
+                                }
+                            }
+                            for block in &msg.message.content {
+                                if let ContentBlock::ToolResult(tr) = block {
+                                    let preview = match &tr.content {
+                                        Some(claude_codes::ToolResultContent::Text(s)) => s.clone(),
+                                        Some(claude_codes::ToolResultContent::Structured(v)) => {
+                                            serde_json::to_string(v).unwrap_or_default()
+                                        }
+                                        None => String::new(),
+                                    };
+                                    eprintln!(
+                                        "[TRACE]   tool_result id={} is_error={:?} preview={}",
+                                        tr.tool_use_id, tr.is_error, preview
+                                    );
+                                }
+                            }
+                        }
+                        ClaudeOutput::Result(r) => {
+                            saw_result = true;
+                            result_is_error = Some(r.is_error);
+                            eprintln!(
+                                "[TRACE]   result subtype={:?} is_error={}",
+                                r.subtype, r.is_error
+                            );
+                            break;
+                        }
+                        _ => {}
+                    }
+                }
+                Err(e) => {
+                    eprintln!("[TRACE] error: {}", e);
+                    break;
+                }
+            }
+        }
+    })
+    .await;
+
+    eprintln!("=== Convergence trace ===");
+    eprintln!("timed_out: {}", outcome.is_err());
+    eprintln!("message_types: {:?}", trace_lines);
+    eprintln!("tool_use_id: {:?}", tool_use_id);
+    eprintln!("control_req_handled: {}", control_req_handled);
+    eprintln!("answered_with: {:?}", answered_with);
+    eprintln!(
+        "post_answer_assistant_text: {:?}",
+        post_answer_assistant_text
+    );
+    eprintln!("saw_result: {} is_error: {:?}", saw_result, result_is_error);
+
+    let _ = client.shutdown().await;
+
+    assert!(
+        !outcome.is_err(),
+        "AskUserQuestion convergence test timed out"
+    );
+    assert!(
+        control_req_handled,
+        "Expected to handle a can_use_tool control request for AskUserQuestion"
+    );
+    assert!(saw_result, "Expected a Result message");
+    assert!(
+        got_post_answer_assistant,
+        "Expected at least one assistant text block after answering"
+    );
+
+    // Convergence check: did the sub-Claude reference our chosen answer?
+    let body = post_answer_assistant_text.to_lowercase();
+    let chosen = CHOSEN.to_lowercase();
+    assert!(
+        body.contains(&chosen),
+        "Sub-Claude did not reference the chosen answer {:?} in its follow-up. \
+         Got: {:?}",
+        CHOSEN,
+        post_answer_assistant_text
+    );
+
+    // Regression check: the CLI sends the structured answer in the
+    // top-level `tool_use_result` field on the user message. Proxies
+    // relying on this crate's typed view need that field preserved so
+    // their downstream viewer can render the answer (otherwise the
+    // viewer hits `undefined is not an object (evaluating 'q.map')`).
+    let tur = tool_use_result_field
+        .expect("UserMessage.tool_use_result was not captured by the typed parse");
+    assert_eq!(
+        tur["answers"]["Color"], CHOSEN,
+        "tool_use_result.answers.Color should match the answer we sent via allow_with"
+    );
+    assert_eq!(
+        tur["questions"][0]["header"], "Color",
+        "tool_use_result.questions[0].header should be preserved"
+    );
+    assert!(
+        user_msg_timestamp.is_some(),
+        "UserMessage.timestamp was not captured by the typed parse"
+    );
+    if let Some(diff) = user_msg_roundtrip_diff {
+        panic!("{}", diff);
+    }
 }
