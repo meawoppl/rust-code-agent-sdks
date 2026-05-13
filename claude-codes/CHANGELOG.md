@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.140] - 2026-05-13
+
+### Added
+
+- **`UserMessage.tool_use_result`** — `Option<serde_json::Value>` capturing the top-level structured tool result the CLI emits alongside `tool_result` content blocks (e.g. `{ questions, answers }` for `AskUserQuestion`, `{ stdout, stderr, exit_code }` for `Bash`). Previously dropped during deserialization, which broke proxies relaying user messages to viewers that read the field.
+- **`UserMessage.timestamp`** — `Option<String>` capturing the CLI's ISO-8601 timestamp on echoed tool results.
+- **`UserMessage::tool_use_result_as<T>()`** — Typed accessor for parsing `tool_use_result` into a caller-specified type when the tool is known (e.g. `tool_use_result_as::<AskUserQuestionInput>()`).
+- **Integration regression test** — `test_ask_user_question_answered_and_converges` drives the full AskUserQuestion round-trip through the permission control protocol and asserts `tool_use_result` survives end-to-end without information loss.
+
+### Changed
+
+- Updated `TESTED_VERSION` to `2.1.140`
+
 ## [2.1.117] - 2026-04-15
 
 ### Added

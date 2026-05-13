@@ -38,6 +38,8 @@ impl ClaudeInput {
             session_id: Some(session_id),
             parent_tool_use_id: None,
             uuid: None,
+            timestamp: None,
+            tool_use_result: None,
         })
     }
 
@@ -51,6 +53,8 @@ impl ClaudeInput {
             session_id: Some(session_id),
             parent_tool_use_id: None,
             uuid: None,
+            timestamp: None,
+            tool_use_result: None,
         })
     }
 

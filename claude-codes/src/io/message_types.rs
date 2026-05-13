@@ -452,6 +452,34 @@ pub struct UserMessage {
     /// Message-level unique identifier
     #[serde(skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
+    /// CLI-emitted ISO-8601 timestamp for the message (present on echoed tool results).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timestamp: Option<String>,
+    /// Structured tool result data echoed by the CLI alongside the `tool_result`
+    /// content block. The shape depends on which tool produced it (e.g. for
+    /// `AskUserQuestion` it is `{ questions, answers }`; for `Bash` it is
+    /// `{ stdout, stderr, exit_code, ... }`). Stored as raw JSON to preserve
+    /// wire fidelity; use [`UserMessage::tool_use_result_as`] to parse into a
+    /// typed shape when you know which tool was invoked.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_use_result: Option<serde_json::Value>,
+}
+
+impl UserMessage {
+    /// Parse the `tool_use_result` field into a caller-specified type.
+    ///
+    /// Returns `None` if `tool_use_result` is absent, otherwise returns the
+    /// deserialization result. The caller must know which tool produced the
+    /// result and supply a matching type — e.g. for `AskUserQuestion` use
+    /// [`AskUserQuestionInput`](crate::AskUserQuestionInput), whose
+    /// `questions` + `answers` fields match the wire result shape.
+    pub fn tool_use_result_as<T: serde::de::DeserializeOwned>(
+        &self,
+    ) -> Option<Result<T, serde_json::Error>> {
+        self.tool_use_result
+            .as_ref()
+            .map(|v| serde_json::from_value(v.clone()))
+    }
 }
 
 /// Message content with role
@@ -1206,5 +1234,82 @@ mod tests {
         } else {
             panic!("Expected User message");
         }
+    }
+
+    /// Real wire payload captured from the CLI after answering an
+    /// AskUserQuestion via the permission control protocol. The top-level
+    /// `tool_use_result` and `timestamp` fields must round-trip without loss —
+    /// proxies using this crate to relay messages to a viewer rely on those
+    /// fields being preserved (the viewer reads `tool_use_result.answers`).
+    #[test]
+    fn test_user_message_preserves_tool_use_result_and_timestamp() {
+        let json = r#"{
+            "type":"user",
+            "message":{"role":"user","content":[{"type":"tool_result","content":"User has answered your questions: . You can now continue with the user's answers in mind.","tool_use_id":"toolu_01331duMqP2PrRaqR2yWa8e4"}]},
+            "parent_tool_use_id":null,
+            "session_id":"622ae0c3-3d50-4fa7-9ee0-69d691238c6d",
+            "uuid":"8ef6e997-a849-4d15-bed3-2837c3d3f4cd",
+            "timestamp":"2026-05-12T23:12:04.121Z",
+            "tool_use_result":{"questions":[{"question":"Which color do you prefer?","header":"Color","options":[{"label":"Red","description":"A warm color"},{"label":"Blue","description":"A cool color"}],"multiSelect":false}],"answers":{"Color":"Blue"}}
+        }"#;
+
+        let output: ClaudeOutput = serde_json::from_str(json).unwrap();
+        let user = match output {
+            ClaudeOutput::User(u) => u,
+            other => panic!("Expected User message, got {:?}", other.message_type()),
+        };
+
+        assert_eq!(user.timestamp.as_deref(), Some("2026-05-12T23:12:04.121Z"));
+        let raw = user
+            .tool_use_result
+            .as_ref()
+            .expect("tool_use_result must be captured");
+        assert_eq!(raw["answers"]["Color"], "Blue");
+        assert_eq!(raw["questions"][0]["header"], "Color");
+
+        // Round-trip: re-serialize and confirm tool_use_result + timestamp
+        // survive — the bug we're guarding against is that the proxy silently
+        // drops these fields when relaying user messages.
+        let reser: serde_json::Value = serde_json::to_value(&user).unwrap();
+        assert_eq!(reser["timestamp"], "2026-05-12T23:12:04.121Z");
+        assert_eq!(reser["tool_use_result"]["answers"]["Color"], "Blue");
+        assert_eq!(
+            reser["tool_use_result"]["questions"][0]["question"],
+            "Which color do you prefer?"
+        );
+
+        // Typed accessor: AskUserQuestionInput has the same shape as the
+        // AskUserQuestion tool_use_result.
+        let typed: crate::AskUserQuestionInput = user
+            .tool_use_result_as::<crate::AskUserQuestionInput>()
+            .expect("tool_use_result present")
+            .expect("AskUserQuestionInput parses");
+        assert_eq!(typed.questions.len(), 1);
+        assert_eq!(typed.questions[0].header, "Color");
+        let answers = typed.answers.expect("answers populated");
+        assert_eq!(answers.get("Color").map(String::as_str), Some("Blue"));
+    }
+
+    /// User messages without `tool_use_result` / `timestamp` must still
+    /// deserialize fine and serialize back without spuriously emitting nulls.
+    #[test]
+    fn test_user_message_without_tool_use_result_omits_field() {
+        let json = r#"{
+            "type":"user",
+            "message":{"role":"user","content":[{"type":"text","text":"hello"}]},
+            "session_id":"622ae0c3-3d50-4fa7-9ee0-69d691238c6d"
+        }"#;
+
+        let output: ClaudeOutput = serde_json::from_str(json).unwrap();
+        let user = match output {
+            ClaudeOutput::User(u) => u,
+            _ => panic!("Expected User message"),
+        };
+        assert!(user.tool_use_result.is_none());
+        assert!(user.timestamp.is_none());
+
+        let reser = serde_json::to_value(&user).unwrap();
+        assert!(reser.get("tool_use_result").is_none());
+        assert!(reser.get("timestamp").is_none());
     }
 }
