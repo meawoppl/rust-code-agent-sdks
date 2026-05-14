@@ -4,9 +4,9 @@
 //! Type your prompt and press Enter. Type "exit" to quit.
 
 use codex_codes::{
-    protocol::methods, AsyncClient, CommandApprovalDecision, CommandExecutionApprovalResponse,
-    FileChangeApprovalDecision, FileChangeApprovalResponse, ServerMessage, ThreadStartParams,
-    TurnStartParams, UserInput,
+    AsyncClient, CommandApprovalDecision, CommandExecutionApprovalResponse,
+    FileChangeApprovalDecision, FileChangeApprovalResponse, Notification, ServerMessage,
+    ServerRequest, ThreadItem, ThreadStartParams, TurnStartParams, UserInput,
 };
 use std::io::{self, Write};
 
@@ -65,73 +65,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             match msg {
-                ServerMessage::Notification { method, params } => match method.as_str() {
-                    methods::AGENT_MESSAGE_DELTA => {
-                        if let Some(ref p) = params {
-                            if let Some(delta) = p.get("delta").and_then(|d| d.as_str()) {
-                                print!("{}", delta);
-                                io::stdout().flush()?;
-                            }
-                        }
+                ServerMessage::Notification(n) => match n {
+                    Notification::AgentMessageDelta(d) => {
+                        print!("{}", d.delta);
+                        io::stdout().flush()?;
                     }
-                    methods::CMD_OUTPUT_DELTA => {
-                        if let Some(ref p) = params {
-                            if let Some(delta) = p.get("delta").and_then(|d| d.as_str()) {
-                                print!("{}", delta);
-                                io::stdout().flush()?;
-                            }
-                        }
+                    Notification::CmdOutputDelta(d) => {
+                        print!("{}", d.delta);
+                        io::stdout().flush()?;
                     }
-                    methods::REASONING_DELTA => {
-                        if let Some(ref p) = params {
-                            if let Some(delta) = p.get("delta").and_then(|d| d.as_str()) {
-                                print!("[thinking] {}", delta);
-                            }
-                        }
+                    Notification::ReasoningDelta(d) => {
+                        print!("[thinking] {}", d.delta);
                     }
-                    methods::ITEM_STARTED => {
-                        if let Some(ref p) = params {
-                            if let Some(item) = p.get("item") {
-                                if let Some(ty) = item.get("type").and_then(|t| t.as_str()) {
-                                    match ty {
-                                        "commandExecution" | "command_execution" => {
-                                            if let Some(cmd) =
-                                                item.get("command").and_then(|c| c.as_str())
-                                            {
-                                                println!("\n[Command: {}]", cmd);
-                                            }
-                                        }
-                                        "fileChange" | "file_change" => {
-                                            println!("\n[File change]");
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                            }
+                    Notification::ItemStarted(item_event) => match item_event.item {
+                        ThreadItem::CommandExecution(c) => {
+                            println!("\n[Command: {}]", c.command);
                         }
-                    }
-                    methods::TURN_COMPLETED => {
+                        ThreadItem::FileChange(_) => {
+                            println!("\n[File change]");
+                        }
+                        _ => {}
+                    },
+                    Notification::TurnCompleted(_) => {
                         println!();
                         break;
                     }
-                    methods::ERROR => {
-                        if let Some(ref p) = params {
-                            if let Some(error) = p.get("error").and_then(|e| e.as_str()) {
-                                eprintln!("\n[Error: {}]", error);
-                            }
-                        }
+                    Notification::Error(e) => {
+                        eprintln!("\n[Error: {}]", e.error);
                     }
-                    _ => {
-                        log::debug!("Notification: {}", method);
+                    other => {
+                        log::debug!("Notification: {}", other.method());
                     }
                 },
-                ServerMessage::Request { id, method, params } => match method.as_str() {
-                    methods::CMD_EXEC_APPROVAL => {
-                        if let Some(ref p) = params {
-                            if let Some(cmd) = p.get("command").and_then(|c| c.as_str()) {
-                                println!("\n[Approving command: {}]", cmd);
-                            }
-                        }
+                ServerMessage::Request { id, request } => match request {
+                    ServerRequest::CmdExecApproval(p) => {
+                        println!("\n[Approving command: {}]", p.command);
                         client
                             .respond(
                                 id,
@@ -141,7 +109,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             )
                             .await?;
                     }
-                    methods::FILE_CHANGE_APPROVAL => {
+                    ServerRequest::FileChangeApproval(_) => {
                         println!("\n[Approving file change]");
                         client
                             .respond(
@@ -152,7 +120,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             )
                             .await?;
                     }
-                    _ => {
+                    ServerRequest::Unknown { method, .. } => {
                         eprintln!("[unhandled server request: {}]", method);
                     }
                 },

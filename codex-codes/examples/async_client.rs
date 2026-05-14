@@ -4,7 +4,7 @@
 //! until the turn completes.
 
 use codex_codes::{
-    protocol::methods, AsyncClient, ServerMessage, ThreadStartParams, TurnStartParams, UserInput,
+    AsyncClient, Notification, ServerMessage, ThreadStartParams, TurnStartParams, UserInput,
 };
 use std::error::Error;
 
@@ -57,43 +57,30 @@ async fn main() -> Result<(), Box<dyn Error>> {
 /// Handle a server message. Returns true if the turn is complete.
 fn handle_message(msg: &ServerMessage) -> bool {
     match msg {
-        ServerMessage::Notification { method, params } => {
-            match method.as_str() {
-                methods::AGENT_MESSAGE_DELTA => {
-                    if let Some(params) = params {
-                        if let Some(delta) = params.get("delta").and_then(|d| d.as_str()) {
-                            print!("{}", delta);
-                        }
-                    }
-                }
-                methods::TURN_STARTED => {
-                    println!("[turn started]");
-                }
-                methods::TURN_COMPLETED => {
-                    println!("\n[turn completed]");
-                    return true;
-                }
-                methods::ITEM_STARTED => {
-                    // Items starting — could inspect the item type
-                }
-                methods::ITEM_COMPLETED => {
-                    // Items completing
-                }
-                methods::ERROR => {
-                    if let Some(params) = params {
-                        if let Some(error) = params.get("error").and_then(|e| e.as_str()) {
-                            eprintln!("[error] {}", error);
-                        }
-                    }
-                }
-                _ => {
-                    log::debug!("Notification: {}", method);
-                }
+        ServerMessage::Notification(n) => match n {
+            Notification::AgentMessageDelta(d) => {
+                print!("{}", d.delta);
+                false
             }
-            false
-        }
-        ServerMessage::Request { method, .. } => {
-            eprintln!("[server request: {}] (unhandled)", method);
+            Notification::TurnStarted(_) => {
+                println!("[turn started]");
+                false
+            }
+            Notification::TurnCompleted(_) => {
+                println!("\n[turn completed]");
+                true
+            }
+            Notification::Error(e) => {
+                eprintln!("[error] {}", e.error);
+                false
+            }
+            other => {
+                log::debug!("Notification: {}", other.method());
+                false
+            }
+        },
+        ServerMessage::Request { request, .. } => {
+            eprintln!("[server request: {}] (unhandled)", request.method());
             false
         }
     }

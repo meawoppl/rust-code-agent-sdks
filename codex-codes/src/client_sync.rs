@@ -34,8 +34,8 @@
 //!
 //! for result in client.events() {
 //!     match result? {
-//!         ServerMessage::Notification { method, .. } => {
-//!             if method == "turn/completed" { break; }
+//!         ServerMessage::Notification(n) => {
+//!             if let codex_codes::Notification::TurnCompleted(_) = n { break; }
 //!         }
 //!         _ => {}
 //!     }
@@ -47,10 +47,11 @@ use crate::error::{Error, Result};
 use crate::jsonrpc::{
     JsonRpcError, JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, RequestId,
 };
+use crate::messages::{Notification, ServerMessage, ServerRequest};
 use crate::protocol::{
-    ClientInfo, InitializeParams, InitializeResponse, ServerMessage, ThreadArchiveParams,
-    ThreadArchiveResponse, ThreadStartParams, ThreadStartResponse, TurnInterruptParams,
-    TurnInterruptResponse, TurnStartParams, TurnStartResponse,
+    ClientInfo, InitializeParams, InitializeResponse, ThreadArchiveParams, ThreadArchiveResponse,
+    ThreadStartParams, ThreadStartResponse, TurnInterruptParams, TurnInterruptResponse,
+    TurnStartParams, TurnStartResponse,
 };
 use log::{debug, warn};
 use serde::de::DeserializeOwned;
@@ -199,16 +200,17 @@ impl SyncClient {
                     });
                 }
                 JsonRpcMessage::Notification(notif) => {
-                    self.buffered.push_back(ServerMessage::Notification {
-                        method: notif.method,
-                        params: notif.params,
-                    });
+                    let typed = Notification::from_envelope(&notif.method, notif.params)
+                        .map_err(Error::Json)?;
+                    self.buffered
+                        .push_back(ServerMessage::Notification(typed));
                 }
                 JsonRpcMessage::Request(req) => {
+                    let typed = ServerRequest::from_envelope(&req.method, req.params)
+                        .map_err(Error::Json)?;
                     self.buffered.push_back(ServerMessage::Request {
                         id: req.id,
-                        method: req.method,
-                        params: req.params,
+                        request: typed,
                     });
                 }
                 JsonRpcMessage::Response(resp) => {
@@ -317,16 +319,16 @@ impl SyncClient {
 
             match msg {
                 JsonRpcMessage::Notification(notif) => {
-                    return Ok(Some(ServerMessage::Notification {
-                        method: notif.method,
-                        params: notif.params,
-                    }));
+                    let typed = Notification::from_envelope(&notif.method, notif.params)
+                        .map_err(Error::Json)?;
+                    return Ok(Some(ServerMessage::Notification(typed)));
                 }
                 JsonRpcMessage::Request(req) => {
+                    let typed = ServerRequest::from_envelope(&req.method, req.params)
+                        .map_err(Error::Json)?;
                     return Ok(Some(ServerMessage::Request {
                         id: req.id,
-                        method: req.method,
-                        params: req.params,
+                        request: typed,
                     }));
                 }
                 JsonRpcMessage::Response(resp) => {

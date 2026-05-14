@@ -155,7 +155,7 @@ dependencies = [
 
 [[package]]
 name = "codex-codes"
-version = "0.101.1"
+version = "0.102.0"
 dependencies = [
  "env_logger",
  "log",

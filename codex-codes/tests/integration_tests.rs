@@ -128,12 +128,16 @@ fn test_list_files_command_lifecycle() {
     // Started has in_progress status, no exit code, empty output
     assert_eq!(started.status, CommandExecutionStatus::InProgress);
     assert_eq!(started.exit_code, None);
-    assert!(started.aggregated_output.is_empty());
+    assert!(started.aggregated_output.as_deref().unwrap_or("").is_empty());
 
     // Completed has exit code 0, non-empty output
     assert_eq!(completed.status, CommandExecutionStatus::Completed);
     assert_eq!(completed.exit_code, Some(0));
-    assert!(!completed.aggregated_output.is_empty());
+    assert!(!completed
+        .aggregated_output
+        .as_deref()
+        .unwrap_or("")
+        .is_empty());
     assert!(completed.command.contains("ls"));
 }
 
@@ -158,7 +162,7 @@ fn test_file_create_command_output() {
         .expect("Should have a completed command");
 
     assert_eq!(cmd.exit_code, Some(0));
-    assert_eq!(cmd.aggregated_output, "hello from codex");
+    assert_eq!(cmd.aggregated_output.as_deref(), Some("hello from codex"));
 }
 
 // ── failed_command: non-zero exit code ──────────────────────────────
@@ -194,7 +198,11 @@ fn test_failed_command_status_and_exit_code() {
 
     assert_eq!(completed.status, CommandExecutionStatus::Failed);
     assert_eq!(completed.exit_code, Some(42));
-    assert!(completed.aggregated_output.is_empty());
+    assert!(completed
+        .aggregated_output
+        .as_deref()
+        .unwrap_or("")
+        .is_empty());
 }
 
 // ── file_change: patch-based file modification ──────────────────────
@@ -237,9 +245,11 @@ fn test_file_change_also_has_command_verification() {
 
     assert!(!cmds.is_empty());
     assert!(cmds.iter().any(|c| c.command.contains("cat")));
-    assert!(cmds
-        .iter()
-        .any(|c| c.aggregated_output.contains("new content")));
+    assert!(cmds.iter().any(|c| c
+        .aggregated_output
+        .as_deref()
+        .unwrap_or("")
+        .contains("new content")));
 }
 
 // ── multi_command: multiple sequential commands ─────────────────────
@@ -276,7 +286,10 @@ fn test_multi_command_three_commands_executed() {
         assert_eq!(cmd.exit_code, Some(0));
         assert_eq!(cmd.status, CommandExecutionStatus::Completed);
         assert!(
-            cmd.aggregated_output.contains(&step),
+            cmd.aggregated_output
+                .as_deref()
+                .unwrap_or("")
+                .contains(&step),
             "Output of command {} should contain '{}'",
             i,
             step
@@ -388,6 +401,7 @@ fn test_all_item_ids_are_sequential_within_capture() {
         let ids: Vec<String> = completed_items(&events)
             .into_iter()
             .map(|item| match item {
+                ThreadItem::UserMessage(u) => u.id.clone(),
                 ThreadItem::AgentMessage(m) => m.id.clone(),
                 ThreadItem::Reasoning(r) => r.id.clone(),
                 ThreadItem::CommandExecution(c) => c.id.clone(),

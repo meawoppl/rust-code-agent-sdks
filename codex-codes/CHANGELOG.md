@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.102.0] - 2026-05-14
+
+### Added
+
+- **Typed message dispatch** — New module [`crate::messages`] introduces closed enums [`Notification`] and [`ServerRequest`] that wrap the per-method param structs. The clients now return the typed [`ServerMessage`] from `next_message()`/`events()` instead of the loose `{ method, params }` shape. Mirrors the [`ContentBlock`]-style dispatch in the sibling `claude-codes` crate: hand-written `Serialize`/`Deserialize` impls inspect the `method` discriminant, route known cases through their typed struct, and route unknown methods to an `Unknown { method, params }` fallback for forward compatibility. Known methods whose payload doesn't fit error loudly — the typing contract is enforced.
+- **New typed notifications** — `AccountRateLimitsUpdatedNotification` (`account/rateLimits/updated`), `McpServerStartupStatusUpdatedNotification` (`mcpServer/startupStatus/updated`), `RemoteControlStatusChangedNotification` (`remoteControl/status/changed`). The app-server emits all three during normal operation; previously they fell through to the raw fallback.
+- **`RateLimits` / `RateLimitWindow` / `TokenCounts`** — Supporting structs for the above and for the new nested `TokenUsage` shape.
+- **`UserMessageItem` / `UserMessageContent`** — Added `ThreadItem::UserMessage` variant for the user-prompt item the app-server emits at the start of each turn (the exec JSONL protocol doesn't typically emit this).
+- **Strict typed-message audit test** — `tests/live_client_tests.rs::test_typed_message_audit_strict` runs a real turn and asserts that every notification and server request resolves to a typed variant (no `Unknown`).
+
+### Fixed
+
+- **`ThreadStartedNotification`** — Was `{ thread_id: String }`; the wire actually sends `{ thread: ThreadInfo }` with the full info object.
+- **`TurnStartedNotification` / `TurnCompletedNotification`** — Had a top-level `turn_id` field that doesn't exist on the wire (the id lives inside `turn.id`). Both now carry `{ thread_id, turn: Turn }`.
+- **`ThreadStatusChangedNotification` / `ThreadStatus`** — Status was modeled as a bare string enum; the wire actually sends an internally-tagged enum (`{"type":"idle"}`, `{"type":"active","activeFlags":[]}`). `ThreadStatus` is now `#[serde(tag = "type")]` with the `Active` variant carrying `active_flags`.
+- **`ThreadTokenUsageUpdatedNotification`** — Field was named `usage` but the wire sends `tokenUsage`. The notification also carries `turn_id` which wasn't modeled. Plus the inner `TokenUsage` is actually a wrapper of `{last, total, modelContextWindow}` over a `TokenCounts` struct with `inputTokens`, `outputTokens`, `cachedInputTokens`, `reasoningOutputTokens`, `totalTokens` — restructured accordingly.
+- **`ItemStartedNotification` / `ItemCompletedNotification`** — Now include `started_at_ms` / `completed_at_ms` from the wire.
+- **`CommandExecutionItem`** — Was snake_case-only (`aggregated_output`, `exit_code`); the app-server protocol uses camelCase. Now carries `#[serde(rename_all = "camelCase")]` with snake_case aliases so both protocols deserialize cleanly. `aggregated_output` is now `Option<String>` since the app-server sends `null` while a command is still in progress.
+
+### Changed (breaking)
+
+- **`ServerMessage` shape** — `ServerMessage::Notification { method, params }` is now `ServerMessage::Notification(Notification)`; `ServerMessage::Request { id, method, params }` is now `ServerMessage::Request { id, request: ServerRequest }`. Update call sites to match on the typed enum variants instead of method-string comparisons.
+- **`CommandExecutionItem.aggregated_output`** — Type changed from `String` to `Option<String>` (see above).
+- **`TokenUsage`** — Restructured from a flat counts struct to `{last, total, modelContextWindow}` over `TokenCounts`. Old direct field access (`usage.input_tokens`) becomes `usage.last.input_tokens` or `usage.total.input_tokens`.
+- **`ThreadStatus`** — Now a `#[serde(tag = "type")]` enum; the `Active` variant has an `active_flags: Vec<Value>` field. Pattern matches need updating.
+
 ## [0.101.2] - 2026-05-14
 
 ### Fixed
