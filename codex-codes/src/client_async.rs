@@ -58,7 +58,7 @@ use serde::Serialize;
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicI64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter};
-use tokio::process::{Child, ChildStderr};
+use tokio::process::Child;
 
 /// Buffer size for reading stdout (10MB).
 const STDOUT_BUFFER_SIZE: usize = 10 * 1024 * 1024;
@@ -75,7 +75,10 @@ pub struct AsyncClient {
     child: Child,
     writer: BufWriter<tokio::process::ChildStdin>,
     reader: BufReader<tokio::process::ChildStdout>,
-    stderr: Option<BufReader<ChildStderr>>,
+    /// Handle to the background task draining the child's stderr pipe.
+    /// Kept alive for the lifetime of the client; the task exits on EOF
+    /// when the child is killed.
+    _stderr_drain: tokio::task::JoinHandle<()>,
     next_id: AtomicI64,
     /// Buffered incoming messages (notifications/server requests) that arrived
     /// while waiting for a response to a client request.
@@ -140,13 +143,22 @@ impl AsyncClient {
             .stdout
             .take()
             .ok_or_else(|| Error::Protocol("Failed to get stdout".to_string()))?;
-        let stderr = child.stderr.take().map(BufReader::new);
+        let stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| Error::Protocol("Failed to get stderr".to_string()))?;
+
+        // The app-server emits ~200 KB/s of tracing to stderr. Without an
+        // active reader, the ~64 KB kernel pipe fills almost instantly and
+        // the child blocks. Drain in the background and route lines through
+        // the `log` crate (see [`crate::stderr_drain`]).
+        let stderr_drain = crate::stderr_drain::spawn_async(stderr);
 
         Ok(Self {
             child,
             writer: BufWriter::new(stdin),
             reader: BufReader::with_capacity(STDOUT_BUFFER_SIZE, stdout),
-            stderr,
+            _stderr_drain: stderr_drain,
             next_id: AtomicI64::new(1),
             buffered: VecDeque::new(),
         })
@@ -370,13 +382,6 @@ impl AsyncClient {
     /// gather all messages until EOF.
     pub fn events(&mut self) -> EventStream<'_> {
         EventStream { client: self }
-    }
-
-    /// Take the stderr reader (can only be called once).
-    ///
-    /// Useful for logging or diagnostics. Returns `None` on subsequent calls.
-    pub fn take_stderr(&mut self) -> Option<BufReader<ChildStderr>> {
-        self.stderr.take()
     }
 
     /// Get the process ID.

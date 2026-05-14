@@ -165,6 +165,9 @@ pub mod cli;
 #[cfg(any(feature = "sync-client", feature = "async-client"))]
 pub mod version;
 
+#[cfg(any(feature = "sync-client", feature = "async-client"))]
+mod stderr_drain;
+
 #[cfg(feature = "sync-client")]
 pub mod client_sync;
 

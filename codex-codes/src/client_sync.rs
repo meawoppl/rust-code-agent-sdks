@@ -74,6 +74,10 @@ pub struct SyncClient {
     child: Child,
     writer: BufWriter<std::process::ChildStdin>,
     reader: BufReader<std::process::ChildStdout>,
+    /// Handle to the background thread draining the child's stderr pipe.
+    /// Kept alive for the lifetime of the client; the thread exits on EOF
+    /// when the child is killed.
+    _stderr_drain: std::thread::JoinHandle<()>,
     next_id: i64,
     buffered: VecDeque<ServerMessage>,
 }
@@ -134,11 +138,22 @@ impl SyncClient {
             .stdout
             .take()
             .ok_or_else(|| Error::Protocol("Failed to get stdout".to_string()))?;
+        let stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| Error::Protocol("Failed to get stderr".to_string()))?;
+
+        // The app-server emits ~200 KB/s of tracing to stderr. Without an
+        // active reader, the ~64 KB kernel pipe fills almost instantly and
+        // the child blocks. Drain in the background and route lines through
+        // the `log` crate (see [`crate::stderr_drain`]).
+        let stderr_drain = crate::stderr_drain::spawn_sync(stderr);
 
         Ok(Self {
             child,
             writer: BufWriter::new(stdin),
             reader: BufReader::with_capacity(STDOUT_BUFFER_SIZE, stdout),
+            _stderr_drain: stderr_drain,
             next_id: 1,
             buffered: VecDeque::new(),
         })

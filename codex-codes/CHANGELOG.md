@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.101.2] - 2026-05-14
+
+### Fixed
+
+- **Stderr pipe deadlock** — `AsyncClient` and `SyncClient` now drain the app-server's stderr in a background task/thread instead of leaving it pinned to an unread `BufReader`. The Codex CLI emits ~200 KB/s of tracing to stderr, which would fill the ~64 KB kernel pipe within a fraction of a second and block the child process — manifesting as the client hanging on the first non-trivial request. Drained lines are forwarded through the `log` crate at the level encoded in the line (`error!`/`warn!`/`debug!`/`trace!`), with ANSI color codes stripped. INFO tracing (the vast majority of volume) is routed to `trace!` so `RUST_LOG=info` stays quiet by default while WARN/ERROR remain visible.
+
+### Removed
+
+- **`AsyncClient::take_stderr()`** — Replaced by automatic background draining; the method is incompatible with the new design and is removed without a deprecation cycle (no known external callers).
+
 ## [0.101.1] - 2026-03-17
 
 ### Added
