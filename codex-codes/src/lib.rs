@@ -157,6 +157,7 @@ mod io;
 
 pub mod error;
 pub mod jsonrpc;
+pub mod messages;
 pub mod protocol;
 
 #[cfg(any(feature = "sync-client", feature = "async-client"))]
@@ -204,17 +205,26 @@ pub use jsonrpc::{
 
 // App-server protocol types (always available)
 pub use protocol::{
-    AgentMessageDeltaNotification, ClientInfo, CmdOutputDeltaNotification, CommandApprovalDecision,
-    CommandExecutionApprovalParams, CommandExecutionApprovalResponse, ErrorNotification,
-    FileChangeApprovalDecision, FileChangeApprovalParams, FileChangeApprovalResponse,
-    FileChangeOutputDeltaNotification, InitializeCapabilities, InitializeParams,
-    InitializeResponse, ItemCompletedNotification, ItemStartedNotification,
-    ReasoningDeltaNotification, ServerMessage, ThreadArchiveParams, ThreadArchiveResponse,
-    ThreadInfo, ThreadStartParams, ThreadStartResponse, ThreadStartedNotification, ThreadStatus,
-    ThreadStatusChangedNotification, ThreadTokenUsageUpdatedNotification, TokenUsage, Turn,
-    TurnCompletedNotification, TurnError, TurnInterruptParams, TurnInterruptResponse,
-    TurnStartParams, TurnStartResponse, TurnStartedNotification, TurnStatus, UserInput,
+    AccountRateLimitsUpdatedNotification, AgentMessageDeltaNotification, ClientInfo,
+    CmdOutputDeltaNotification, CommandApprovalDecision, CommandExecutionApprovalParams,
+    CommandExecutionApprovalResponse, ErrorNotification, FileChangeApprovalDecision,
+    FileChangeApprovalParams, FileChangeApprovalResponse, FileChangeOutputDeltaNotification,
+    InitializeCapabilities, InitializeParams, InitializeResponse, ItemCompletedNotification,
+    ItemStartedNotification, McpServerStartupStatusUpdatedNotification, RateLimitWindow,
+    RateLimits, ReasoningDeltaNotification, RemoteControlStatusChangedNotification,
+    ThreadArchiveParams, ThreadArchiveResponse, ThreadInfo, ThreadStartParams, ThreadStartResponse,
+    ThreadStartedNotification, ThreadStatus, ThreadStatusChangedNotification,
+    ThreadTokenUsageUpdatedNotification, TokenCounts, TokenUsage, Turn, TurnCompletedNotification,
+    TurnError, TurnInterruptParams, TurnInterruptResponse, TurnStartParams, TurnStartResponse,
+    TurnStartedNotification, TurnStatus, UserInput,
 };
+
+// Also re-export the `UserMessageItem` and its content block so callers can
+// pattern-match on the new ThreadItem variant added in 0.102.
+pub use io::items::{UserMessageContent, UserMessageItem};
+
+// Typed message dispatch (notifications + server-to-client requests)
+pub use messages::{Notification, ServerMessage, ServerRequest};
 
 // CLI builder (feature-gated)
 #[cfg(any(feature = "sync-client", feature = "async-client"))]

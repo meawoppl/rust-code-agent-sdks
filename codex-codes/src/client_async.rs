@@ -32,10 +32,10 @@
 //!
 //! while let Some(msg) = client.next_message().await? {
 //!     match msg {
-//!         ServerMessage::Notification { method, params } => {
-//!             if method == "turn/completed" { break; }
+//!         ServerMessage::Notification(n) => {
+//!             if let codex_codes::Notification::TurnCompleted(_) = n { break; }
 //!         }
-//!         ServerMessage::Request { id, method, .. } => {
+//!         ServerMessage::Request { id, .. } => {
 //!             client.respond(id, &serde_json::json!({"decision": "accept"})).await?;
 //!         }
 //!     }
@@ -47,10 +47,11 @@ use crate::error::{Error, Result};
 use crate::jsonrpc::{
     JsonRpcError, JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, RequestId,
 };
+use crate::messages::{Notification, ServerMessage, ServerRequest};
 use crate::protocol::{
-    ClientInfo, InitializeParams, InitializeResponse, ServerMessage, ThreadArchiveParams,
-    ThreadArchiveResponse, ThreadStartParams, ThreadStartResponse, TurnInterruptParams,
-    TurnInterruptResponse, TurnStartParams, TurnStartResponse,
+    ClientInfo, InitializeParams, InitializeResponse, ThreadArchiveParams, ThreadArchiveResponse,
+    ThreadStartParams, ThreadStartResponse, TurnInterruptParams, TurnInterruptResponse,
+    TurnStartParams, TurnStartResponse,
 };
 use log::{debug, error, warn};
 use serde::de::DeserializeOwned;
@@ -205,16 +206,17 @@ impl AsyncClient {
                 }
                 // Buffer notifications and server requests
                 JsonRpcMessage::Notification(notif) => {
-                    self.buffered.push_back(ServerMessage::Notification {
-                        method: notif.method,
-                        params: notif.params,
-                    });
+                    let typed = Notification::from_envelope(&notif.method, notif.params)
+                        .map_err(Error::Json)?;
+                    self.buffered
+                        .push_back(ServerMessage::Notification(typed));
                 }
                 JsonRpcMessage::Request(req) => {
+                    let typed = ServerRequest::from_envelope(&req.method, req.params)
+                        .map_err(Error::Json)?;
                     self.buffered.push_back(ServerMessage::Request {
                         id: req.id,
-                        method: req.method,
-                        params: req.params,
+                        request: typed,
                     });
                 }
                 // Response/error for a different id — unexpected
@@ -346,16 +348,16 @@ impl AsyncClient {
 
             match msg {
                 JsonRpcMessage::Notification(notif) => {
-                    return Ok(Some(ServerMessage::Notification {
-                        method: notif.method,
-                        params: notif.params,
-                    }));
+                    let typed = Notification::from_envelope(&notif.method, notif.params)
+                        .map_err(Error::Json)?;
+                    return Ok(Some(ServerMessage::Notification(typed)));
                 }
                 JsonRpcMessage::Request(req) => {
+                    let typed = ServerRequest::from_envelope(&req.method, req.params)
+                        .map_err(Error::Json)?;
                     return Ok(Some(ServerMessage::Request {
                         id: req.id,
-                        method: req.method,
-                        params: req.params,
+                        request: typed,
                     }));
                 }
                 // Unexpected responses without a pending request

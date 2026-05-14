@@ -7,10 +7,9 @@
 
 #![cfg(feature = "integration-tests")]
 
-use codex_codes::protocol::methods;
 use codex_codes::{
-    AsyncClient, ClientInfo, InitializeCapabilities, InitializeParams, ServerMessage, SyncClient,
-    ThreadStartParams, TurnStartParams, UserInput,
+    AsyncClient, ClientInfo, InitializeCapabilities, InitializeParams, Notification, ServerMessage,
+    SyncClient, ThreadStartParams, TurnStartParams, UserInput,
 };
 
 // ── Version check ───────────────────────────────────────────────────
@@ -76,26 +75,21 @@ async fn test_async_client_basic_turn() {
     while let Some(msg) = client.next_message().await.expect("Failed to read message") {
         message_count += 1;
 
-        match &msg {
-            ServerMessage::Notification { method, params } => {
-                if method == methods::AGENT_MESSAGE_DELTA {
-                    if let Some(params) = params {
-                        if let Some(delta) = params.get("delta").and_then(|d| d.as_str()) {
-                            if delta.contains('4') {
-                                found_answer = true;
-                            }
-                        }
-                    }
-                }
-                if method == methods::TURN_COMPLETED {
-                    turn_completed = true;
-                    break;
+        match msg {
+            ServerMessage::Notification(Notification::AgentMessageDelta(d)) => {
+                if d.delta.contains('4') {
+                    found_answer = true;
                 }
             }
+            ServerMessage::Notification(Notification::TurnCompleted(_)) => {
+                turn_completed = true;
+                break;
+            }
+            ServerMessage::Notification(_) => {}
             ServerMessage::Request { id, .. } => {
                 // Auto-accept any approval requests
                 client
-                    .respond(id.clone(), &serde_json::json!({"decision": "accept"}))
+                    .respond(id, &serde_json::json!({"decision": "accept"}))
                     .await
                     .expect("Failed to respond");
             }
@@ -199,23 +193,17 @@ fn test_sync_client_basic_turn() {
         let msg = result.expect("Failed to read message");
         message_count += 1;
 
-        match &msg {
-            ServerMessage::Notification { method, params } => {
-                if method == methods::AGENT_MESSAGE_DELTA {
-                    if let Some(params) = params {
-                        if let Some(delta) = params.get("delta").and_then(|d| d.as_str()) {
-                            if delta.contains('4') {
-                                found_answer = true;
-                            }
-                        }
-                    }
-                }
-                if method == methods::TURN_COMPLETED {
-                    turn_completed = true;
-                    break;
+        match msg {
+            ServerMessage::Notification(Notification::AgentMessageDelta(d)) => {
+                if d.delta.contains('4') {
+                    found_answer = true;
                 }
             }
-            ServerMessage::Request { .. } => {}
+            ServerMessage::Notification(Notification::TurnCompleted(_)) => {
+                turn_completed = true;
+                break;
+            }
+            ServerMessage::Notification(_) | ServerMessage::Request { .. } => {}
         }
 
         if message_count > 100 {
@@ -258,16 +246,15 @@ async fn test_async_client_multi_turn() {
     let mut message_count = 0;
     while let Some(msg) = client.next_message().await.expect("read") {
         message_count += 1;
-        if let ServerMessage::Notification { method, .. } = &msg {
-            if method == methods::TURN_COMPLETED {
-                break;
+        match msg {
+            ServerMessage::Notification(Notification::TurnCompleted(_)) => break,
+            ServerMessage::Notification(_) => {}
+            ServerMessage::Request { id, .. } => {
+                client
+                    .respond(id, &serde_json::json!({"decision": "accept"}))
+                    .await
+                    .ok();
             }
-        }
-        if let ServerMessage::Request { id, .. } = msg {
-            client
-                .respond(id, &serde_json::json!({"decision": "accept"}))
-                .await
-                .ok();
         }
         if message_count > 100 {
             break;
@@ -293,24 +280,17 @@ async fn test_async_client_multi_turn() {
     let mut message_count = 0;
     while let Some(msg) = client.next_message().await.expect("read") {
         message_count += 1;
-        match &msg {
-            ServerMessage::Notification { method, params } => {
-                if method == methods::AGENT_MESSAGE_DELTA {
-                    if let Some(params) = params {
-                        if let Some(delta) = params.get("delta").and_then(|d| d.as_str()) {
-                            if delta.contains("42") {
-                                found_42 = true;
-                            }
-                        }
-                    }
-                }
-                if method == methods::TURN_COMPLETED {
-                    break;
+        match msg {
+            ServerMessage::Notification(Notification::AgentMessageDelta(d)) => {
+                if d.delta.contains("42") {
+                    found_42 = true;
                 }
             }
+            ServerMessage::Notification(Notification::TurnCompleted(_)) => break,
+            ServerMessage::Notification(_) => {}
             ServerMessage::Request { id, .. } => {
                 client
-                    .respond(id.clone(), &serde_json::json!({"decision": "accept"}))
+                    .respond(id, &serde_json::json!({"decision": "accept"}))
                     .await
                     .ok();
             }
@@ -360,13 +340,14 @@ async fn test_async_client_event_stream() {
         let msg = result.expect("Failed to read event");
         message_count += 1;
 
-        if let ServerMessage::Notification { method, .. } = &msg {
-            if method == methods::TURN_STARTED {
-                got_turn_started = true;
-            }
-            if method == methods::TURN_COMPLETED {
-                got_turn_completed = true;
-                break;
+        if let ServerMessage::Notification(n) = &msg {
+            match n {
+                Notification::TurnStarted(_) => got_turn_started = true,
+                Notification::TurnCompleted(_) => {
+                    got_turn_completed = true;
+                    break;
+                }
+                _ => {}
             }
         }
 
@@ -377,4 +358,113 @@ async fn test_async_client_event_stream() {
 
     assert!(got_turn_started, "Should have received turn/started");
     assert!(got_turn_completed, "Should have received turn/completed");
+}
+
+// ── Strict typed-message audit ──────────────────────────────────────
+//
+// Runs a turn that exercises a command-execution item plus the usual thread
+// and turn lifecycle, then asserts that **every** notification and server
+// request received deserializes into its typed variant — i.e. `Unknown` must
+// not appear. The dispatch in [`codex_codes::messages`] is strict on known
+// methods (deserialization failure surfaces as a client error) and tolerant
+// on unknown methods (routes to `Unknown` without error); this test catches
+// both regressions: a known method whose payload no longer fits the typed
+// struct fails the client call before we get here, and a brand-new method
+// that we haven't modeled fails the assertion below.
+#[tokio::test]
+async fn test_typed_message_audit_strict() {
+    use std::collections::BTreeMap;
+
+    let mut client = AsyncClient::start()
+        .await
+        .expect("Failed to start app-server");
+
+    let thread = client
+        .thread_start(&ThreadStartParams::default())
+        .await
+        .expect("Failed to start thread");
+
+    client
+        .turn_start(&TurnStartParams {
+            thread_id: thread.thread_id().to_string(),
+            input: vec![UserInput::Text {
+                text: "Run `ls` in the current directory, then briefly describe what you saw."
+                    .to_string(),
+            }],
+            model: None,
+            reasoning_effort: None,
+            sandbox_policy: None,
+        })
+        .await
+        .expect("Failed to start turn");
+
+    let mut typed_counts: BTreeMap<&'static str, u32> = BTreeMap::new();
+    let mut unknown_methods: BTreeMap<String, u32> = BTreeMap::new();
+    let mut message_count = 0;
+
+    while let Some(msg) = client.next_message().await.expect("read") {
+        message_count += 1;
+        match msg {
+            ServerMessage::Notification(n) => {
+                let variant = match &n {
+                    Notification::ThreadStarted(_) => "ThreadStarted",
+                    Notification::ThreadStatusChanged(_) => "ThreadStatusChanged",
+                    Notification::ThreadTokenUsageUpdated(_) => "ThreadTokenUsageUpdated",
+                    Notification::TurnStarted(_) => "TurnStarted",
+                    Notification::TurnCompleted(_) => "TurnCompleted",
+                    Notification::ItemStarted(_) => "ItemStarted",
+                    Notification::ItemCompleted(_) => "ItemCompleted",
+                    Notification::AgentMessageDelta(_) => "AgentMessageDelta",
+                    Notification::CmdOutputDelta(_) => "CmdOutputDelta",
+                    Notification::FileChangeOutputDelta(_) => "FileChangeOutputDelta",
+                    Notification::ReasoningDelta(_) => "ReasoningDelta",
+                    Notification::Error(_) => "Error",
+                    Notification::AccountRateLimitsUpdated(_) => "AccountRateLimitsUpdated",
+                    Notification::McpServerStartupStatusUpdated(_) => {
+                        "McpServerStartupStatusUpdated"
+                    }
+                    Notification::RemoteControlStatusChanged(_) => "RemoteControlStatusChanged",
+                    Notification::Unknown { method, .. } => {
+                        *unknown_methods.entry(method.clone()).or_insert(0) += 1;
+                        continue;
+                    }
+                };
+                *typed_counts.entry(variant).or_insert(0) += 1;
+                if matches!(&n, Notification::TurnCompleted(_)) {
+                    break;
+                }
+            }
+            ServerMessage::Request { id, request } => {
+                if request.is_unknown() {
+                    unknown_methods
+                        .entry(request.method().to_string())
+                        .and_modify(|c| *c += 1)
+                        .or_insert(1);
+                }
+                client
+                    .respond(id, &serde_json::json!({"decision": "accept"}))
+                    .await
+                    .expect("respond");
+            }
+        }
+
+        if message_count > 500 {
+            break;
+        }
+    }
+
+    eprintln!("\n── Typed message audit ──────────────────────────────────");
+    eprintln!("Typed variants seen ({} kinds):", typed_counts.len());
+    for (variant, n) in &typed_counts {
+        eprintln!("  {:4}× Notification::{}", n, variant);
+    }
+    eprintln!("─────────────────────────────────────────────────────────\n");
+
+    assert!(
+        unknown_methods.is_empty(),
+        "Wire methods with no typed binding (audit must be empty): {:?}",
+        unknown_methods
+    );
+
+    client.shutdown().await.expect("shutdown");
 }
