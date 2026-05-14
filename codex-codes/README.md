@@ -14,7 +14,7 @@ Part of the [rust-code-agent-sdks](https://github.com/meawoppl/rust-code-agent-s
 
 This crate provides type-safe Rust representations of the Codex CLI's JSON-RPC protocol, used by `codex app-server`. It includes optional sync and async clients for multi-turn conversations with the Codex agent.
 
-**Tested against:** Codex CLI 0.104.0
+**Tested against:** Codex CLI 0.130.0
 
 ## Installation
 
@@ -38,19 +38,19 @@ All features are enabled by default.
 #### Types Only (WASM-compatible)
 ```toml
 [dependencies]
-codex-codes = { version = "0.100", default-features = false, features = ["types"] }
+codex-codes = { version = "0.128", default-features = false, features = ["types"] }
 ```
 
 #### Sync Client Only
 ```toml
 [dependencies]
-codex-codes = { version = "0.100", default-features = false, features = ["sync-client"] }
+codex-codes = { version = "0.128", default-features = false, features = ["sync-client"] }
 ```
 
 #### Async Client Only
 ```toml
 [dependencies]
-codex-codes = { version = "0.100", default-features = false, features = ["async-client"] }
+codex-codes = { version = "0.128", default-features = false, features = ["async-client"] }
 ```
 
 ## Usage
@@ -193,7 +193,7 @@ Discriminated union of agent action items (shared between exec and app-server):
 
 ## Compatibility
 
-**Tested against:** Codex CLI 0.104.0
+**Tested against:** Codex CLI 0.130.0
 
 The crate version tracks the Codex CLI version. If you're using a different CLI version, please report whether it works at:
 https://github.com/meawoppl/rust-code-agent-sdks/issues

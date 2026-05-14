@@ -30,15 +30,24 @@ pub enum CommandExecutionStatus {
 }
 
 /// A command execution item — a shell command the agent ran.
+///
+/// The exec JSONL protocol uses snake_case (`aggregated_output`, `exit_code`)
+/// while the app-server protocol uses camelCase (`aggregatedOutput`, `exitCode`)
+/// and may emit `null` for missing output. Fields below carry serde aliases so
+/// both formats deserialize cleanly.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CommandExecutionItem {
     pub id: String,
     /// The shell command that was executed.
     pub command: String,
-    /// Combined stdout/stderr output from the command.
-    pub aggregated_output: String,
+    /// Combined stdout/stderr output from the command. `None` while still in
+    /// progress on the app-server protocol; the exec protocol uses an empty
+    /// string for the same state.
+    #[serde(alias = "aggregated_output", default)]
+    pub aggregated_output: Option<String>,
     /// Exit code, if the command has finished.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(alias = "exit_code", default, skip_serializing_if = "Option::is_none")]
     pub exit_code: Option<i32>,
     pub status: CommandExecutionStatus,
 }
@@ -120,16 +129,50 @@ pub struct McpToolCallItem {
 }
 
 /// An agent message item containing text output.
+///
+/// `text` may be empty (or absent on the wire) for `item/started` events on
+/// the app-server protocol — codex emits the message envelope before any
+/// tokens have been generated.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentMessageItem {
     pub id: String,
+    #[serde(default)]
     pub text: String,
 }
 
+/// A single content block within a [`UserMessageItem`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserMessageContent {
+    /// Block kind tag (e.g. `"text"`).
+    #[serde(rename = "type")]
+    pub kind: String,
+    /// The text content.
+    #[serde(default)]
+    pub text: String,
+    /// Tokenized/structured representation of the text. Shape varies by
+    /// codex version, so it's preserved as raw JSON.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub text_elements: Vec<Value>,
+}
+
+/// A user message item — the prompt the user sent for the current turn.
+///
+/// Emitted by the app-server as the first item in a turn. The exec JSONL
+/// protocol does not typically emit this item kind.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserMessageItem {
+    pub id: String,
+    pub content: Vec<UserMessageContent>,
+}
+
 /// A reasoning item containing the model's chain-of-thought.
+///
+/// `text` may be empty on `item/started` events; populated by the time
+/// `item/completed` arrives.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReasoningItem {
     pub id: String,
+    #[serde(default)]
     pub text: String,
 }
 
@@ -173,6 +216,9 @@ pub struct TodoListItem {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ThreadItem {
+    /// The user's prompt for the turn (app-server protocol only).
+    #[serde(alias = "userMessage")]
+    UserMessage(UserMessageItem),
     /// Text output from the agent.
     #[serde(alias = "agentMessage")]
     AgentMessage(AgentMessageItem),

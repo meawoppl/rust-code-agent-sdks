@@ -18,22 +18,19 @@
 //!
 //! # Parsing notifications
 //!
-//! ```
-//! use codex_codes::protocol::{methods, TurnCompletedNotification};
-//! use serde_json::Value;
+//! Prefer the typed dispatch in [`crate::messages`] over manual `method` checks:
 //!
-//! fn handle_notification(method: &str, params: Option<Value>) {
-//!     if method == methods::TURN_COMPLETED {
-//!         if let Some(p) = params {
-//!             let notif: TurnCompletedNotification = serde_json::from_value(p).unwrap();
-//!             println!("Turn {} completed", notif.turn_id);
-//!         }
+//! ```
+//! use codex_codes::{Notification, ServerMessage};
+//!
+//! fn handle(msg: ServerMessage) {
+//!     if let ServerMessage::Notification(Notification::TurnCompleted(c)) = msg {
+//!         println!("Turn {} on thread {} completed", c.turn.id, c.thread_id);
 //!     }
 //! }
 //! ```
 
 use crate::io::items::ThreadItem;
-use crate::jsonrpc::RequestId;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -267,19 +264,42 @@ pub struct Turn {
 // Token usage
 // ---------------------------------------------------------------------------
 
-/// Cumulative token usage for a thread.
-///
-/// Sent via [`ThreadTokenUsageUpdatedNotification`] after each turn.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// A snapshot of token counts within a single turn or aggregated across a
+/// thread. Sub-field of [`TokenUsage`].
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TokenUsage {
-    /// Total input tokens consumed.
+pub struct TokenCounts {
+    /// Input tokens consumed.
+    #[serde(default)]
     pub input_tokens: u64,
-    /// Total output tokens generated.
+    /// Output tokens generated.
+    #[serde(default)]
     pub output_tokens: u64,
     /// Input tokens served from cache.
     #[serde(default)]
     pub cached_input_tokens: u64,
+    /// Output tokens spent on chain-of-thought reasoning (model-dependent).
+    #[serde(default)]
+    pub reasoning_output_tokens: u64,
+    /// Sum total — may be redundant with the other counts.
+    #[serde(default)]
+    pub total_tokens: u64,
+}
+
+/// Cumulative token usage for a thread.
+///
+/// Sent via [`ThreadTokenUsageUpdatedNotification`] after each turn. Carries
+/// per-turn (`last`) and lifetime (`total`) counts plus the model's context
+/// window for client-side budget tracking.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TokenUsage {
+    /// Counts for the most recently completed turn.
+    pub last: TokenCounts,
+    /// Cumulative counts for the entire thread.
+    pub total: TokenCounts,
+    /// The model's maximum context window in tokens.
+    pub model_context_window: u64,
 }
 
 // ---------------------------------------------------------------------------
@@ -287,15 +307,23 @@ pub struct TokenUsage {
 // ---------------------------------------------------------------------------
 
 /// Status of a thread, sent via [`ThreadStatusChangedNotification`].
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+///
+/// Wire format is internally tagged on `"type"`, with the `Active` variant
+/// carrying an `activeFlags` array of in-progress markers.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
 pub enum ThreadStatus {
     /// Thread is not yet loaded.
     NotLoaded,
     /// Thread is idle (no active turn).
     Idle,
     /// Thread has an active turn being processed.
-    Active,
+    Active {
+        /// Tags identifying what is in flight (e.g. running tools).
+        /// Shape is codex-version-dependent; preserved as raw JSON.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        active_flags: Vec<Value>,
+    },
     /// Thread encountered an unrecoverable error.
     SystemError,
 }
@@ -305,10 +333,13 @@ pub enum ThreadStatus {
 // ---------------------------------------------------------------------------
 
 /// `thread/started` notification.
+///
+/// Sent once when a thread is created. Carries the full [`ThreadInfo`] for
+/// the new thread.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreadStartedNotification {
-    pub thread_id: String,
+    pub thread: ThreadInfo,
 }
 
 /// `thread/status/changed` notification.
@@ -320,19 +351,22 @@ pub struct ThreadStatusChangedNotification {
 }
 
 /// `turn/started` notification.
+///
+/// Carries the freshly-created [`Turn`] (with `status: in_progress`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TurnStartedNotification {
     pub thread_id: String,
-    pub turn_id: String,
+    pub turn: Turn,
 }
 
 /// `turn/completed` notification.
+///
+/// Carries the final [`Turn`] state with its full item list.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TurnCompletedNotification {
     pub thread_id: String,
-    pub turn_id: String,
     pub turn: Turn,
 }
 
@@ -342,6 +376,10 @@ pub struct TurnCompletedNotification {
 pub struct ItemStartedNotification {
     pub thread_id: String,
     pub turn_id: String,
+    /// Server-side timestamp (milliseconds since Unix epoch) when the item
+    /// began. Optional — older codex builds omit it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub started_at_ms: Option<i64>,
     pub item: ThreadItem,
 }
 
@@ -351,6 +389,10 @@ pub struct ItemStartedNotification {
 pub struct ItemCompletedNotification {
     pub thread_id: String,
     pub turn_id: String,
+    /// Server-side timestamp (milliseconds since Unix epoch) when the item
+    /// finished. Optional — older codex builds omit it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completed_at_ms: Option<i64>,
     pub item: ThreadItem,
 }
 
@@ -404,11 +446,90 @@ pub struct ErrorNotification {
 }
 
 /// `thread/tokenUsage/updated` notification.
+///
+/// Emitted after each turn with cumulative and per-turn token counts.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreadTokenUsageUpdatedNotification {
     pub thread_id: String,
-    pub usage: TokenUsage,
+    /// The turn that triggered this usage update. May be absent for
+    /// thread-level updates that aren't tied to a specific turn.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub turn_id: Option<String>,
+    pub token_usage: TokenUsage,
+}
+
+/// A rate-limit window descriptor used inside [`RateLimits`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RateLimitWindow {
+    /// Unix timestamp (seconds) at which this rate-limit window resets.
+    pub resets_at: i64,
+    /// Percentage of the window already consumed (0-100).
+    pub used_percent: i32,
+    /// Length of the rate-limit window, in minutes.
+    pub window_duration_mins: i64,
+}
+
+/// Rate-limit envelope sent in [`AccountRateLimitsUpdatedNotification`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RateLimits {
+    /// Credit balance, if applicable for this plan. Shape is plan-dependent
+    /// so the payload is preserved as raw JSON.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credits: Option<Value>,
+    /// Stable machine identifier for the limit (e.g. `"codex"`).
+    pub limit_id: String,
+    /// Human-readable label, if the server provides one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit_name: Option<String>,
+    /// Plan tier (e.g. `"free"`, `"plus"`, `"team"`).
+    pub plan_type: String,
+    /// Primary (short-term) rate-limit window, if active.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub primary: Option<RateLimitWindow>,
+    /// Secondary (longer-term) rate-limit window, if active.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub secondary: Option<RateLimitWindow>,
+    /// Which window (if any) the account has already hit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rate_limit_reached_type: Option<String>,
+}
+
+/// `account/rateLimits/updated` notification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountRateLimitsUpdatedNotification {
+    pub rate_limits: RateLimits,
+}
+
+/// `mcpServer/startupStatus/updated` notification.
+///
+/// Emitted by the app-server as each managed MCP server transitions through
+/// its startup lifecycle (e.g. `starting` → `ready` or `starting` → `failed`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpServerStartupStatusUpdatedNotification {
+    /// MCP server identifier.
+    pub name: String,
+    /// Current lifecycle status string (e.g. `"starting"`, `"ready"`,
+    /// `"failed"`). Kept as `String` so new status values don't break parsing.
+    pub status: String,
+    /// Error message if startup failed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// `remoteControl/status/changed` notification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteControlStatusChangedNotification {
+    /// Status string (e.g. `"disabled"`, `"enabled"`).
+    pub status: String,
+    /// Connected environment id, if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub environment_id: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -503,37 +624,9 @@ pub struct FileChangeApprovalResponse {
     pub decision: FileChangeApprovalDecision,
 }
 
-// ---------------------------------------------------------------------------
-// Server message (what the client receives)
-// ---------------------------------------------------------------------------
-
-/// An incoming message from the app-server that the client should handle.
-///
-/// This is what [`AsyncClient::next_message`](crate::AsyncClient::next_message) and
-/// [`SyncClient::next_message`](crate::SyncClient::next_message) return.
-///
-/// # Handling
-///
-/// - **Notifications** are informational — no response is needed. Match on the `method`
-///   field and deserialize `params` into the appropriate notification type.
-/// - **Requests** require a response via `client.respond(id, &result)`. Currently
-///   used for approval flows (`item/commandExecution/requestApproval` and
-///   `item/fileChange/requestApproval`).
-#[derive(Debug, Clone)]
-pub enum ServerMessage {
-    /// A notification (no response needed). Deserialize `params` based on `method`.
-    Notification {
-        method: String,
-        params: Option<Value>,
-    },
-    /// A request from the server that needs a response (e.g., approval flow).
-    /// Use the client's `respond()` method with the `id`.
-    Request {
-        id: RequestId,
-        method: String,
-        params: Option<Value>,
-    },
-}
+// The [`ServerMessage`] enum that clients return now lives in
+// [`crate::messages`] alongside the typed [`crate::Notification`] and
+// [`crate::ServerRequest`] dispatch enums.
 
 // ---------------------------------------------------------------------------
 // Method name constants
@@ -566,6 +659,9 @@ pub mod methods {
     pub const FILE_CHANGE_OUTPUT_DELTA: &str = "item/fileChange/outputDelta";
     pub const REASONING_DELTA: &str = "item/reasoning/summaryTextDelta";
     pub const ERROR: &str = "error";
+    pub const ACCOUNT_RATE_LIMITS_UPDATED: &str = "account/rateLimits/updated";
+    pub const MCP_SERVER_STARTUP_STATUS_UPDATED: &str = "mcpServer/startupStatus/updated";
+    pub const REMOTE_CONTROL_STATUS_CHANGED: &str = "remoteControl/status/changed";
 
     // Server → client requests (approval)
     pub const CMD_EXEC_APPROVAL: &str = "item/commandExecution/requestApproval";
@@ -726,18 +822,34 @@ mod tests {
     }
 
     #[test]
-    fn test_thread_status() {
-        let json = r#""idle""#;
+    fn test_thread_status_idle() {
+        let json = r#"{"type":"idle"}"#;
         let status: ThreadStatus = serde_json::from_str(json).unwrap();
-        assert_eq!(status, ThreadStatus::Idle);
+        assert!(matches!(status, ThreadStatus::Idle));
+    }
+
+    #[test]
+    fn test_thread_status_active_with_flags() {
+        let json = r#"{"type":"active","activeFlags":[]}"#;
+        let status: ThreadStatus = serde_json::from_str(json).unwrap();
+        match status {
+            ThreadStatus::Active { active_flags } => assert!(active_flags.is_empty()),
+            other => panic!("expected Active, got {:?}", other),
+        }
     }
 
     #[test]
     fn test_token_usage() {
-        let json = r#"{"inputTokens":100,"outputTokens":200,"cachedInputTokens":50}"#;
+        let json = r#"{
+            "last":{"inputTokens":100,"outputTokens":200,"cachedInputTokens":50,"reasoningOutputTokens":0,"totalTokens":300},
+            "total":{"inputTokens":1000,"outputTokens":2000,"cachedInputTokens":500,"reasoningOutputTokens":10,"totalTokens":3000},
+            "modelContextWindow":200000
+        }"#;
         let usage: TokenUsage = serde_json::from_str(json).unwrap();
-        assert_eq!(usage.input_tokens, 100);
-        assert_eq!(usage.output_tokens, 200);
-        assert_eq!(usage.cached_input_tokens, 50);
+        assert_eq!(usage.last.input_tokens, 100);
+        assert_eq!(usage.last.output_tokens, 200);
+        assert_eq!(usage.last.cached_input_tokens, 50);
+        assert_eq!(usage.total.input_tokens, 1000);
+        assert_eq!(usage.model_context_window, 200000);
     }
 }

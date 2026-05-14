@@ -6,7 +6,7 @@ use std::process::Command;
 use std::sync::Once;
 
 /// The latest Codex CLI version we've tested against.
-const TESTED_VERSION: &str = "0.104.0";
+const TESTED_VERSION: &str = "0.130.0";
 
 /// Ensures version warning is only shown once per session.
 static VERSION_CHECK: Once = Once::new();

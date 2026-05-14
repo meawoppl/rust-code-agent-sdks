@@ -34,8 +34,8 @@
 //!
 //! for result in client.events() {
 //!     match result? {
-//!         ServerMessage::Notification { method, .. } => {
-//!             if method == "turn/completed" { break; }
+//!         ServerMessage::Notification(n) => {
+//!             if let codex_codes::Notification::TurnCompleted(_) = n { break; }
 //!         }
 //!         _ => {}
 //!     }
@@ -47,10 +47,11 @@ use crate::error::{Error, Result};
 use crate::jsonrpc::{
     JsonRpcError, JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, RequestId,
 };
+use crate::messages::{Notification, ServerMessage, ServerRequest};
 use crate::protocol::{
-    ClientInfo, InitializeParams, InitializeResponse, ServerMessage, ThreadArchiveParams,
-    ThreadArchiveResponse, ThreadStartParams, ThreadStartResponse, TurnInterruptParams,
-    TurnInterruptResponse, TurnStartParams, TurnStartResponse,
+    ClientInfo, InitializeParams, InitializeResponse, ThreadArchiveParams, ThreadArchiveResponse,
+    ThreadStartParams, ThreadStartResponse, TurnInterruptParams, TurnInterruptResponse,
+    TurnStartParams, TurnStartResponse,
 };
 use log::{debug, warn};
 use serde::de::DeserializeOwned;
@@ -74,6 +75,10 @@ pub struct SyncClient {
     child: Child,
     writer: BufWriter<std::process::ChildStdin>,
     reader: BufReader<std::process::ChildStdout>,
+    /// Handle to the background thread draining the child's stderr pipe.
+    /// Kept alive for the lifetime of the client; the thread exits on EOF
+    /// when the child is killed.
+    _stderr_drain: std::thread::JoinHandle<()>,
     next_id: i64,
     buffered: VecDeque<ServerMessage>,
 }
@@ -134,11 +139,22 @@ impl SyncClient {
             .stdout
             .take()
             .ok_or_else(|| Error::Protocol("Failed to get stdout".to_string()))?;
+        let stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| Error::Protocol("Failed to get stderr".to_string()))?;
+
+        // The app-server emits ~200 KB/s of tracing to stderr. Without an
+        // active reader, the ~64 KB kernel pipe fills almost instantly and
+        // the child blocks. Drain in the background and route lines through
+        // the `log` crate (see [`crate::stderr_drain`]).
+        let stderr_drain = crate::stderr_drain::spawn_sync(stderr);
 
         Ok(Self {
             child,
             writer: BufWriter::new(stdin),
             reader: BufReader::with_capacity(STDOUT_BUFFER_SIZE, stdout),
+            _stderr_drain: stderr_drain,
             next_id: 1,
             buffered: VecDeque::new(),
         })
@@ -184,16 +200,16 @@ impl SyncClient {
                     });
                 }
                 JsonRpcMessage::Notification(notif) => {
-                    self.buffered.push_back(ServerMessage::Notification {
-                        method: notif.method,
-                        params: notif.params,
-                    });
+                    let typed = Notification::from_envelope(&notif.method, notif.params)
+                        .map_err(Error::Json)?;
+                    self.buffered.push_back(ServerMessage::Notification(typed));
                 }
                 JsonRpcMessage::Request(req) => {
+                    let typed = ServerRequest::from_envelope(&req.method, req.params)
+                        .map_err(Error::Json)?;
                     self.buffered.push_back(ServerMessage::Request {
                         id: req.id,
-                        method: req.method,
-                        params: req.params,
+                        request: typed,
                     });
                 }
                 JsonRpcMessage::Response(resp) => {
@@ -302,16 +318,16 @@ impl SyncClient {
 
             match msg {
                 JsonRpcMessage::Notification(notif) => {
-                    return Ok(Some(ServerMessage::Notification {
-                        method: notif.method,
-                        params: notif.params,
-                    }));
+                    let typed = Notification::from_envelope(&notif.method, notif.params)
+                        .map_err(Error::Json)?;
+                    return Ok(Some(ServerMessage::Notification(typed)));
                 }
                 JsonRpcMessage::Request(req) => {
+                    let typed = ServerRequest::from_envelope(&req.method, req.params)
+                        .map_err(Error::Json)?;
                     return Ok(Some(ServerMessage::Request {
                         id: req.id,
-                        method: req.method,
-                        params: req.params,
+                        request: typed,
                     }));
                 }
                 JsonRpcMessage::Response(resp) => {

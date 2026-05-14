@@ -4,7 +4,7 @@
 //! until the turn completes.
 
 use codex_codes::{
-    protocol::methods, ServerMessage, SyncClient, ThreadStartParams, TurnStartParams, UserInput,
+    Notification, ServerMessage, SyncClient, ThreadStartParams, TurnStartParams, UserInput,
 };
 use std::error::Error;
 
@@ -33,30 +33,20 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Iterate notifications until the turn completes
     for result in client.events() {
         match result {
-            Ok(msg) => match &msg {
-                ServerMessage::Notification { method, params } => match method.as_str() {
-                    methods::AGENT_MESSAGE_DELTA => {
-                        if let Some(params) = params {
-                            if let Some(delta) = params.get("delta").and_then(|d| d.as_str()) {
-                                print!("{}", delta);
-                            }
-                        }
-                    }
-                    methods::TURN_COMPLETED => {
-                        println!("\n[turn completed]");
-                        break;
-                    }
-                    methods::ERROR => {
-                        if let Some(params) = params {
-                            if let Some(error) = params.get("error").and_then(|e| e.as_str()) {
-                                eprintln!("[error] {}", error);
-                            }
-                        }
-                    }
-                    _ => {}
-                },
-                ServerMessage::Request { method, .. } => {
-                    eprintln!("[server request: {}] (unhandled)", method);
+            Ok(msg) => match msg {
+                ServerMessage::Notification(Notification::AgentMessageDelta(d)) => {
+                    print!("{}", d.delta);
+                }
+                ServerMessage::Notification(Notification::TurnCompleted(_)) => {
+                    println!("\n[turn completed]");
+                    break;
+                }
+                ServerMessage::Notification(Notification::Error(e)) => {
+                    eprintln!("[error] {}", e.error);
+                }
+                ServerMessage::Notification(_) => {}
+                ServerMessage::Request { request, .. } => {
+                    eprintln!("[server request: {}] (unhandled)", request.method());
                 }
             },
             Err(e) => {
