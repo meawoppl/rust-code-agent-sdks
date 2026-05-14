@@ -5,11 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.130.0] - 2026-05-14
+## [0.128.0] - 2026-05-14
 
-Version jumps from 0.101.x to 0.130.0 to align the crate version with the
-Codex CLI version it targets (same convention as the sibling `claude-codes`
-crate, which tracks the Claude Code CLI version).
+Version jumps from 0.101.x into the 0.1xx range that tracks the Codex CLI it
+targets (same convention as the sibling `claude-codes` crate, which mirrors
+the Claude Code CLI version). Released as `0.128.0` rather than `0.130.0`
+intentionally — the bindings have only been validated against a single live
+turn so far and the underlying behavior is still evolving; sitting a couple
+of patch numbers behind the CLI leaves room to bump in lockstep once the
+typed surface is more battle-tested.
 
 
 ### Added

@@ -30,8 +30,8 @@ use crate::protocol::{
     FileChangeApprovalParams, FileChangeOutputDeltaNotification, ItemCompletedNotification,
     ItemStartedNotification, McpServerStartupStatusUpdatedNotification, ReasoningDeltaNotification,
     RemoteControlStatusChangedNotification, ThreadStartedNotification,
-    ThreadStatusChangedNotification, ThreadTokenUsageUpdatedNotification, TurnCompletedNotification,
-    TurnStartedNotification,
+    ThreadStatusChangedNotification, ThreadTokenUsageUpdatedNotification,
+    TurnCompletedNotification, TurnStartedNotification,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
@@ -115,13 +115,12 @@ impl Notification {
     /// Returns an error if `method` is recognized but `params` doesn't
     /// deserialize into the typed struct. Unknown methods route to
     /// [`Notification::Unknown`] without error.
-    pub fn from_envelope(
-        method: &str,
-        params: Option<Value>,
-    ) -> Result<Self, serde_json::Error> {
+    pub fn from_envelope(method: &str, params: Option<Value>) -> Result<Self, serde_json::Error> {
         let params_value = params.clone().unwrap_or(Value::Null);
         match method {
-            methods::THREAD_STARTED => serde_json::from_value(params_value).map(Self::ThreadStarted),
+            methods::THREAD_STARTED => {
+                serde_json::from_value(params_value).map(Self::ThreadStarted)
+            }
             methods::THREAD_STATUS_CHANGED => {
                 serde_json::from_value(params_value).map(Self::ThreadStatusChanged)
             }
@@ -190,9 +189,7 @@ impl Notification {
             Self::McpServerStartupStatusUpdated(v) => {
                 pack(methods::MCP_SERVER_STARTUP_STATUS_UPDATED, v)
             }
-            Self::RemoteControlStatusChanged(v) => {
-                pack(methods::REMOTE_CONTROL_STATUS_CHANGED, v)
-            }
+            Self::RemoteControlStatusChanged(v) => pack(methods::REMOTE_CONTROL_STATUS_CHANGED, v),
             Self::Unknown { method, params } => Ok((method.clone(), params.clone())),
         }
     }
@@ -261,10 +258,7 @@ impl ServerRequest {
     }
 
     /// Construct a [`ServerRequest`] from a `method` + `params` envelope.
-    pub fn from_envelope(
-        method: &str,
-        params: Option<Value>,
-    ) -> Result<Self, serde_json::Error> {
+    pub fn from_envelope(method: &str, params: Option<Value>) -> Result<Self, serde_json::Error> {
         let params_value = params.clone().unwrap_or(Value::Null);
         match method {
             methods::CMD_EXEC_APPROVAL => {

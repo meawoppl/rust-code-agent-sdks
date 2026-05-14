@@ -121,14 +121,14 @@
 //!
 //! ```toml
 //! [dependencies]
-//! codex-codes = { version = "0.100", default-features = false, features = ["types"] }
+//! codex-codes = { version = "0.128", default-features = false, features = ["types"] }
 //! ```
 //!
 //! # Version Compatibility
 //!
 //! The Codex CLI protocol is evolving. This crate automatically checks your
 //! installed CLI version and warns if it's newer than tested. Current tested
-//! version: **0.104.0**
+//! version: **0.130.0**
 //!
 //! Report compatibility issues at: <https://github.com/meawoppl/rust-code-agent-sdks/issues>
 //!

@@ -47,11 +47,7 @@ pub struct CommandExecutionItem {
     #[serde(alias = "aggregated_output", default)]
     pub aggregated_output: Option<String>,
     /// Exit code, if the command has finished.
-    #[serde(
-        alias = "exit_code",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(alias = "exit_code", default, skip_serializing_if = "Option::is_none")]
     pub exit_code: Option<i32>,
     pub status: CommandExecutionStatus,
 }

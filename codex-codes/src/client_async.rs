@@ -208,8 +208,7 @@ impl AsyncClient {
                 JsonRpcMessage::Notification(notif) => {
                     let typed = Notification::from_envelope(&notif.method, notif.params)
                         .map_err(Error::Json)?;
-                    self.buffered
-                        .push_back(ServerMessage::Notification(typed));
+                    self.buffered.push_back(ServerMessage::Notification(typed));
                 }
                 JsonRpcMessage::Request(req) => {
                     let typed = ServerRequest::from_envelope(&req.method, req.params)

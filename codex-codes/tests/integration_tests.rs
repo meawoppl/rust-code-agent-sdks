@@ -128,7 +128,11 @@ fn test_list_files_command_lifecycle() {
     // Started has in_progress status, no exit code, empty output
     assert_eq!(started.status, CommandExecutionStatus::InProgress);
     assert_eq!(started.exit_code, None);
-    assert!(started.aggregated_output.as_deref().unwrap_or("").is_empty());
+    assert!(started
+        .aggregated_output
+        .as_deref()
+        .unwrap_or("")
+        .is_empty());
 
     // Completed has exit code 0, non-empty output
     assert_eq!(completed.status, CommandExecutionStatus::Completed);
