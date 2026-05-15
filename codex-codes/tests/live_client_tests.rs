@@ -443,6 +443,49 @@ async fn test_typed_message_audit_strict() {
                     Notification::SkillsChanged(_) => "SkillsChanged",
                     Notification::FsChanged(_) => "FsChanged",
                     Notification::ConfigWarning(_) => "ConfigWarning",
+                    Notification::AccountUpdated(_) => "AccountUpdated",
+                    Notification::AppListUpdated(_) => "AppListUpdated",
+                    Notification::CommandExecOutputDelta(_) => "CommandExecOutputDelta",
+                    Notification::ExternalAgentConfigImportCompleted(_) => {
+                        "ExternalAgentConfigImportCompleted"
+                    }
+                    Notification::FuzzyFileSearchSessionCompleted(_) => {
+                        "FuzzyFileSearchSessionCompleted"
+                    }
+                    Notification::FuzzyFileSearchSessionUpdated(_) => {
+                        "FuzzyFileSearchSessionUpdated"
+                    }
+                    Notification::HookCompleted(_) => "HookCompleted",
+                    Notification::HookStarted(_) => "HookStarted",
+                    Notification::ItemGuardianApprovalReviewCompleted(_) => {
+                        "ItemGuardianApprovalReviewCompleted"
+                    }
+                    Notification::ItemGuardianApprovalReviewStarted(_) => {
+                        "ItemGuardianApprovalReviewStarted"
+                    }
+                    Notification::TerminalInteraction(_) => "TerminalInteraction",
+                    Notification::McpToolCallProgress(_) => "McpToolCallProgress",
+                    Notification::ModelRerouted(_) => "ModelRerouted",
+                    Notification::ModelVerification(_) => "ModelVerification",
+                    Notification::ProcessExited(_) => "ProcessExited",
+                    Notification::ProcessOutputDelta(_) => "ProcessOutputDelta",
+                    Notification::ServerRequestResolved(_) => "ServerRequestResolved",
+                    Notification::ContextCompacted(_) => "ContextCompacted",
+                    Notification::ThreadGoalUpdated(_) => "ThreadGoalUpdated",
+                    Notification::ThreadRealtimeClosed(_) => "ThreadRealtimeClosed",
+                    Notification::ThreadRealtimeError(_) => "ThreadRealtimeError",
+                    Notification::ThreadRealtimeItemAdded(_) => "ThreadRealtimeItemAdded",
+                    Notification::ThreadRealtimeOutputAudioDelta(_) => {
+                        "ThreadRealtimeOutputAudioDelta"
+                    }
+                    Notification::ThreadRealtimeSdp(_) => "ThreadRealtimeSdp",
+                    Notification::ThreadRealtimeStarted(_) => "ThreadRealtimeStarted",
+                    Notification::ThreadRealtimeTranscriptDelta(_) => {
+                        "ThreadRealtimeTranscriptDelta"
+                    }
+                    Notification::ThreadRealtimeTranscriptDone(_) => "ThreadRealtimeTranscriptDone",
+                    Notification::WindowsWorldWritableWarning(_) => "WindowsWorldWritableWarning",
+                    Notification::WindowsSandboxSetupCompleted(_) => "WindowsSandboxSetupCompleted",
                     Notification::Unknown { method, .. } => {
                         *unknown_methods.entry(method.clone()).or_insert(0) += 1;
                         continue;

@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.129.0] - 2026-05-15
+
+### Added
+
+- **100% method coverage** of the Codex app-server v2 JSON Schema. Every method enumerated in `ServerNotification.oneOf` (63) and `ClientRequest.oneOf` (76) is now modeled — 139/139.
+- **`cargo run --example schema_coverage`** scorecard tool that walks the upstream JSON Schema bundle, cross-references against the crate's typed surface, and reports `✓` (modeled + sample validates) / `◐` (modeled, no sample yet) / `⚠` (drift) / `✗` (missing) per method. Override the schema path with `CODEX_SCHEMA_PATH=/path/to/freshly-generated.json` to validate against a fresh schema.
+- **Typed notification variants** for the 48 previously-unmodeled methods: `item/fileChange/patchUpdated`, `item/plan/delta`, `turn/plan/updated`, `turn/diff/updated`, `item/reasoning/summaryPartAdded`, `item/reasoning/textDelta`, `mcpServer/oauthLogin/completed`, `account/login/completed`, `account/updated`, `app/list/updated`, `command/exec/outputDelta`, `configWarning`, `deprecationNotice`, `externalAgentConfig/import/completed`, `fs/changed`, `fuzzyFileSearch/session{Completed,Updated}`, `guardianWarning`, `hook/{started,completed}`, `item/autoApprovalReview/{started,completed}`, `item/commandExecution/terminalInteraction`, `item/mcpToolCall/progress`, `model/{rerouted,verification}`, `process/{exited,outputDelta}`, `serverRequest/resolved`, `skills/changed`, `thread/{archived,closed,unarchived,compacted,goal/{updated,cleared},name/updated}`, the `thread/realtime/*` family (8 variants), `warning`, `windows/worldWritableWarning`, `windowsSandbox/setupCompleted`. All wired through `Notification::from_envelope()`, `into_envelope()`, and the strict typed-message audit.
+- **Method-name constants** for all 70 previously-unmodeled client → server requests under `protocol::methods` (e.g. `THREAD_LIST`, `FS_WRITEFILE`, `COMMAND_EXEC`, `MCPSERVER_TOOL_CALL`, the `plugin/*`, `marketplace/*`, `experimentalFeature/*`, and `account/*` families).
+- **`jsonschema` dev-dependency** powering the scorecard's wire-shape validation.
+- **Workspace snapshot** of the upstream `codex_app_server_protocol.v2.schemas.json` at `codex-codes/tests/schemas/` so the scorecard runs offline.
+
+### Changed
+
+- Many new notification stubs use `#[serde(transparent)] pub struct Foo(pub Value)` so the wire shape is preserved end-to-end while field-level typing is deferred. Upgrade path is mechanical: replace the `Value` payload with named fields when callers need them; the dispatch surface doesn't change.
+
+### Notes
+
+- **Drift findings surfaced by the scorecard but not fixed here**:
+  - `PatchChangeKind` in `io/items.rs` is still a bare string enum; upstream moved to an internally-tagged object enum with `{"type":"update","move_path":...}`. Fixing requires regenerating the test fixtures against a live Codex CLI. Root cause of [issue #128](https://github.com/meawoppl/rust-code-agent-sdks/issues/128)'s `unknown variant 'type'` reports.
+  - `FileUpdateChange` is missing the required `diff: String` field upstream now sends.
+- The scorecard reports `1/139 (1%)` with validating samples — only `error`. Sample registry is open to grow in follow-ups; each new sample drift-checks one more method end-to-end.
+
 ## [0.128.1] - 2026-05-15
 
 ### Added
