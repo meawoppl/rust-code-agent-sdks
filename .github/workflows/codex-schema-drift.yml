@@ -1,0 +1,98 @@
+name: Codex Schema Drift
+
+# Nightly check: do our snapshotted Codex app-server schemas at
+# `codex-codes/tests/schemas/*.json` still match what `openai/codex@main`
+# publishes? If they've drifted, open (or update) an issue so we know to
+# regenerate the snapshot + typed bindings.
+
+on:
+  schedule:
+    # 06:17 UTC — slightly off the hour so we don't pile on GitHub's
+    # scheduled-workflow flush at :00 / :30.
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    name: diff snapshotted vs upstream
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Run drift check
+        id: check
+        # Tee both to stdout and to a file so we can publish the body into the issue.
+        run: |
+          set +e
+          python3 scripts/check_codex_schema_drift.py | tee /tmp/drift_report.md
+          STATUS=${PIPESTATUS[0]}
+          echo "exit_code=$STATUS" >> "$GITHUB_OUTPUT"
+          case "$STATUS" in
+            0) echo "result=no-drift"        >> "$GITHUB_OUTPUT" ;;
+            1) echo "result=drift"           >> "$GITHUB_OUTPUT" ;;
+            *) echo "result=fetch-failure"   >> "$GITHUB_OUTPUT" ;;
+          esac
+          exit 0  # don't fail the job on drift; we'll open an issue instead
+
+      - name: Open or update drift issue
+        if: steps.check.outputs.result == 'drift'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # We single-thread by label: there's at most one open drift issue at a
+          # time. If one exists, comment on it with today's report; otherwise
+          # create it.
+          LABEL="codex-schema-drift"
+          TITLE="codex-codes: snapshotted Codex schema has drifted from openai/codex@main"
+          BODY_FILE=/tmp/drift_report.md
+          # Make sure the label exists (idempotent).
+          gh label create "$LABEL" \
+            --color "B60205" \
+            --description "Nightly check found drift between our snapshotted Codex schema and upstream" \
+            --force \
+            || true
+          # Look for an open issue with the label.
+          EXISTING=$(gh issue list --state open --label "$LABEL" --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            echo "Updating existing drift issue #$EXISTING"
+            # Add today's run as a fresh comment so history is preserved.
+            {
+              echo "_Nightly drift re-check (run #${{ github.run_number }}, $(date -u +%Y-%m-%dT%H:%MZ)):_"
+              echo
+              cat "$BODY_FILE"
+            } | gh issue comment "$EXISTING" --body-file -
+          else
+            echo "Opening new drift issue"
+            gh issue create \
+              --title "$TITLE" \
+              --label "$LABEL" \
+              --body-file "$BODY_FILE"
+          fi
+
+      - name: Report fetch failure (job summary only — don't open issue)
+        if: steps.check.outputs.result == 'fetch-failure'
+        run: |
+          {
+            echo "## Schema drift check skipped"
+            echo
+            echo "Could not fetch the upstream schema (network blip, rate limit,"
+            echo "or upstream rename). Will retry on the next nightly run."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: All clear (job summary only)
+        if: steps.check.outputs.result == 'no-drift'
+        run: |
+          {
+            echo "## ✅ No schema drift"
+            echo
+            echo "Snapshotted schemas match \`openai/codex@main\` byte-for-byte."
+          } >> "$GITHUB_STEP_SUMMARY"
