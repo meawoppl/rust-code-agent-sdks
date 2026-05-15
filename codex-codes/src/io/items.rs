@@ -53,15 +53,21 @@ pub struct CommandExecutionItem {
 }
 
 /// Kind of patch change applied to a file.
+///
+/// Internally-tagged on the wire under the `type` discriminator
+/// (`{"type":"add"}`, `{"type":"delete"}`, `{"type":"update","move_path":...}`).
+/// Older codex versions emitted bare strings (`"update"`); those are no longer
+/// accepted — regenerate test fixtures against a current codex CLI if needed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum PatchChangeKind {
-    #[serde(alias = "add")]
     Add,
-    #[serde(alias = "delete")]
     Delete,
-    #[serde(alias = "update")]
-    Update,
+    Update {
+        /// Set when the patch renames the file to this path.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        move_path: Option<String>,
+    },
 }
 
 /// A single file update within a file change item.
@@ -69,6 +75,9 @@ pub enum PatchChangeKind {
 pub struct FileUpdateChange {
     pub path: String,
     pub kind: PatchChangeKind,
+    /// Unified-diff snippet describing the change.
+    #[serde(default)]
+    pub diff: String,
 }
 
 /// Status of a patch apply operation.
@@ -265,11 +274,12 @@ mod tests {
 
     #[test]
     fn test_deserialize_file_change() {
-        let json = r#"{"type":"file_change","id":"fc_1","changes":[{"path":"src/main.rs","kind":"update"}],"status":"completed"}"#;
+        let json = r#"{"type":"file_change","id":"fc_1","changes":[{"path":"src/main.rs","kind":{"type":"update"},"diff":"@@ -1 +1 @@\n-a\n+b\n"}],"status":"completed"}"#;
         let item: ThreadItem = serde_json::from_str(json).unwrap();
-        assert!(
-            matches!(item, ThreadItem::FileChange(ref f) if f.changes[0].kind == PatchChangeKind::Update)
-        );
+        assert!(matches!(
+            item,
+            ThreadItem::FileChange(ref f) if matches!(f.changes[0].kind, PatchChangeKind::Update { .. })
+        ));
     }
 
     #[test]

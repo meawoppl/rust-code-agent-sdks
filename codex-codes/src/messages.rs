@@ -612,6 +612,22 @@ pub enum ServerRequest {
     CmdExecApproval(CommandExecutionApprovalParams),
     /// `item/fileChange/requestApproval`
     FileChangeApproval(FileChangeApprovalParams),
+    /// `item/tool/requestUserInput`
+    ToolRequestUserInput(crate::protocol::ToolRequestUserInputParams),
+    /// `mcpServer/elicitation/request`
+    McpServerElicitationRequest(crate::protocol::McpServerElicitationRequestParams),
+    /// `item/permissions/requestApproval`
+    PermissionsRequestApproval(crate::protocol::PermissionsRequestApprovalParams),
+    /// `item/tool/call`
+    ItemToolCall(crate::protocol::DynamicToolCallParams),
+    /// `account/chatgptAuthTokens/refresh`
+    ChatgptAuthTokensRefresh(crate::protocol::ChatgptAuthTokensRefreshParams),
+    /// `attestation/generate`
+    AttestationGenerate(crate::protocol::AttestationGenerateParams),
+    /// `applyPatchApproval`
+    ApplyPatchApproval(crate::protocol::ApplyPatchApprovalParams),
+    /// `execCommandApproval`
+    ExecCommandApproval(crate::protocol::ExecCommandApprovalParams),
     /// A request method this crate version does not yet model.
     Unknown {
         method: String,
@@ -625,6 +641,14 @@ impl ServerRequest {
         match self {
             Self::CmdExecApproval(_) => methods::CMD_EXEC_APPROVAL,
             Self::FileChangeApproval(_) => methods::FILE_CHANGE_APPROVAL,
+            Self::ToolRequestUserInput(_) => methods::TOOL_REQUEST_USER_INPUT,
+            Self::McpServerElicitationRequest(_) => methods::MCP_SERVER_ELICITATION_REQUEST,
+            Self::PermissionsRequestApproval(_) => methods::PERMISSIONS_REQUEST_APPROVAL,
+            Self::ItemToolCall(_) => methods::ITEM_TOOL_CALL,
+            Self::ChatgptAuthTokensRefresh(_) => methods::CHATGPT_AUTH_TOKENS_REFRESH,
+            Self::AttestationGenerate(_) => methods::ATTESTATION_GENERATE,
+            Self::ApplyPatchApproval(_) => methods::APPLY_PATCH_APPROVAL,
+            Self::ExecCommandApproval(_) => methods::EXEC_COMMAND_APPROVAL,
             Self::Unknown { method, .. } => method,
         }
     }
@@ -643,6 +667,28 @@ impl ServerRequest {
             }
             methods::FILE_CHANGE_APPROVAL => {
                 serde_json::from_value(params_value).map(Self::FileChangeApproval)
+            }
+            methods::TOOL_REQUEST_USER_INPUT => {
+                serde_json::from_value(params_value).map(Self::ToolRequestUserInput)
+            }
+            methods::MCP_SERVER_ELICITATION_REQUEST => {
+                serde_json::from_value(params_value).map(Self::McpServerElicitationRequest)
+            }
+            methods::PERMISSIONS_REQUEST_APPROVAL => {
+                serde_json::from_value(params_value).map(Self::PermissionsRequestApproval)
+            }
+            methods::ITEM_TOOL_CALL => serde_json::from_value(params_value).map(Self::ItemToolCall),
+            methods::CHATGPT_AUTH_TOKENS_REFRESH => {
+                serde_json::from_value(params_value).map(Self::ChatgptAuthTokensRefresh)
+            }
+            methods::ATTESTATION_GENERATE => {
+                serde_json::from_value(params_value).map(Self::AttestationGenerate)
+            }
+            methods::APPLY_PATCH_APPROVAL => {
+                serde_json::from_value(params_value).map(Self::ApplyPatchApproval)
+            }
+            methods::EXEC_COMMAND_APPROVAL => {
+                serde_json::from_value(params_value).map(Self::ExecCommandApproval)
             }
             _ => Ok(Self::Unknown {
                 method: method.to_string(),

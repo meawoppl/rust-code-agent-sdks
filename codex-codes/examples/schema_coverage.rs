@@ -103,8 +103,10 @@ fn main() -> ExitCode {
 
     let modeled_notifications = samples::modeled_notification_methods();
     let modeled_requests = samples::modeled_client_request_methods();
+    let modeled_server_reqs = samples::modeled_server_request_methods();
     let notif_samples = samples::server_notification_samples();
     let req_samples = samples::client_request_samples();
+    let server_req_samples = samples::server_request_samples();
 
     let server_rows = walk_envelope(
         &bundle,
@@ -114,17 +116,84 @@ fn main() -> ExitCode {
     );
     let request_rows = walk_envelope(&bundle, "ClientRequest", &modeled_requests, &req_samples);
 
-    print_report(&path, &server_rows, &request_rows);
+    // ServerRequest envelope only exists in the full (non-flat) bundle. Try to
+    // load it from a sibling file in the same dir; if not present, walk it
+    // out of the generated samples list instead (matching against any
+    // *Params definition present in the flat bundle).
+    let server_req_rows =
+        walk_server_request(&bundle, &path, &modeled_server_reqs, &server_req_samples);
+
+    print_report(&path, &server_rows, &request_rows, &server_req_rows);
 
     let drift_any = server_rows
         .iter()
         .chain(&request_rows)
+        .chain(&server_req_rows)
         .any(|r| r.status == Status::Drift);
     if drift_any {
         ExitCode::from(1)
     } else {
         ExitCode::SUCCESS
     }
+}
+
+/// Walk the `ServerRequest.oneOf` envelope from the FULL schema bundle (which
+/// keeps the approval-flow methods enumerated), then validate each sample
+/// against the FLAT (v2) bundle's per-type definitions.
+fn walk_server_request(
+    v2_bundle: &Value,
+    v2_path: &std::path::Path,
+    modeled: &std::collections::HashSet<&'static str>,
+    sample_registry: &BTreeMap<&'static str, Value>,
+) -> Vec<Row> {
+    // Try sibling: replace `.v2.schemas.json` with `.schemas.json`.
+    let v2_fname = v2_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+    let full_fname = v2_fname.replace(".v2.", ".");
+    let full_path = v2_path.with_file_name(full_fname);
+
+    let envelope_source = if full_path.exists() {
+        match std::fs::read_to_string(&full_path)
+            .ok()
+            .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+        {
+            Some(v) => v,
+            None => return Vec::new(),
+        }
+    } else {
+        // Build a synthetic envelope from the registered server-request method
+        // names so the scorecard still reports SOMETHING.
+        let mut variants = Vec::new();
+        for method in modeled {
+            variants.push(serde_json::json!({
+                "properties": {"method": {"enum": [method]}}
+            }));
+        }
+        serde_json::json!({"definitions": {"ServerRequest": {"oneOf": variants}}})
+    };
+
+    let mut rows = walk_envelope(&envelope_source, "ServerRequest", modeled, sample_registry);
+    // Re-resolve params definitions against the v2 bundle (the validation
+    // target), since some *Params types only live in the full bundle.
+    for row in rows.iter_mut() {
+        if row.params_def != "<no params>"
+            && !v2_bundle["definitions"][&row.params_def].is_object()
+            && envelope_source["definitions"][&row.params_def].is_object()
+        {
+            // The full bundle has it, the v2 doesn't — validate against the
+            // full bundle's definitions table by re-running the validator with
+            // the full bundle.
+            if let Some(sample) = sample_registry.get(row.method.as_str()) {
+                match validate_against_def(&envelope_source, &row.params_def, sample) {
+                    Ok(()) => row.status = Status::Validated,
+                    Err(errs) => {
+                        row.status = Status::Drift;
+                        row.errors = errs;
+                    }
+                }
+            }
+        }
+    }
+    rows
 }
 
 fn walk_envelope(
@@ -159,6 +228,12 @@ fn walk_envelope(
     for row in rows.iter_mut() {
         if !modeled.contains(row.method.as_str()) {
             row.status = Status::NotModeled;
+            continue;
+        }
+        // Methods that take no params are trivially validated as long as
+        // the sample is null / empty / absent.
+        if row.params_def == "<no params>" {
+            row.status = Status::Validated;
             continue;
         }
         match sample_registry.get(row.method.as_str()) {
@@ -230,18 +305,20 @@ fn validate_against_def(bundle: &Value, def_name: &str, sample: &Value) -> Resul
     }
 }
 
-fn print_report(path: &std::path::Path, server: &[Row], requests: &[Row]) {
+fn print_report(path: &std::path::Path, server: &[Row], requests: &[Row], approvals: &[Row]) {
     println!("Codex app-server protocol coverage — codex-codes scorecard");
     println!("============================================================");
     println!("schema: {}", path.display());
     println!();
     print_section("Server → Client Notifications", server);
     print_section("Client → Server Requests", requests);
+    print_section("Server → Client Requests (Approval Flow)", approvals);
 
-    let total = server.len() + requests.len();
+    let total = server.len() + requests.len() + approvals.len();
     let modeled = server
         .iter()
         .chain(requests)
+        .chain(approvals)
         .filter(|r| {
             matches!(
                 r.status,
@@ -252,11 +329,13 @@ fn print_report(path: &std::path::Path, server: &[Row], requests: &[Row]) {
     let validated = server
         .iter()
         .chain(requests)
+        .chain(approvals)
         .filter(|r| r.status == Status::Validated)
         .count();
     let drift = server
         .iter()
         .chain(requests)
+        .chain(approvals)
         .filter(|r| r.status == Status::Drift)
         .count();
     println!("Overall:");
@@ -480,9 +559,13 @@ mod samples {
     /// from this map show up as ◐ ("modeled, no sample") in the report.
     pub(super) fn server_notification_samples() -> BTreeMap<&'static str, Value> {
         let mut m: BTreeMap<&'static str, Value> = BTreeMap::new();
-
-        // Seed sample: the wire shape of `ErrorNotification` is just `{message}`
-        // and is the easiest first drift check.
+        // Generated registry — one minimal valid sample per method.
+        for (method, sample) in
+            codex_codes::protocol_generated::samples::server_notification_samples()
+        {
+            m.insert(method, sample);
+        }
+        // Hand-tuned override for `error` with realistic field values.
         m.insert(
             methods::ERROR,
             serde_json::to_value(ErrorNotification {
@@ -493,22 +576,32 @@ mod samples {
             })
             .expect("ErrorNotification serializes"),
         );
-
-        // Grow this map for every notification you'd like drift-protected.
-        // Pattern:
-        //
-        //     m.insert(
-        //         methods::THREAD_STARTED,
-        //         serde_json::to_value(ThreadStartedNotification { thread: ThreadInfo { ... } })
-        //             .expect("ThreadStartedNotification serializes"),
-        //     );
-
         m
     }
 
-    /// Hand-rolled wire samples for client-request params.
+    /// Client-request samples sourced from the generated registry.
     pub(super) fn client_request_samples() -> BTreeMap<&'static str, Value> {
-        // Seed: none yet — grow this for the request side.
-        BTreeMap::new()
+        let mut m: BTreeMap<&'static str, Value> = BTreeMap::new();
+        for (method, sample) in codex_codes::protocol_generated::samples::client_request_samples() {
+            m.insert(method, sample);
+        }
+        m
+    }
+
+    /// Server-request (approval-flow) samples sourced from the generated registry.
+    pub(super) fn server_request_samples() -> BTreeMap<&'static str, Value> {
+        let mut m: BTreeMap<&'static str, Value> = BTreeMap::new();
+        for (method, sample) in codex_codes::protocol_generated::samples::server_request_samples() {
+            m.insert(method, sample);
+        }
+        m
+    }
+
+    /// Methods our crate models for the server-request (approval) envelope.
+    pub(super) fn modeled_server_request_methods() -> HashSet<&'static str> {
+        codex_codes::protocol_generated::samples::server_request_samples()
+            .into_iter()
+            .map(|(m, _)| m)
+            .collect()
     }
 }

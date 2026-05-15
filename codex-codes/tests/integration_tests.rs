@@ -233,7 +233,7 @@ fn test_file_change_item_fields() {
 
     assert_eq!(fc.status, PatchApplyStatus::Completed);
     assert_eq!(fc.changes.len(), 1);
-    assert_eq!(fc.changes[0].kind, PatchChangeKind::Update);
+    assert!(matches!(fc.changes[0].kind, PatchChangeKind::Update { .. }));
     assert!(fc.changes[0].path.contains("test.txt"));
 }
 
