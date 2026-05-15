@@ -25,16 +25,20 @@
 
 use crate::jsonrpc::RequestId;
 use crate::protocol::{
-    methods, AccountRateLimitsUpdatedNotification, AgentMessageDeltaNotification,
-    CmdOutputDeltaNotification, CommandExecutionApprovalParams, ErrorNotification,
+    methods, AccountLoginCompletedNotification, AccountRateLimitsUpdatedNotification,
+    AgentMessageDeltaNotification, CmdOutputDeltaNotification, CommandExecutionApprovalParams,
+    ConfigWarningNotification, DeprecationNoticeNotification, ErrorNotification,
     FileChangeApprovalParams, FileChangeOutputDeltaNotification,
-    FileChangePatchUpdatedNotification, ItemCompletedNotification, ItemStartedNotification,
-    McpServerOauthLoginCompletedNotification, McpServerStartupStatusUpdatedNotification,
-    PlanDeltaNotification, ReasoningDeltaNotification, ReasoningSummaryPartAddedNotification,
-    ReasoningTextDeltaNotification, RemoteControlStatusChangedNotification,
+    FileChangePatchUpdatedNotification, FsChangedNotification, GuardianWarningNotification,
+    ItemCompletedNotification, ItemStartedNotification, McpServerOauthLoginCompletedNotification,
+    McpServerStartupStatusUpdatedNotification, PlanDeltaNotification, ReasoningDeltaNotification,
+    ReasoningSummaryPartAddedNotification, ReasoningTextDeltaNotification,
+    RemoteControlStatusChangedNotification, SkillsChangedNotification, ThreadArchivedNotification,
+    ThreadClosedNotification, ThreadGoalClearedNotification, ThreadNameUpdatedNotification,
     ThreadStartedNotification, ThreadStatusChangedNotification,
-    ThreadTokenUsageUpdatedNotification, TurnCompletedNotification, TurnDiffUpdatedNotification,
-    TurnPlanUpdatedNotification, TurnStartedNotification,
+    ThreadTokenUsageUpdatedNotification, ThreadUnarchivedNotification, TurnCompletedNotification,
+    TurnDiffUpdatedNotification, TurnPlanUpdatedNotification, TurnStartedNotification,
+    WarningNotification,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
@@ -90,6 +94,30 @@ pub enum Notification {
     ReasoningSummaryPartAdded(ReasoningSummaryPartAddedNotification),
     /// `item/reasoning/textDelta`
     ReasoningTextDelta(ReasoningTextDeltaNotification),
+    /// `account/login/completed`
+    AccountLoginCompleted(AccountLoginCompletedNotification),
+    /// `deprecationNotice`
+    DeprecationNotice(DeprecationNoticeNotification),
+    /// `guardianWarning`
+    GuardianWarning(GuardianWarningNotification),
+    /// `warning`
+    Warning(WarningNotification),
+    /// `thread/archived`
+    ThreadArchived(ThreadArchivedNotification),
+    /// `thread/closed`
+    ThreadClosed(ThreadClosedNotification),
+    /// `thread/unarchived`
+    ThreadUnarchived(ThreadUnarchivedNotification),
+    /// `thread/goal/cleared`
+    ThreadGoalCleared(ThreadGoalClearedNotification),
+    /// `thread/name/updated`
+    ThreadNameUpdated(ThreadNameUpdatedNotification),
+    /// `skills/changed`
+    SkillsChanged(SkillsChangedNotification),
+    /// `fs/changed`
+    FsChanged(FsChangedNotification),
+    /// `configWarning`
+    ConfigWarning(ConfigWarningNotification),
     /// A method this crate version does not yet model. The raw params are
     /// preserved for caller inspection. Encountering this typically means
     /// the installed codex CLI is newer than the bindings.
@@ -125,6 +153,18 @@ impl Notification {
             Self::TurnDiffUpdated(_) => methods::TURN_DIFF_UPDATED,
             Self::ReasoningSummaryPartAdded(_) => methods::REASONING_SUMMARY_PART_ADDED,
             Self::ReasoningTextDelta(_) => methods::REASONING_TEXT_DELTA,
+            Self::AccountLoginCompleted(_) => methods::ACCOUNT_LOGIN_COMPLETED,
+            Self::DeprecationNotice(_) => methods::DEPRECATION_NOTICE,
+            Self::GuardianWarning(_) => methods::GUARDIAN_WARNING,
+            Self::Warning(_) => methods::WARNING,
+            Self::ThreadArchived(_) => methods::THREAD_ARCHIVED,
+            Self::ThreadClosed(_) => methods::THREAD_CLOSED,
+            Self::ThreadUnarchived(_) => methods::THREAD_UNARCHIVED,
+            Self::ThreadGoalCleared(_) => methods::THREAD_GOAL_CLEARED,
+            Self::ThreadNameUpdated(_) => methods::THREAD_NAME_UPDATED,
+            Self::SkillsChanged(_) => methods::SKILLS_CHANGED,
+            Self::FsChanged(_) => methods::FS_CHANGED,
+            Self::ConfigWarning(_) => methods::CONFIG_WARNING,
             Self::Unknown { method, .. } => method,
         }
     }
@@ -200,6 +240,36 @@ impl Notification {
             methods::REASONING_TEXT_DELTA => {
                 serde_json::from_value(params_value).map(Self::ReasoningTextDelta)
             }
+            methods::ACCOUNT_LOGIN_COMPLETED => {
+                serde_json::from_value(params_value).map(Self::AccountLoginCompleted)
+            }
+            methods::DEPRECATION_NOTICE => {
+                serde_json::from_value(params_value).map(Self::DeprecationNotice)
+            }
+            methods::GUARDIAN_WARNING => {
+                serde_json::from_value(params_value).map(Self::GuardianWarning)
+            }
+            methods::WARNING => serde_json::from_value(params_value).map(Self::Warning),
+            methods::THREAD_ARCHIVED => {
+                serde_json::from_value(params_value).map(Self::ThreadArchived)
+            }
+            methods::THREAD_CLOSED => serde_json::from_value(params_value).map(Self::ThreadClosed),
+            methods::THREAD_UNARCHIVED => {
+                serde_json::from_value(params_value).map(Self::ThreadUnarchived)
+            }
+            methods::THREAD_GOAL_CLEARED => {
+                serde_json::from_value(params_value).map(Self::ThreadGoalCleared)
+            }
+            methods::THREAD_NAME_UPDATED => {
+                serde_json::from_value(params_value).map(Self::ThreadNameUpdated)
+            }
+            methods::SKILLS_CHANGED => {
+                serde_json::from_value(params_value).map(Self::SkillsChanged)
+            }
+            methods::FS_CHANGED => serde_json::from_value(params_value).map(Self::FsChanged),
+            methods::CONFIG_WARNING => {
+                serde_json::from_value(params_value).map(Self::ConfigWarning)
+            }
             _ => Ok(Self::Unknown {
                 method: method.to_string(),
                 params,
@@ -242,6 +312,18 @@ impl Notification {
             Self::TurnDiffUpdated(v) => pack(methods::TURN_DIFF_UPDATED, v),
             Self::ReasoningSummaryPartAdded(v) => pack(methods::REASONING_SUMMARY_PART_ADDED, v),
             Self::ReasoningTextDelta(v) => pack(methods::REASONING_TEXT_DELTA, v),
+            Self::AccountLoginCompleted(v) => pack(methods::ACCOUNT_LOGIN_COMPLETED, v),
+            Self::DeprecationNotice(v) => pack(methods::DEPRECATION_NOTICE, v),
+            Self::GuardianWarning(v) => pack(methods::GUARDIAN_WARNING, v),
+            Self::Warning(v) => pack(methods::WARNING, v),
+            Self::ThreadArchived(v) => pack(methods::THREAD_ARCHIVED, v),
+            Self::ThreadClosed(v) => pack(methods::THREAD_CLOSED, v),
+            Self::ThreadUnarchived(v) => pack(methods::THREAD_UNARCHIVED, v),
+            Self::ThreadGoalCleared(v) => pack(methods::THREAD_GOAL_CLEARED, v),
+            Self::ThreadNameUpdated(v) => pack(methods::THREAD_NAME_UPDATED, v),
+            Self::SkillsChanged(v) => pack(methods::SKILLS_CHANGED, v),
+            Self::FsChanged(v) => pack(methods::FS_CHANGED, v),
+            Self::ConfigWarning(v) => pack(methods::CONFIG_WARNING, v),
             Self::Unknown { method, params } => Ok((method.clone(), params.clone())),
         }
     }

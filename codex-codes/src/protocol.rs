@@ -640,6 +640,109 @@ pub struct McpServerOauthLoginCompletedNotification {
     pub error: Option<String>,
 }
 
+/// `account/login/completed` notification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountLoginCompletedNotification {
+    pub success: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub login_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// `deprecationNotice` notification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeprecationNoticeNotification {
+    pub summary: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub details: Option<String>,
+}
+
+/// `guardianWarning` notification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GuardianWarningNotification {
+    pub thread_id: String,
+    pub message: String,
+}
+
+/// `warning` notification (general advisory).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WarningNotification {
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thread_id: Option<String>,
+}
+
+/// `thread/archived` notification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadArchivedNotification {
+    pub thread_id: String,
+}
+
+/// `thread/closed` notification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadClosedNotification {
+    pub thread_id: String,
+}
+
+/// `thread/unarchived` notification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadUnarchivedNotification {
+    pub thread_id: String,
+}
+
+/// `thread/goal/cleared` notification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadGoalClearedNotification {
+    pub thread_id: String,
+}
+
+/// `thread/name/updated` notification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadNameUpdatedNotification {
+    pub thread_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thread_name: Option<String>,
+}
+
+/// `skills/changed` notification (no payload).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillsChangedNotification {}
+
+/// `fs/changed` notification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FsChangedNotification {
+    pub watch_id: String,
+    pub changed_paths: Vec<String>,
+}
+
+/// `configWarning` notification.
+///
+/// The `range` field's shape is left as raw JSON for now; expand to a typed
+/// `SourceRange` if/when callers need it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfigWarningNotification {
+    pub summary: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub details: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<Value>,
+}
+
 // ---------------------------------------------------------------------------
 // Approval flow types (server-to-client requests)
 // ---------------------------------------------------------------------------
@@ -777,6 +880,18 @@ pub mod methods {
     pub const TURN_DIFF_UPDATED: &str = "turn/diff/updated";
     pub const REASONING_SUMMARY_PART_ADDED: &str = "item/reasoning/summaryPartAdded";
     pub const REASONING_TEXT_DELTA: &str = "item/reasoning/textDelta";
+    pub const ACCOUNT_LOGIN_COMPLETED: &str = "account/login/completed";
+    pub const DEPRECATION_NOTICE: &str = "deprecationNotice";
+    pub const GUARDIAN_WARNING: &str = "guardianWarning";
+    pub const WARNING: &str = "warning";
+    pub const THREAD_ARCHIVED: &str = "thread/archived";
+    pub const THREAD_CLOSED: &str = "thread/closed";
+    pub const THREAD_UNARCHIVED: &str = "thread/unarchived";
+    pub const THREAD_GOAL_CLEARED: &str = "thread/goal/cleared";
+    pub const THREAD_NAME_UPDATED: &str = "thread/name/updated";
+    pub const SKILLS_CHANGED: &str = "skills/changed";
+    pub const FS_CHANGED: &str = "fs/changed";
+    pub const CONFIG_WARNING: &str = "configWarning";
 
     // Server → client requests (approval)
     pub const CMD_EXEC_APPROVAL: &str = "item/commandExecution/requestApproval";

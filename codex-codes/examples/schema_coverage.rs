@@ -340,6 +340,18 @@ mod samples {
             methods::TURN_DIFF_UPDATED,
             methods::REASONING_SUMMARY_PART_ADDED,
             methods::REASONING_TEXT_DELTA,
+            methods::ACCOUNT_LOGIN_COMPLETED,
+            methods::DEPRECATION_NOTICE,
+            methods::GUARDIAN_WARNING,
+            methods::WARNING,
+            methods::THREAD_ARCHIVED,
+            methods::THREAD_CLOSED,
+            methods::THREAD_UNARCHIVED,
+            methods::THREAD_GOAL_CLEARED,
+            methods::THREAD_NAME_UPDATED,
+            methods::SKILLS_CHANGED,
+            methods::FS_CHANGED,
+            methods::CONFIG_WARNING,
         ]
         .into_iter()
         .collect()

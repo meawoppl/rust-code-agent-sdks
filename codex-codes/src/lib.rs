@@ -205,21 +205,26 @@ pub use jsonrpc::{
 
 // App-server protocol types (always available)
 pub use protocol::{
-    AccountRateLimitsUpdatedNotification, AgentMessageDeltaNotification, ClientInfo,
-    CmdOutputDeltaNotification, CommandApprovalDecision, CommandExecutionApprovalParams,
-    CommandExecutionApprovalResponse, ErrorNotification, FileChangeApprovalDecision,
+    AccountLoginCompletedNotification, AccountRateLimitsUpdatedNotification,
+    AgentMessageDeltaNotification, ClientInfo, CmdOutputDeltaNotification, CommandApprovalDecision,
+    CommandExecutionApprovalParams, CommandExecutionApprovalResponse, ConfigWarningNotification,
+    DeprecationNoticeNotification, ErrorNotification, FileChangeApprovalDecision,
     FileChangeApprovalParams, FileChangeApprovalResponse, FileChangeOutputDeltaNotification,
-    FileChangePatchUpdatedNotification, InitializeCapabilities, InitializeParams,
-    InitializeResponse, ItemCompletedNotification, ItemStartedNotification,
-    McpServerOauthLoginCompletedNotification, McpServerStartupStatusUpdatedNotification,
-    PlanDeltaNotification, RateLimitWindow, RateLimits, ReasoningDeltaNotification,
-    ReasoningSummaryPartAddedNotification, ReasoningTextDeltaNotification,
-    RemoteControlStatusChangedNotification, ThreadArchiveParams, ThreadArchiveResponse, ThreadInfo,
-    ThreadStartParams, ThreadStartResponse, ThreadStartedNotification, ThreadStatus,
-    ThreadStatusChangedNotification, ThreadTokenUsageUpdatedNotification, TokenCounts, TokenUsage,
+    FileChangePatchUpdatedNotification, FsChangedNotification, GuardianWarningNotification,
+    InitializeCapabilities, InitializeParams, InitializeResponse, ItemCompletedNotification,
+    ItemStartedNotification, McpServerOauthLoginCompletedNotification,
+    McpServerStartupStatusUpdatedNotification, PlanDeltaNotification, RateLimitWindow, RateLimits,
+    ReasoningDeltaNotification, ReasoningSummaryPartAddedNotification,
+    ReasoningTextDeltaNotification, RemoteControlStatusChangedNotification,
+    SkillsChangedNotification, ThreadArchiveParams, ThreadArchiveResponse,
+    ThreadArchivedNotification, ThreadClosedNotification, ThreadGoalClearedNotification,
+    ThreadInfo, ThreadNameUpdatedNotification, ThreadStartParams, ThreadStartResponse,
+    ThreadStartedNotification, ThreadStatus, ThreadStatusChangedNotification,
+    ThreadTokenUsageUpdatedNotification, ThreadUnarchivedNotification, TokenCounts, TokenUsage,
     Turn, TurnCompletedNotification, TurnDiffUpdatedNotification, TurnError, TurnInterruptParams,
     TurnInterruptResponse, TurnPlanStep, TurnPlanStepStatus, TurnPlanUpdatedNotification,
     TurnStartParams, TurnStartResponse, TurnStartedNotification, TurnStatus, UserInput,
+    WarningNotification,
 };
 
 // Also re-export the `UserMessageItem` and its content block so callers can
