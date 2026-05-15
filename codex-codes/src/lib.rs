@@ -195,7 +195,7 @@ pub use io::options::{
 };
 
 // Error types (always available)
-pub use error::{Error, Result};
+pub use error::{Error, ParseError, Result};
 
 // JSON-RPC types (always available)
 pub use jsonrpc::{
