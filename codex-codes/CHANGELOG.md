@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.128.1] - 2026-05-15
+
+### Added
+
+- **`ParseError` struct** — Carries `raw_line`, `raw_json`, `error_message`, and an optional `method` for parsing failures, mirroring [`claude_codes::ParseError`](https://docs.rs/claude-codes/latest/claude_codes/struct.ParseError.html). Two constructors:
+  - `ParseError::from_line(line, error)` — for bare-JSON / envelope-shape failures; populates `raw_json` if the line was valid JSON.
+  - `ParseError::from_envelope(method, params, error)` — for typed-decode failures whose envelope parsed but whose `params` did not match; preserves the JSON-RPC `method` and `params`, and reconstructs a wire-equivalent `raw_line` for bug reports.
+- **Regression tests in `tests/integration_tests.rs`** — three new tests that pin the exact code path used by `next_message`, including one reproducing the `missing field "callId"` failure mode from issue #128.
+
+### Changed
+
+- **`Error::Deserialization`** is now `Error::Deserialization(ParseError)` (was `Error::Deserialization(String)`). Code that matched the previous string payload should read `pe.error_message` / `pe.raw_line` / `pe.method` instead. Shipped as a patch — pre-1.0 crate, only this workspace's `cc-proxy` is a known downstream consumer.
+- **`AsyncClient::next_message` / `SyncClient::next_message`** — On typed-decode failures (`Notification::from_envelope` / `ServerRequest::from_envelope`), the error now carries the original `method` and `params` via `Error::Deserialization(ParseError)` instead of dropping them in an opaque `Error::Json(serde_json::Error)`. Consumers can render the offending frame for bug reports without snooping `DEBUG`-level tracing for the raw line (fixes #128).
+
 ## [0.128.0] - 2026-05-14
 
 Version jumps from 0.101.x into the 0.1xx range that tracks the Codex CLI it

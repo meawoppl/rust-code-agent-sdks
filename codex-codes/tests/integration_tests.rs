@@ -1,5 +1,6 @@
 use codex_codes::{
-    CommandExecutionStatus, FileChangeItem, PatchApplyStatus, PatchChangeKind, ThreadEvent,
+    CommandExecutionStatus, FileChangeItem, JsonRpcMessage, JsonRpcNotification, JsonRpcRequest,
+    Notification, ParseError, PatchApplyStatus, PatchChangeKind, ServerRequest, ThreadEvent,
     ThreadItem,
 };
 
@@ -442,4 +443,95 @@ fn test_all_item_ids_are_sequential_within_capture() {
             );
         }
     }
+}
+
+// ── typed-decode failure plumbing (issue #128) ───────────────────────────
+//
+// When a wire frame's envelope parses but the typed-payload decode fails,
+// callers must still be able to recover the original `method` + `params` for
+// bug reports. These tests pin the exact code path used by
+// `AsyncClient::next_message` / `SyncClient::next_message`: deserialize the
+// line as a `JsonRpcMessage`, run `Notification::from_envelope` /
+// `ServerRequest::from_envelope`, wrap the resulting `serde_json::Error` in a
+// `ParseError`, and check that nothing was dropped on the floor.
+
+#[test]
+fn parse_error_carries_method_and_params_for_unmodeled_notification_variant() {
+    // Simulates a notification whose envelope is fine but whose params don't
+    // match any modeled variant — e.g. a future `FileUpdateChange.type` value
+    // the crate version doesn't yet know about.
+    //
+    // The crate uses an `Unknown { method, params }` fallback for unmodeled
+    // *methods*, so to actually trigger a typed-decode failure on a *known*
+    // method we send malformed params for it.
+    let line = r#"{"method":"item/completed","params":{"item":42}}"#;
+    let envelope: JsonRpcMessage = serde_json::from_str(line).expect("envelope parses");
+    let JsonRpcMessage::Notification(JsonRpcNotification { method, params }) = envelope else {
+        panic!("expected Notification, got: {:?}", envelope);
+    };
+
+    let err = Notification::from_envelope(&method, params.clone())
+        .expect_err("malformed params must fail typed decode");
+    let pe = ParseError::from_envelope(method.clone(), params.clone(), err);
+
+    assert_eq!(pe.method.as_deref(), Some("item/completed"));
+    assert_eq!(pe.raw_json, params);
+    assert!(
+        !pe.error_message.is_empty(),
+        "error_message should be populated"
+    );
+    // raw_line is a wire-equivalent reconstruction, parseable back into an envelope.
+    let echoed: JsonRpcMessage = serde_json::from_str(&pe.raw_line)
+        .unwrap_or_else(|e| panic!("raw_line should re-parse as JsonRpcMessage: {}", e));
+    if let JsonRpcMessage::Notification(n) = echoed {
+        assert_eq!(n.method, "item/completed");
+        assert_eq!(n.params.unwrap()["item"], 42);
+    } else {
+        panic!("raw_line should re-parse as a Notification");
+    }
+}
+
+#[test]
+fn parse_error_carries_method_and_params_for_server_request_with_missing_field() {
+    // Reproduces the "missing field `callId`" failure mode from issue #128:
+    // a valid item/commandExecution/requestApproval envelope whose params
+    // are missing the required `callId` field.
+    let line = r#"{"id":1,"method":"item/commandExecution/requestApproval","params":{"threadId":"t1","turnId":"u1","command":"ls -la","cwd":"/tmp"}}"#;
+    let envelope: JsonRpcMessage = serde_json::from_str(line).expect("envelope parses");
+    let JsonRpcMessage::Request(JsonRpcRequest {
+        id: _,
+        method,
+        params,
+    }) = envelope
+    else {
+        panic!("expected Request, got: {:?}", envelope);
+    };
+
+    let err = ServerRequest::from_envelope(&method, params.clone())
+        .expect_err("missing callId must fail typed decode");
+    let pe = ParseError::from_envelope(method, params, err);
+
+    assert_eq!(
+        pe.method.as_deref(),
+        Some("item/commandExecution/requestApproval")
+    );
+    assert!(
+        pe.error_message.contains("callId"),
+        "underlying error should mention callId; got: {}",
+        pe.error_message
+    );
+    assert_eq!(pe.raw_json.as_ref().unwrap()["command"], "ls -la");
+    assert_eq!(pe.raw_json.as_ref().unwrap()["threadId"], "t1");
+}
+
+#[test]
+fn parse_error_from_invalid_envelope_keeps_raw_line_without_method() {
+    // The bare-JSON failure path: line is not a valid JsonRpcMessage.
+    let line = r#"{"completely":"unexpected"}"#;
+    let err = serde_json::from_str::<JsonRpcMessage>(line).expect_err("should not parse");
+    let pe = ParseError::from_line(line, err);
+    assert!(pe.method.is_none());
+    assert_eq!(pe.raw_line, line);
+    // raw_json is populated because the line was valid JSON, just not a JsonRpcMessage.
+    assert_eq!(pe.raw_json.as_ref().unwrap()["completely"], "unexpected");
 }

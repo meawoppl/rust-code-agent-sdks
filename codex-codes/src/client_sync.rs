@@ -43,7 +43,7 @@
 //! ```
 
 use crate::cli::AppServerBuilder;
-use crate::error::{Error, Result};
+use crate::error::{Error, ParseError, Result};
 use crate::jsonrpc::{
     JsonRpcError, JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, RequestId,
 };
@@ -318,17 +318,20 @@ impl SyncClient {
 
             match msg {
                 JsonRpcMessage::Notification(notif) => {
-                    let typed = Notification::from_envelope(&notif.method, notif.params)
-                        .map_err(Error::Json)?;
+                    let JsonRpcNotification { method, params } = notif;
+                    let typed =
+                        Notification::from_envelope(&method, params.clone()).map_err(|e| {
+                            Error::Deserialization(ParseError::from_envelope(method, params, e))
+                        })?;
                     return Ok(Some(ServerMessage::Notification(typed)));
                 }
                 JsonRpcMessage::Request(req) => {
-                    let typed = ServerRequest::from_envelope(&req.method, req.params)
-                        .map_err(Error::Json)?;
-                    return Ok(Some(ServerMessage::Request {
-                        id: req.id,
-                        request: typed,
-                    }));
+                    let JsonRpcRequest { id, method, params } = req;
+                    let typed =
+                        ServerRequest::from_envelope(&method, params.clone()).map_err(|e| {
+                            Error::Deserialization(ParseError::from_envelope(method, params, e))
+                        })?;
+                    return Ok(Some(ServerMessage::Request { id, request: typed }));
                 }
                 JsonRpcMessage::Response(resp) => {
                     warn!(
@@ -419,10 +422,7 @@ impl SyncClient {
                             );
                             warn!("[CLIENT] Parse error: {}", e);
                             warn!("[CLIENT] Raw: {}", trimmed);
-                            return Err(Error::Deserialization(format!(
-                                "{} (raw: {})",
-                                e, trimmed
-                            )));
+                            return Err(Error::Deserialization(ParseError::from_line(trimmed, e)));
                         }
                     }
                 }
