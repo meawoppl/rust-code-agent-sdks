@@ -246,6 +246,12 @@ When updating the version number in `Cargo.toml`:
 
 This ensures the lockfile stays in sync with the version number.
 
+### Version bump policy
+
+**Patch bumps (`0.x.Y → 0.x.Y+1`, or `x.y.Z → x.y.Z+1`) are fine to do without asking.**
+
+**For anything larger — minor (`0.x → 0.x+1`, or `x.y → x.y+1`) or major (`x → x+1`) — ask first** and wait for explicit approval before bumping. These reflect breaking or significant API changes and the user wants to be in the loop on the framing / changelog narrative before the version moves.
+
 ## Publishing
 - **NEVER use `cargo publish --allow-dirty`** — ensure the working tree is clean before publishing
 - If there are untracked files, either `.gitignore` them or clean them up first
