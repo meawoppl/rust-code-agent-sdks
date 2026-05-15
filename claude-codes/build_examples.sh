@@ -22,11 +22,14 @@ for example in "$EXAMPLES_DIR"/*.rs; do
         example_name=$(basename "$example" .rs)
         echo "Building example: $example_name"
         
-        if cargo build -p claude-codes --example "$example_name" 2>&1 | grep -q "error"; then
+        # Use cargo's exit code — grepping the output for "error" used to
+        # false-positive on crate names like `thiserror` whose compile lines
+        # contain the substring.
+        if cargo build -p claude-codes --example "$example_name" >/dev/null 2>&1; then
+            echo "  ✅ Successfully built $example_name"
+        else
             echo "  ❌ Failed to build $example_name"
             FAILED=1
-        else
-            echo "  ✅ Successfully built $example_name"
         fi
     fi
 done
