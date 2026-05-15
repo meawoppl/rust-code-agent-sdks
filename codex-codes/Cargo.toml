@@ -1,6 +1,6 @@
 [package]
 name = "codex-codes"
-version = "0.128.1"
+version = "0.129.0"
 edition = "2021"
 rust-version = "1.85"
 authors = ["Matthew Goodman <d3a6d0cec0c16f3e@inboxnegative.com>"]
@@ -28,6 +28,7 @@ which = { version = "8.0.2", optional = true }
 
 [dev-dependencies]
 env_logger = "0.11.9"
+jsonschema = "0.46.5"
 serde_json = "1.0.143"
 tokio = { version = "1.49.0", features = ["full"] }
 
@@ -49,3 +50,7 @@ required-features = ["async-client"]
 [[example]]
 name = "sync_client"
 required-features = ["sync-client"]
+
+[[example]]
+name = "schema_coverage"
+# Pure types-only; uses the same JSON Schema validator the test suite does.

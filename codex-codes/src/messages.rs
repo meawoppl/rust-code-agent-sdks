@@ -25,13 +25,32 @@
 
 use crate::jsonrpc::RequestId;
 use crate::protocol::{
-    methods, AccountRateLimitsUpdatedNotification, AgentMessageDeltaNotification,
-    CmdOutputDeltaNotification, CommandExecutionApprovalParams, ErrorNotification,
-    FileChangeApprovalParams, FileChangeOutputDeltaNotification, ItemCompletedNotification,
-    ItemStartedNotification, McpServerStartupStatusUpdatedNotification, ReasoningDeltaNotification,
-    RemoteControlStatusChangedNotification, ThreadStartedNotification,
+    methods, AccountLoginCompletedNotification, AccountRateLimitsUpdatedNotification,
+    AccountUpdatedNotification, AgentMessageDeltaNotification, AppListUpdatedNotification,
+    CmdOutputDeltaNotification, CommandExecOutputDeltaNotification, CommandExecutionApprovalParams,
+    ConfigWarningNotification, ContextCompactedNotification, DeprecationNoticeNotification,
+    ErrorNotification, ExternalAgentConfigImportCompletedNotification, FileChangeApprovalParams,
+    FileChangeOutputDeltaNotification, FileChangePatchUpdatedNotification, FsChangedNotification,
+    FuzzyFileSearchSessionCompletedNotification, FuzzyFileSearchSessionUpdatedNotification,
+    GuardianWarningNotification, HookCompletedNotification, HookStartedNotification,
+    ItemCompletedNotification, ItemGuardianApprovalReviewCompletedNotification,
+    ItemGuardianApprovalReviewStartedNotification, ItemStartedNotification,
+    McpServerOauthLoginCompletedNotification, McpServerStartupStatusUpdatedNotification,
+    McpToolCallProgressNotification, ModelReroutedNotification, ModelVerificationNotification,
+    PlanDeltaNotification, ProcessExitedNotification, ProcessOutputDeltaNotification,
+    ReasoningDeltaNotification, ReasoningSummaryPartAddedNotification,
+    ReasoningTextDeltaNotification, RemoteControlStatusChangedNotification,
+    ServerRequestResolvedNotification, SkillsChangedNotification, TerminalInteractionNotification,
+    ThreadArchivedNotification, ThreadClosedNotification, ThreadGoalClearedNotification,
+    ThreadGoalUpdatedNotification, ThreadNameUpdatedNotification, ThreadRealtimeClosedNotification,
+    ThreadRealtimeErrorNotification, ThreadRealtimeItemAddedNotification,
+    ThreadRealtimeOutputAudioDeltaNotification, ThreadRealtimeSdpNotification,
+    ThreadRealtimeStartedNotification, ThreadRealtimeTranscriptDeltaNotification,
+    ThreadRealtimeTranscriptDoneNotification, ThreadStartedNotification,
     ThreadStatusChangedNotification, ThreadTokenUsageUpdatedNotification,
-    TurnCompletedNotification, TurnStartedNotification,
+    ThreadUnarchivedNotification, TurnCompletedNotification, TurnDiffUpdatedNotification,
+    TurnPlanUpdatedNotification, TurnStartedNotification, WarningNotification,
+    WindowsSandboxSetupCompletedNotification, WindowsWorldWritableWarningNotification,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
@@ -73,6 +92,102 @@ pub enum Notification {
     McpServerStartupStatusUpdated(McpServerStartupStatusUpdatedNotification),
     /// `remoteControl/status/changed`
     RemoteControlStatusChanged(RemoteControlStatusChangedNotification),
+    /// `mcpServer/oauthLogin/completed`
+    McpServerOauthLoginCompleted(McpServerOauthLoginCompletedNotification),
+    /// `item/fileChange/patchUpdated`
+    FileChangePatchUpdated(FileChangePatchUpdatedNotification),
+    /// `item/plan/delta` (EXPERIMENTAL)
+    PlanDelta(PlanDeltaNotification),
+    /// `turn/plan/updated`
+    TurnPlanUpdated(TurnPlanUpdatedNotification),
+    /// `turn/diff/updated`
+    TurnDiffUpdated(TurnDiffUpdatedNotification),
+    /// `item/reasoning/summaryPartAdded`
+    ReasoningSummaryPartAdded(ReasoningSummaryPartAddedNotification),
+    /// `item/reasoning/textDelta`
+    ReasoningTextDelta(ReasoningTextDeltaNotification),
+    /// `account/login/completed`
+    AccountLoginCompleted(AccountLoginCompletedNotification),
+    /// `deprecationNotice`
+    DeprecationNotice(DeprecationNoticeNotification),
+    /// `guardianWarning`
+    GuardianWarning(GuardianWarningNotification),
+    /// `warning`
+    Warning(WarningNotification),
+    /// `thread/archived`
+    ThreadArchived(ThreadArchivedNotification),
+    /// `thread/closed`
+    ThreadClosed(ThreadClosedNotification),
+    /// `thread/unarchived`
+    ThreadUnarchived(ThreadUnarchivedNotification),
+    /// `thread/goal/cleared`
+    ThreadGoalCleared(ThreadGoalClearedNotification),
+    /// `thread/name/updated`
+    ThreadNameUpdated(ThreadNameUpdatedNotification),
+    /// `skills/changed`
+    SkillsChanged(SkillsChangedNotification),
+    /// `fs/changed`
+    FsChanged(FsChangedNotification),
+    /// `configWarning`
+    ConfigWarning(ConfigWarningNotification),
+    /// `account/updated`
+    AccountUpdated(AccountUpdatedNotification),
+    /// `app/list/updated`
+    AppListUpdated(AppListUpdatedNotification),
+    /// `command/exec/outputDelta`
+    CommandExecOutputDelta(CommandExecOutputDeltaNotification),
+    /// `externalAgentConfig/import/completed`
+    ExternalAgentConfigImportCompleted(ExternalAgentConfigImportCompletedNotification),
+    /// `fuzzyFileSearch/sessionCompleted`
+    FuzzyFileSearchSessionCompleted(FuzzyFileSearchSessionCompletedNotification),
+    /// `fuzzyFileSearch/sessionUpdated`
+    FuzzyFileSearchSessionUpdated(FuzzyFileSearchSessionUpdatedNotification),
+    /// `hook/completed`
+    HookCompleted(HookCompletedNotification),
+    /// `hook/started`
+    HookStarted(HookStartedNotification),
+    /// `item/autoApprovalReview/completed`
+    ItemGuardianApprovalReviewCompleted(ItemGuardianApprovalReviewCompletedNotification),
+    /// `item/autoApprovalReview/started`
+    ItemGuardianApprovalReviewStarted(ItemGuardianApprovalReviewStartedNotification),
+    /// `item/commandExecution/terminalInteraction`
+    TerminalInteraction(TerminalInteractionNotification),
+    /// `item/mcpToolCall/progress`
+    McpToolCallProgress(McpToolCallProgressNotification),
+    /// `model/rerouted`
+    ModelRerouted(ModelReroutedNotification),
+    /// `model/verification`
+    ModelVerification(ModelVerificationNotification),
+    /// `process/exited`
+    ProcessExited(ProcessExitedNotification),
+    /// `process/outputDelta`
+    ProcessOutputDelta(ProcessOutputDeltaNotification),
+    /// `serverRequest/resolved`
+    ServerRequestResolved(ServerRequestResolvedNotification),
+    /// `thread/compacted`
+    ContextCompacted(ContextCompactedNotification),
+    /// `thread/goal/updated`
+    ThreadGoalUpdated(ThreadGoalUpdatedNotification),
+    /// `thread/realtime/closed`
+    ThreadRealtimeClosed(ThreadRealtimeClosedNotification),
+    /// `thread/realtime/error`
+    ThreadRealtimeError(ThreadRealtimeErrorNotification),
+    /// `thread/realtime/itemAdded`
+    ThreadRealtimeItemAdded(ThreadRealtimeItemAddedNotification),
+    /// `thread/realtime/outputAudio/delta`
+    ThreadRealtimeOutputAudioDelta(ThreadRealtimeOutputAudioDeltaNotification),
+    /// `thread/realtime/sdp`
+    ThreadRealtimeSdp(ThreadRealtimeSdpNotification),
+    /// `thread/realtime/started`
+    ThreadRealtimeStarted(ThreadRealtimeStartedNotification),
+    /// `thread/realtime/transcript/delta`
+    ThreadRealtimeTranscriptDelta(ThreadRealtimeTranscriptDeltaNotification),
+    /// `thread/realtime/transcript/done`
+    ThreadRealtimeTranscriptDone(ThreadRealtimeTranscriptDoneNotification),
+    /// `windows/worldWritableWarning`
+    WindowsWorldWritableWarning(WindowsWorldWritableWarningNotification),
+    /// `windowsSandbox/setupCompleted`
+    WindowsSandboxSetupCompleted(WindowsSandboxSetupCompletedNotification),
     /// A method this crate version does not yet model. The raw params are
     /// preserved for caller inspection. Encountering this typically means
     /// the installed codex CLI is newer than the bindings.
@@ -101,6 +216,62 @@ impl Notification {
             Self::AccountRateLimitsUpdated(_) => methods::ACCOUNT_RATE_LIMITS_UPDATED,
             Self::McpServerStartupStatusUpdated(_) => methods::MCP_SERVER_STARTUP_STATUS_UPDATED,
             Self::RemoteControlStatusChanged(_) => methods::REMOTE_CONTROL_STATUS_CHANGED,
+            Self::McpServerOauthLoginCompleted(_) => methods::MCP_SERVER_OAUTH_LOGIN_COMPLETED,
+            Self::FileChangePatchUpdated(_) => methods::FILE_CHANGE_PATCH_UPDATED,
+            Self::PlanDelta(_) => methods::PLAN_DELTA,
+            Self::TurnPlanUpdated(_) => methods::TURN_PLAN_UPDATED,
+            Self::TurnDiffUpdated(_) => methods::TURN_DIFF_UPDATED,
+            Self::ReasoningSummaryPartAdded(_) => methods::REASONING_SUMMARY_PART_ADDED,
+            Self::ReasoningTextDelta(_) => methods::REASONING_TEXT_DELTA,
+            Self::AccountLoginCompleted(_) => methods::ACCOUNT_LOGIN_COMPLETED,
+            Self::DeprecationNotice(_) => methods::DEPRECATION_NOTICE,
+            Self::GuardianWarning(_) => methods::GUARDIAN_WARNING,
+            Self::Warning(_) => methods::WARNING,
+            Self::ThreadArchived(_) => methods::THREAD_ARCHIVED,
+            Self::ThreadClosed(_) => methods::THREAD_CLOSED,
+            Self::ThreadUnarchived(_) => methods::THREAD_UNARCHIVED,
+            Self::ThreadGoalCleared(_) => methods::THREAD_GOAL_CLEARED,
+            Self::ThreadNameUpdated(_) => methods::THREAD_NAME_UPDATED,
+            Self::SkillsChanged(_) => methods::SKILLS_CHANGED,
+            Self::FsChanged(_) => methods::FS_CHANGED,
+            Self::ConfigWarning(_) => methods::CONFIG_WARNING,
+            Self::AccountUpdated(_) => methods::ACCOUNT_UPDATED,
+            Self::AppListUpdated(_) => methods::APP_LIST_UPDATED,
+            Self::CommandExecOutputDelta(_) => methods::COMMAND_EXEC_OUTPUT_DELTA,
+            Self::ExternalAgentConfigImportCompleted(_) => {
+                methods::EXTERNAL_AGENT_CONFIG_IMPORT_COMPLETED
+            }
+            Self::FuzzyFileSearchSessionCompleted(_) => {
+                methods::FUZZY_FILE_SEARCH_SESSION_COMPLETED
+            }
+            Self::FuzzyFileSearchSessionUpdated(_) => methods::FUZZY_FILE_SEARCH_SESSION_UPDATED,
+            Self::HookCompleted(_) => methods::HOOK_COMPLETED,
+            Self::HookStarted(_) => methods::HOOK_STARTED,
+            Self::ItemGuardianApprovalReviewCompleted(_) => {
+                methods::ITEM_AUTO_APPROVAL_REVIEW_COMPLETED
+            }
+            Self::ItemGuardianApprovalReviewStarted(_) => {
+                methods::ITEM_AUTO_APPROVAL_REVIEW_STARTED
+            }
+            Self::TerminalInteraction(_) => methods::ITEM_COMMAND_EXEC_TERMINAL_INTERACTION,
+            Self::McpToolCallProgress(_) => methods::ITEM_MCP_TOOL_CALL_PROGRESS,
+            Self::ModelRerouted(_) => methods::MODEL_REROUTED,
+            Self::ModelVerification(_) => methods::MODEL_VERIFICATION,
+            Self::ProcessExited(_) => methods::PROCESS_EXITED,
+            Self::ProcessOutputDelta(_) => methods::PROCESS_OUTPUT_DELTA,
+            Self::ServerRequestResolved(_) => methods::SERVER_REQUEST_RESOLVED,
+            Self::ContextCompacted(_) => methods::THREAD_COMPACTED,
+            Self::ThreadGoalUpdated(_) => methods::THREAD_GOAL_UPDATED,
+            Self::ThreadRealtimeClosed(_) => methods::THREAD_REALTIME_CLOSED,
+            Self::ThreadRealtimeError(_) => methods::THREAD_REALTIME_ERROR,
+            Self::ThreadRealtimeItemAdded(_) => methods::THREAD_REALTIME_ITEM_ADDED,
+            Self::ThreadRealtimeOutputAudioDelta(_) => methods::THREAD_REALTIME_OUTPUT_AUDIO_DELTA,
+            Self::ThreadRealtimeSdp(_) => methods::THREAD_REALTIME_SDP,
+            Self::ThreadRealtimeStarted(_) => methods::THREAD_REALTIME_STARTED,
+            Self::ThreadRealtimeTranscriptDelta(_) => methods::THREAD_REALTIME_TRANSCRIPT_DELTA,
+            Self::ThreadRealtimeTranscriptDone(_) => methods::THREAD_REALTIME_TRANSCRIPT_DONE,
+            Self::WindowsWorldWritableWarning(_) => methods::WINDOWS_WORLD_WRITABLE_WARNING,
+            Self::WindowsSandboxSetupCompleted(_) => methods::WINDOWS_SANDBOX_SETUP_COMPLETED,
             Self::Unknown { method, .. } => method,
         }
     }
@@ -157,6 +328,140 @@ impl Notification {
             methods::REMOTE_CONTROL_STATUS_CHANGED => {
                 serde_json::from_value(params_value).map(Self::RemoteControlStatusChanged)
             }
+            methods::MCP_SERVER_OAUTH_LOGIN_COMPLETED => {
+                serde_json::from_value(params_value).map(Self::McpServerOauthLoginCompleted)
+            }
+            methods::FILE_CHANGE_PATCH_UPDATED => {
+                serde_json::from_value(params_value).map(Self::FileChangePatchUpdated)
+            }
+            methods::PLAN_DELTA => serde_json::from_value(params_value).map(Self::PlanDelta),
+            methods::TURN_PLAN_UPDATED => {
+                serde_json::from_value(params_value).map(Self::TurnPlanUpdated)
+            }
+            methods::TURN_DIFF_UPDATED => {
+                serde_json::from_value(params_value).map(Self::TurnDiffUpdated)
+            }
+            methods::REASONING_SUMMARY_PART_ADDED => {
+                serde_json::from_value(params_value).map(Self::ReasoningSummaryPartAdded)
+            }
+            methods::REASONING_TEXT_DELTA => {
+                serde_json::from_value(params_value).map(Self::ReasoningTextDelta)
+            }
+            methods::ACCOUNT_LOGIN_COMPLETED => {
+                serde_json::from_value(params_value).map(Self::AccountLoginCompleted)
+            }
+            methods::DEPRECATION_NOTICE => {
+                serde_json::from_value(params_value).map(Self::DeprecationNotice)
+            }
+            methods::GUARDIAN_WARNING => {
+                serde_json::from_value(params_value).map(Self::GuardianWarning)
+            }
+            methods::WARNING => serde_json::from_value(params_value).map(Self::Warning),
+            methods::THREAD_ARCHIVED => {
+                serde_json::from_value(params_value).map(Self::ThreadArchived)
+            }
+            methods::THREAD_CLOSED => serde_json::from_value(params_value).map(Self::ThreadClosed),
+            methods::THREAD_UNARCHIVED => {
+                serde_json::from_value(params_value).map(Self::ThreadUnarchived)
+            }
+            methods::THREAD_GOAL_CLEARED => {
+                serde_json::from_value(params_value).map(Self::ThreadGoalCleared)
+            }
+            methods::THREAD_NAME_UPDATED => {
+                serde_json::from_value(params_value).map(Self::ThreadNameUpdated)
+            }
+            methods::SKILLS_CHANGED => {
+                serde_json::from_value(params_value).map(Self::SkillsChanged)
+            }
+            methods::FS_CHANGED => serde_json::from_value(params_value).map(Self::FsChanged),
+            methods::CONFIG_WARNING => {
+                serde_json::from_value(params_value).map(Self::ConfigWarning)
+            }
+            methods::ACCOUNT_UPDATED => {
+                serde_json::from_value(params_value).map(Self::AccountUpdated)
+            }
+            methods::APP_LIST_UPDATED => {
+                serde_json::from_value(params_value).map(Self::AppListUpdated)
+            }
+            methods::COMMAND_EXEC_OUTPUT_DELTA => {
+                serde_json::from_value(params_value).map(Self::CommandExecOutputDelta)
+            }
+            methods::EXTERNAL_AGENT_CONFIG_IMPORT_COMPLETED => {
+                serde_json::from_value(params_value).map(Self::ExternalAgentConfigImportCompleted)
+            }
+            methods::FUZZY_FILE_SEARCH_SESSION_COMPLETED => {
+                serde_json::from_value(params_value).map(Self::FuzzyFileSearchSessionCompleted)
+            }
+            methods::FUZZY_FILE_SEARCH_SESSION_UPDATED => {
+                serde_json::from_value(params_value).map(Self::FuzzyFileSearchSessionUpdated)
+            }
+            methods::HOOK_COMPLETED => {
+                serde_json::from_value(params_value).map(Self::HookCompleted)
+            }
+            methods::HOOK_STARTED => serde_json::from_value(params_value).map(Self::HookStarted),
+            methods::ITEM_AUTO_APPROVAL_REVIEW_COMPLETED => {
+                serde_json::from_value(params_value).map(Self::ItemGuardianApprovalReviewCompleted)
+            }
+            methods::ITEM_AUTO_APPROVAL_REVIEW_STARTED => {
+                serde_json::from_value(params_value).map(Self::ItemGuardianApprovalReviewStarted)
+            }
+            methods::ITEM_COMMAND_EXEC_TERMINAL_INTERACTION => {
+                serde_json::from_value(params_value).map(Self::TerminalInteraction)
+            }
+            methods::ITEM_MCP_TOOL_CALL_PROGRESS => {
+                serde_json::from_value(params_value).map(Self::McpToolCallProgress)
+            }
+            methods::MODEL_REROUTED => {
+                serde_json::from_value(params_value).map(Self::ModelRerouted)
+            }
+            methods::MODEL_VERIFICATION => {
+                serde_json::from_value(params_value).map(Self::ModelVerification)
+            }
+            methods::PROCESS_EXITED => {
+                serde_json::from_value(params_value).map(Self::ProcessExited)
+            }
+            methods::PROCESS_OUTPUT_DELTA => {
+                serde_json::from_value(params_value).map(Self::ProcessOutputDelta)
+            }
+            methods::SERVER_REQUEST_RESOLVED => {
+                serde_json::from_value(params_value).map(Self::ServerRequestResolved)
+            }
+            methods::THREAD_COMPACTED => {
+                serde_json::from_value(params_value).map(Self::ContextCompacted)
+            }
+            methods::THREAD_GOAL_UPDATED => {
+                serde_json::from_value(params_value).map(Self::ThreadGoalUpdated)
+            }
+            methods::THREAD_REALTIME_CLOSED => {
+                serde_json::from_value(params_value).map(Self::ThreadRealtimeClosed)
+            }
+            methods::THREAD_REALTIME_ERROR => {
+                serde_json::from_value(params_value).map(Self::ThreadRealtimeError)
+            }
+            methods::THREAD_REALTIME_ITEM_ADDED => {
+                serde_json::from_value(params_value).map(Self::ThreadRealtimeItemAdded)
+            }
+            methods::THREAD_REALTIME_OUTPUT_AUDIO_DELTA => {
+                serde_json::from_value(params_value).map(Self::ThreadRealtimeOutputAudioDelta)
+            }
+            methods::THREAD_REALTIME_SDP => {
+                serde_json::from_value(params_value).map(Self::ThreadRealtimeSdp)
+            }
+            methods::THREAD_REALTIME_STARTED => {
+                serde_json::from_value(params_value).map(Self::ThreadRealtimeStarted)
+            }
+            methods::THREAD_REALTIME_TRANSCRIPT_DELTA => {
+                serde_json::from_value(params_value).map(Self::ThreadRealtimeTranscriptDelta)
+            }
+            methods::THREAD_REALTIME_TRANSCRIPT_DONE => {
+                serde_json::from_value(params_value).map(Self::ThreadRealtimeTranscriptDone)
+            }
+            methods::WINDOWS_WORLD_WRITABLE_WARNING => {
+                serde_json::from_value(params_value).map(Self::WindowsWorldWritableWarning)
+            }
+            methods::WINDOWS_SANDBOX_SETUP_COMPLETED => {
+                serde_json::from_value(params_value).map(Self::WindowsSandboxSetupCompleted)
+            }
             _ => Ok(Self::Unknown {
                 method: method.to_string(),
                 params,
@@ -190,6 +495,78 @@ impl Notification {
                 pack(methods::MCP_SERVER_STARTUP_STATUS_UPDATED, v)
             }
             Self::RemoteControlStatusChanged(v) => pack(methods::REMOTE_CONTROL_STATUS_CHANGED, v),
+            Self::McpServerOauthLoginCompleted(v) => {
+                pack(methods::MCP_SERVER_OAUTH_LOGIN_COMPLETED, v)
+            }
+            Self::FileChangePatchUpdated(v) => pack(methods::FILE_CHANGE_PATCH_UPDATED, v),
+            Self::PlanDelta(v) => pack(methods::PLAN_DELTA, v),
+            Self::TurnPlanUpdated(v) => pack(methods::TURN_PLAN_UPDATED, v),
+            Self::TurnDiffUpdated(v) => pack(methods::TURN_DIFF_UPDATED, v),
+            Self::ReasoningSummaryPartAdded(v) => pack(methods::REASONING_SUMMARY_PART_ADDED, v),
+            Self::ReasoningTextDelta(v) => pack(methods::REASONING_TEXT_DELTA, v),
+            Self::AccountLoginCompleted(v) => pack(methods::ACCOUNT_LOGIN_COMPLETED, v),
+            Self::DeprecationNotice(v) => pack(methods::DEPRECATION_NOTICE, v),
+            Self::GuardianWarning(v) => pack(methods::GUARDIAN_WARNING, v),
+            Self::Warning(v) => pack(methods::WARNING, v),
+            Self::ThreadArchived(v) => pack(methods::THREAD_ARCHIVED, v),
+            Self::ThreadClosed(v) => pack(methods::THREAD_CLOSED, v),
+            Self::ThreadUnarchived(v) => pack(methods::THREAD_UNARCHIVED, v),
+            Self::ThreadGoalCleared(v) => pack(methods::THREAD_GOAL_CLEARED, v),
+            Self::ThreadNameUpdated(v) => pack(methods::THREAD_NAME_UPDATED, v),
+            Self::SkillsChanged(v) => pack(methods::SKILLS_CHANGED, v),
+            Self::FsChanged(v) => pack(methods::FS_CHANGED, v),
+            Self::ConfigWarning(v) => pack(methods::CONFIG_WARNING, v),
+            Self::AccountUpdated(v) => pack(methods::ACCOUNT_UPDATED, v),
+            Self::AppListUpdated(v) => pack(methods::APP_LIST_UPDATED, v),
+            Self::CommandExecOutputDelta(v) => pack(methods::COMMAND_EXEC_OUTPUT_DELTA, v),
+            Self::ExternalAgentConfigImportCompleted(v) => {
+                pack(methods::EXTERNAL_AGENT_CONFIG_IMPORT_COMPLETED, v)
+            }
+            Self::FuzzyFileSearchSessionCompleted(v) => {
+                pack(methods::FUZZY_FILE_SEARCH_SESSION_COMPLETED, v)
+            }
+            Self::FuzzyFileSearchSessionUpdated(v) => {
+                pack(methods::FUZZY_FILE_SEARCH_SESSION_UPDATED, v)
+            }
+            Self::HookCompleted(v) => pack(methods::HOOK_COMPLETED, v),
+            Self::HookStarted(v) => pack(methods::HOOK_STARTED, v),
+            Self::ItemGuardianApprovalReviewCompleted(v) => {
+                pack(methods::ITEM_AUTO_APPROVAL_REVIEW_COMPLETED, v)
+            }
+            Self::ItemGuardianApprovalReviewStarted(v) => {
+                pack(methods::ITEM_AUTO_APPROVAL_REVIEW_STARTED, v)
+            }
+            Self::TerminalInteraction(v) => {
+                pack(methods::ITEM_COMMAND_EXEC_TERMINAL_INTERACTION, v)
+            }
+            Self::McpToolCallProgress(v) => pack(methods::ITEM_MCP_TOOL_CALL_PROGRESS, v),
+            Self::ModelRerouted(v) => pack(methods::MODEL_REROUTED, v),
+            Self::ModelVerification(v) => pack(methods::MODEL_VERIFICATION, v),
+            Self::ProcessExited(v) => pack(methods::PROCESS_EXITED, v),
+            Self::ProcessOutputDelta(v) => pack(methods::PROCESS_OUTPUT_DELTA, v),
+            Self::ServerRequestResolved(v) => pack(methods::SERVER_REQUEST_RESOLVED, v),
+            Self::ContextCompacted(v) => pack(methods::THREAD_COMPACTED, v),
+            Self::ThreadGoalUpdated(v) => pack(methods::THREAD_GOAL_UPDATED, v),
+            Self::ThreadRealtimeClosed(v) => pack(methods::THREAD_REALTIME_CLOSED, v),
+            Self::ThreadRealtimeError(v) => pack(methods::THREAD_REALTIME_ERROR, v),
+            Self::ThreadRealtimeItemAdded(v) => pack(methods::THREAD_REALTIME_ITEM_ADDED, v),
+            Self::ThreadRealtimeOutputAudioDelta(v) => {
+                pack(methods::THREAD_REALTIME_OUTPUT_AUDIO_DELTA, v)
+            }
+            Self::ThreadRealtimeSdp(v) => pack(methods::THREAD_REALTIME_SDP, v),
+            Self::ThreadRealtimeStarted(v) => pack(methods::THREAD_REALTIME_STARTED, v),
+            Self::ThreadRealtimeTranscriptDelta(v) => {
+                pack(methods::THREAD_REALTIME_TRANSCRIPT_DELTA, v)
+            }
+            Self::ThreadRealtimeTranscriptDone(v) => {
+                pack(methods::THREAD_REALTIME_TRANSCRIPT_DONE, v)
+            }
+            Self::WindowsWorldWritableWarning(v) => {
+                pack(methods::WINDOWS_WORLD_WRITABLE_WARNING, v)
+            }
+            Self::WindowsSandboxSetupCompleted(v) => {
+                pack(methods::WINDOWS_SANDBOX_SETUP_COMPLETED, v)
+            }
             Self::Unknown { method, params } => Ok((method.clone(), params.clone())),
         }
     }
