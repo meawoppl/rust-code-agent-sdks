@@ -27,3 +27,7 @@ target
 
 # Cloned repositories
 claude-code-sdk-python/
+
+# Reference checkouts of other codex / claude SDK consumers, used for
+# studying their serde patterns. Local-only; not part of the workspace build.
+reference/

@@ -198,6 +198,25 @@ Discriminated union of agent action items (shared between exec and app-server):
 The crate version tracks the Codex CLI version. If you're using a different CLI version, please report whether it works at:
 https://github.com/meawoppl/rust-code-agent-sdks/issues
 
+## Coverage scorecard
+
+The Codex CLI publishes its own JSON Schema bundle via `codex app-server generate-json-schema --out DIR`. A snapshot of the output lives at `tests/schemas/codex_app_server_protocol.v2.schemas.json`.
+
+Run the scorecard to see which JSON-RPC methods this crate models vs. what the upstream schema enumerates, and whether our typed structs' serde shape still matches the wire:
+
+```bash
+cargo run --example schema_coverage
+```
+
+Per method, the report marks:
+
+- `✓` modeled in `codex-codes` and a hand-rolled sample validates against the schema (drift-checked)
+- `◐` modeled, but no sample registered yet — grow the registry in `examples/schema_coverage.rs` to drift-check it
+- `⚠` modeled, sample serialized, but did NOT match the schema (drift)
+- `✗` not modeled at all
+
+Override the schema with `CODEX_SCHEMA_PATH=/path/to/fresh/schemas.json` to validate against a freshly-generated schema (e.g. in CI).
+
 ## License
 
 Apache-2.0. See [LICENSE](../LICENSE).
