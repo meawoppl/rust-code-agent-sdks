@@ -332,7 +332,14 @@ mod samples {
             methods::ERROR,
             methods::ACCOUNT_RATE_LIMITS_UPDATED,
             methods::MCP_SERVER_STARTUP_STATUS_UPDATED,
+            methods::MCP_SERVER_OAUTH_LOGIN_COMPLETED,
             methods::REMOTE_CONTROL_STATUS_CHANGED,
+            methods::FILE_CHANGE_PATCH_UPDATED,
+            methods::PLAN_DELTA,
+            methods::TURN_PLAN_UPDATED,
+            methods::TURN_DIFF_UPDATED,
+            methods::REASONING_SUMMARY_PART_ADDED,
+            methods::REASONING_TEXT_DELTA,
         ]
         .into_iter()
         .collect()

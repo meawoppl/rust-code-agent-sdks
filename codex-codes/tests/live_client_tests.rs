@@ -424,6 +424,15 @@ async fn test_typed_message_audit_strict() {
                         "McpServerStartupStatusUpdated"
                     }
                     Notification::RemoteControlStatusChanged(_) => "RemoteControlStatusChanged",
+                    Notification::McpServerOauthLoginCompleted(_) => {
+                        "McpServerOauthLoginCompleted"
+                    }
+                    Notification::FileChangePatchUpdated(_) => "FileChangePatchUpdated",
+                    Notification::PlanDelta(_) => "PlanDelta",
+                    Notification::TurnPlanUpdated(_) => "TurnPlanUpdated",
+                    Notification::TurnDiffUpdated(_) => "TurnDiffUpdated",
+                    Notification::ReasoningSummaryPartAdded(_) => "ReasoningSummaryPartAdded",
+                    Notification::ReasoningTextDelta(_) => "ReasoningTextDelta",
                     Notification::Unknown { method, .. } => {
                         *unknown_methods.entry(method.clone()).or_insert(0) += 1;
                         continue;

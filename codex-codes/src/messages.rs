@@ -27,11 +27,14 @@ use crate::jsonrpc::RequestId;
 use crate::protocol::{
     methods, AccountRateLimitsUpdatedNotification, AgentMessageDeltaNotification,
     CmdOutputDeltaNotification, CommandExecutionApprovalParams, ErrorNotification,
-    FileChangeApprovalParams, FileChangeOutputDeltaNotification, ItemCompletedNotification,
-    ItemStartedNotification, McpServerStartupStatusUpdatedNotification, ReasoningDeltaNotification,
-    RemoteControlStatusChangedNotification, ThreadStartedNotification,
-    ThreadStatusChangedNotification, ThreadTokenUsageUpdatedNotification,
-    TurnCompletedNotification, TurnStartedNotification,
+    FileChangeApprovalParams, FileChangeOutputDeltaNotification,
+    FileChangePatchUpdatedNotification, ItemCompletedNotification, ItemStartedNotification,
+    McpServerOauthLoginCompletedNotification, McpServerStartupStatusUpdatedNotification,
+    PlanDeltaNotification, ReasoningDeltaNotification, ReasoningSummaryPartAddedNotification,
+    ReasoningTextDeltaNotification, RemoteControlStatusChangedNotification,
+    ThreadStartedNotification, ThreadStatusChangedNotification,
+    ThreadTokenUsageUpdatedNotification, TurnCompletedNotification, TurnDiffUpdatedNotification,
+    TurnPlanUpdatedNotification, TurnStartedNotification,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
@@ -73,6 +76,20 @@ pub enum Notification {
     McpServerStartupStatusUpdated(McpServerStartupStatusUpdatedNotification),
     /// `remoteControl/status/changed`
     RemoteControlStatusChanged(RemoteControlStatusChangedNotification),
+    /// `mcpServer/oauthLogin/completed`
+    McpServerOauthLoginCompleted(McpServerOauthLoginCompletedNotification),
+    /// `item/fileChange/patchUpdated`
+    FileChangePatchUpdated(FileChangePatchUpdatedNotification),
+    /// `item/plan/delta` (EXPERIMENTAL)
+    PlanDelta(PlanDeltaNotification),
+    /// `turn/plan/updated`
+    TurnPlanUpdated(TurnPlanUpdatedNotification),
+    /// `turn/diff/updated`
+    TurnDiffUpdated(TurnDiffUpdatedNotification),
+    /// `item/reasoning/summaryPartAdded`
+    ReasoningSummaryPartAdded(ReasoningSummaryPartAddedNotification),
+    /// `item/reasoning/textDelta`
+    ReasoningTextDelta(ReasoningTextDeltaNotification),
     /// A method this crate version does not yet model. The raw params are
     /// preserved for caller inspection. Encountering this typically means
     /// the installed codex CLI is newer than the bindings.
@@ -101,6 +118,13 @@ impl Notification {
             Self::AccountRateLimitsUpdated(_) => methods::ACCOUNT_RATE_LIMITS_UPDATED,
             Self::McpServerStartupStatusUpdated(_) => methods::MCP_SERVER_STARTUP_STATUS_UPDATED,
             Self::RemoteControlStatusChanged(_) => methods::REMOTE_CONTROL_STATUS_CHANGED,
+            Self::McpServerOauthLoginCompleted(_) => methods::MCP_SERVER_OAUTH_LOGIN_COMPLETED,
+            Self::FileChangePatchUpdated(_) => methods::FILE_CHANGE_PATCH_UPDATED,
+            Self::PlanDelta(_) => methods::PLAN_DELTA,
+            Self::TurnPlanUpdated(_) => methods::TURN_PLAN_UPDATED,
+            Self::TurnDiffUpdated(_) => methods::TURN_DIFF_UPDATED,
+            Self::ReasoningSummaryPartAdded(_) => methods::REASONING_SUMMARY_PART_ADDED,
+            Self::ReasoningTextDelta(_) => methods::REASONING_TEXT_DELTA,
             Self::Unknown { method, .. } => method,
         }
     }
@@ -157,6 +181,25 @@ impl Notification {
             methods::REMOTE_CONTROL_STATUS_CHANGED => {
                 serde_json::from_value(params_value).map(Self::RemoteControlStatusChanged)
             }
+            methods::MCP_SERVER_OAUTH_LOGIN_COMPLETED => {
+                serde_json::from_value(params_value).map(Self::McpServerOauthLoginCompleted)
+            }
+            methods::FILE_CHANGE_PATCH_UPDATED => {
+                serde_json::from_value(params_value).map(Self::FileChangePatchUpdated)
+            }
+            methods::PLAN_DELTA => serde_json::from_value(params_value).map(Self::PlanDelta),
+            methods::TURN_PLAN_UPDATED => {
+                serde_json::from_value(params_value).map(Self::TurnPlanUpdated)
+            }
+            methods::TURN_DIFF_UPDATED => {
+                serde_json::from_value(params_value).map(Self::TurnDiffUpdated)
+            }
+            methods::REASONING_SUMMARY_PART_ADDED => {
+                serde_json::from_value(params_value).map(Self::ReasoningSummaryPartAdded)
+            }
+            methods::REASONING_TEXT_DELTA => {
+                serde_json::from_value(params_value).map(Self::ReasoningTextDelta)
+            }
             _ => Ok(Self::Unknown {
                 method: method.to_string(),
                 params,
@@ -190,6 +233,15 @@ impl Notification {
                 pack(methods::MCP_SERVER_STARTUP_STATUS_UPDATED, v)
             }
             Self::RemoteControlStatusChanged(v) => pack(methods::REMOTE_CONTROL_STATUS_CHANGED, v),
+            Self::McpServerOauthLoginCompleted(v) => {
+                pack(methods::MCP_SERVER_OAUTH_LOGIN_COMPLETED, v)
+            }
+            Self::FileChangePatchUpdated(v) => pack(methods::FILE_CHANGE_PATCH_UPDATED, v),
+            Self::PlanDelta(v) => pack(methods::PLAN_DELTA, v),
+            Self::TurnPlanUpdated(v) => pack(methods::TURN_PLAN_UPDATED, v),
+            Self::TurnDiffUpdated(v) => pack(methods::TURN_DIFF_UPDATED, v),
+            Self::ReasoningSummaryPartAdded(v) => pack(methods::REASONING_SUMMARY_PART_ADDED, v),
+            Self::ReasoningTextDelta(v) => pack(methods::REASONING_TEXT_DELTA, v),
             Self::Unknown { method, params } => Ok((method.clone(), params.clone())),
         }
     }

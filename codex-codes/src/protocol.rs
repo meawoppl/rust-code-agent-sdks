@@ -532,6 +532,114 @@ pub struct RemoteControlStatusChangedNotification {
     pub environment_id: Option<String>,
 }
 
+/// `item/fileChange/patchUpdated` notification.
+///
+/// Emitted as the agent's tentative patch evolves during a turn. The
+/// `changes` array carries the current file-by-file diff snapshot.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileChangePatchUpdatedNotification {
+    pub thread_id: String,
+    pub turn_id: String,
+    pub item_id: String,
+    pub changes: Vec<crate::FileUpdateChange>,
+}
+
+/// `item/plan/delta` notification (EXPERIMENTAL).
+///
+/// Proposed plan streaming deltas for plan items. Clients should not assume
+/// concatenated deltas match the completed plan item content.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlanDeltaNotification {
+    pub thread_id: String,
+    pub turn_id: String,
+    pub item_id: String,
+    pub delta: String,
+}
+
+/// One step in a turn-level plan.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TurnPlanStep {
+    pub step: String,
+    pub status: TurnPlanStepStatus,
+}
+
+/// Lifecycle state of a [`TurnPlanStep`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TurnPlanStepStatus {
+    Pending,
+    InProgress,
+    Completed,
+}
+
+/// `turn/plan/updated` notification.
+///
+/// Emitted when the agent updates its turn-level plan; the full plan is
+/// resent on each update.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TurnPlanUpdatedNotification {
+    pub thread_id: String,
+    pub turn_id: String,
+    pub plan: Vec<TurnPlanStep>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub explanation: Option<String>,
+}
+
+/// `turn/diff/updated` notification.
+///
+/// Aggregated unified diff across all file changes in the current turn.
+/// Sent whenever the diff materially changes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TurnDiffUpdatedNotification {
+    pub thread_id: String,
+    pub turn_id: String,
+    pub diff: String,
+}
+
+/// `item/reasoning/summaryPartAdded` notification.
+///
+/// Signals that a new summary block is starting in the agent's reasoning
+/// stream. `summary_index` is the 0-based index of the new block.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReasoningSummaryPartAddedNotification {
+    pub thread_id: String,
+    pub turn_id: String,
+    pub item_id: String,
+    pub summary_index: i64,
+}
+
+/// `item/reasoning/textDelta` notification.
+///
+/// Streaming delta for the agent's verbose reasoning text (separate from
+/// the summary stream).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReasoningTextDeltaNotification {
+    pub thread_id: String,
+    pub turn_id: String,
+    pub item_id: String,
+    pub content_index: i64,
+    pub delta: String,
+}
+
+/// `mcpServer/oauthLogin/completed` notification.
+///
+/// Emitted when an MCP server's OAuth login flow completes (or fails).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpServerOauthLoginCompletedNotification {
+    pub name: String,
+    pub success: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
 // ---------------------------------------------------------------------------
 // Approval flow types (server-to-client requests)
 // ---------------------------------------------------------------------------
@@ -661,7 +769,14 @@ pub mod methods {
     pub const ERROR: &str = "error";
     pub const ACCOUNT_RATE_LIMITS_UPDATED: &str = "account/rateLimits/updated";
     pub const MCP_SERVER_STARTUP_STATUS_UPDATED: &str = "mcpServer/startupStatus/updated";
+    pub const MCP_SERVER_OAUTH_LOGIN_COMPLETED: &str = "mcpServer/oauthLogin/completed";
     pub const REMOTE_CONTROL_STATUS_CHANGED: &str = "remoteControl/status/changed";
+    pub const FILE_CHANGE_PATCH_UPDATED: &str = "item/fileChange/patchUpdated";
+    pub const PLAN_DELTA: &str = "item/plan/delta";
+    pub const TURN_PLAN_UPDATED: &str = "turn/plan/updated";
+    pub const TURN_DIFF_UPDATED: &str = "turn/diff/updated";
+    pub const REASONING_SUMMARY_PART_ADDED: &str = "item/reasoning/summaryPartAdded";
+    pub const REASONING_TEXT_DELTA: &str = "item/reasoning/textDelta";
 
     // Server → client requests (approval)
     pub const CMD_EXEC_APPROVAL: &str = "item/commandExecution/requestApproval";
