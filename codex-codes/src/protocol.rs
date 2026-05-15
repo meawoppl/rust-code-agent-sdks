@@ -744,156 +744,12 @@ pub struct ConfigWarningNotification {
 }
 
 // ---------------------------------------------------------------------------
-// Notification stubs — these wrap the wire `Value` unchanged so that wire
-// shape is preserved and the typed `Notification` enum can dispatch every
-// method the schema enumerates. Each can be promoted to a fully-typed
-// struct later without changing the dispatch surface.
+// Generated wire types — every other notification/request param struct + every
+// transitively-referenced auxiliary type comes from the upstream JSON Schema
+// via `scripts/codegen_protocol.py`. Re-exported here for callers.
 // ---------------------------------------------------------------------------
 
-/// `account/updated` notification (stub — accepts the wire shape unchanged).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct AccountUpdatedNotification(pub Value);
-
-/// `app/list/updated` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct AppListUpdatedNotification(pub Value);
-
-/// `command/exec/outputDelta` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct CommandExecOutputDeltaNotification(pub Value);
-
-/// `externalAgentConfig/import/completed` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ExternalAgentConfigImportCompletedNotification(pub Value);
-
-/// `fuzzyFileSearch/sessionCompleted` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct FuzzyFileSearchSessionCompletedNotification(pub Value);
-
-/// `fuzzyFileSearch/sessionUpdated` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct FuzzyFileSearchSessionUpdatedNotification(pub Value);
-
-/// `hook/completed` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct HookCompletedNotification(pub Value);
-
-/// `hook/started` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct HookStartedNotification(pub Value);
-
-/// `item/autoApprovalReview/completed` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ItemGuardianApprovalReviewCompletedNotification(pub Value);
-
-/// `item/autoApprovalReview/started` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ItemGuardianApprovalReviewStartedNotification(pub Value);
-
-/// `item/commandExecution/terminalInteraction` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct TerminalInteractionNotification(pub Value);
-
-/// `item/mcpToolCall/progress` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct McpToolCallProgressNotification(pub Value);
-
-/// `model/rerouted` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ModelReroutedNotification(pub Value);
-
-/// `model/verification` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ModelVerificationNotification(pub Value);
-
-/// `process/exited` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ProcessExitedNotification(pub Value);
-
-/// `process/outputDelta` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ProcessOutputDeltaNotification(pub Value);
-
-/// `serverRequest/resolved` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ServerRequestResolvedNotification(pub Value);
-
-/// `thread/compacted` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ContextCompactedNotification(pub Value);
-
-/// `thread/goal/updated` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ThreadGoalUpdatedNotification(pub Value);
-
-/// `thread/realtime/closed` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ThreadRealtimeClosedNotification(pub Value);
-
-/// `thread/realtime/error` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ThreadRealtimeErrorNotification(pub Value);
-
-/// `thread/realtime/itemAdded` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ThreadRealtimeItemAddedNotification(pub Value);
-
-/// `thread/realtime/outputAudio/delta` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ThreadRealtimeOutputAudioDeltaNotification(pub Value);
-
-/// `thread/realtime/sdp` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ThreadRealtimeSdpNotification(pub Value);
-
-/// `thread/realtime/started` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ThreadRealtimeStartedNotification(pub Value);
-
-/// `thread/realtime/transcript/delta` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ThreadRealtimeTranscriptDeltaNotification(pub Value);
-
-/// `thread/realtime/transcript/done` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct ThreadRealtimeTranscriptDoneNotification(pub Value);
-
-/// `windows/worldWritableWarning` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct WindowsWorldWritableWarningNotification(pub Value);
-
-/// `windowsSandbox/setupCompleted` notification (stub).
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct WindowsSandboxSetupCompletedNotification(pub Value);
+pub use crate::protocol_generated::types::*;
 
 // ---------------------------------------------------------------------------
 // Approval flow types (server-to-client requests)
@@ -1147,9 +1003,17 @@ pub mod methods {
     pub const WINDOWS_WORLD_WRITABLE_WARNING: &str = "windows/worldWritableWarning";
     pub const WINDOWS_SANDBOX_SETUP_COMPLETED: &str = "windowsSandbox/setupCompleted";
 
-    // Server → client requests (approval)
+    // Server → client requests (approval flow, v2 envelope)
     pub const CMD_EXEC_APPROVAL: &str = "item/commandExecution/requestApproval";
     pub const FILE_CHANGE_APPROVAL: &str = "item/fileChange/requestApproval";
+    pub const TOOL_REQUEST_USER_INPUT: &str = "item/tool/requestUserInput";
+    pub const MCP_SERVER_ELICITATION_REQUEST: &str = "mcpServer/elicitation/request";
+    pub const PERMISSIONS_REQUEST_APPROVAL: &str = "item/permissions/requestApproval";
+    pub const ITEM_TOOL_CALL: &str = "item/tool/call";
+    pub const CHATGPT_AUTH_TOKENS_REFRESH: &str = "account/chatgptAuthTokens/refresh";
+    pub const ATTESTATION_GENERATE: &str = "attestation/generate";
+    pub const APPLY_PATCH_APPROVAL: &str = "applyPatchApproval";
+    pub const EXEC_COMMAND_APPROVAL: &str = "execCommandApproval";
 }
 
 #[cfg(test)]

@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Schema-driven codegen pipeline** — `scripts/codegen_protocol.py` reads the upstream JSON Schema bundles (`codex_app_server_protocol{,.v2}.schemas.json`), walks every reachable definition from `ServerNotification.oneOf`, `ClientRequest.oneOf`, and `ServerRequest.oneOf`, and emits fully-typed Rust structs / enums + a per-method sample registry into `src/protocol_generated/`.
+- **`src/protocol_generated/types.rs`** — ~4.5k lines, hundreds of typed structs/enums for every wire type reachable from any modeled method. Re-exported as part of `codex_codes::protocol`.
+- **`src/protocol_generated/samples.rs`** — one minimal-valid JSON sample per JSON-RPC method, used by the scorecard to assert each typed struct matches the schema's params definition.
+- **ServerRequest dispatch expanded to all 10 approval-flow methods** — adds `ToolRequestUserInput`, `McpServerElicitationRequest`, `PermissionsRequestApproval`, `ItemToolCall`, `ChatgptAuthTokensRefresh`, `AttestationGenerate`, `ApplyPatchApproval`, `ExecCommandApproval` variants alongside the existing `CmdExecApproval` and `FileChangeApproval`.
+- **Scorecard now tracks the ServerRequest envelope** in addition to ServerNotification and ClientRequest.
+
+### Changed
+
+- **`PatchChangeKind`** — Switched from a bare string enum to the internally-tagged shape codex actually emits: `{"type":"add"}`, `{"type":"delete"}`, `{"type":"update","move_path":...}`. Fixes [issue #128](https://github.com/meawoppl/rust-code-agent-sdks/issues/128)'s `unknown variant 'type'` reports. Test fixtures regenerated.
+- **`FileUpdateChange`** — Added the required `diff: String` field that upstream sends. Defaulted to empty string for back-compat when parsing older payloads.
+- **The 29 previously-`Value`-stub notification types** (`AccountUpdatedNotification`, `AppListUpdatedNotification`, `CommandExecOutputDeltaNotification`, the `thread/realtime/*` family, etc.) are now fully field-typed via the codegen output.
+
+### Coverage scorecard
+
+```
+modeled:        149/149 (100%) — every server notification + client request + server request method
+with sample:    149/149 (100%) — every modeled method's sample validates against the schema
+```
+
 ## [0.129.0] - 2026-05-15
 
 ### Added

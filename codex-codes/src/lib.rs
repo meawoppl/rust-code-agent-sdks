@@ -159,6 +159,7 @@ pub mod error;
 pub mod jsonrpc;
 pub mod messages;
 pub mod protocol;
+pub mod protocol_generated;
 
 #[cfg(any(feature = "sync-client", feature = "async-client"))]
 pub mod cli;

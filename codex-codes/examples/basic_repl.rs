@@ -123,6 +123,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ServerRequest::Unknown { method, .. } => {
                         eprintln!("[unhandled server request: {}]", method);
                     }
+                    other => {
+                        eprintln!("[unhandled server request: {}]", other.method());
+                    }
                 },
             }
         }
