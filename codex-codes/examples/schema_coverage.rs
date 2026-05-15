@@ -150,7 +150,7 @@ fn walk_envelope(
 
     let mut rows: Vec<Row> = variants
         .iter()
-        .filter_map(|v| extract_envelope_variant(v))
+        .filter_map(extract_envelope_variant)
         .collect();
 
     // Sort by method for stable output.

@@ -2273,8 +2273,9 @@ async fn test_ask_user_question_answered_and_converges() {
                                 // Regression check: re-serialize the entire
                                 // parsed UserMessage and verify the
                                 // tool_use_result field round-trips exactly.
-                                if let Ok(reser) = serde_json::to_value(&msg) {
-                                    let original = msg.tool_use_result.as_ref().unwrap();
+                                if let (Ok(reser), Some(original)) =
+                                    (serde_json::to_value(&msg), msg.tool_use_result.as_ref())
+                                {
                                     let echoed = &reser["tool_use_result"];
                                     if echoed != original {
                                         user_msg_roundtrip_diff = Some(format!(
@@ -2337,7 +2338,7 @@ async fn test_ask_user_question_answered_and_converges() {
     let _ = client.shutdown().await;
 
     assert!(
-        !outcome.is_err(),
+        outcome.is_ok(),
         "AskUserQuestion convergence test timed out"
     );
     assert!(
