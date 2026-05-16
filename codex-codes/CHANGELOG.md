@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.129.2] - 2026-05-16
+
+### Added
+
+- **`AppServerBuilder::config_override(key, value)`** — repeatable; appends a `-c key=value` *global* codex flag (placed before `app-server` since `-c` is parsed as a global option, not a subcommand arg). Closes [#135](https://github.com/meawoppl/rust-code-agent-sdks/issues/135). Unblocks consumers like agent-portal that need to pass e.g. `("sandbox_mode", "workspace-write")` or `("approval_policy", "on-request")` at spawn time — previously the only way to do this was to fork the crate or shell out around it.
+- **`AppServerBuilder::extra_args(args)`** — appends raw additional args *after* `--listen stdio://` so they land as `app-server` subcommand args. The seam for any flag the SDK doesn't model yet (`--strict-config`, future `--session-source app-server`, etc.).
+
+Both follow the existing `ClaudeCliBuilder` patterns in the sibling crate: `key: K, value: V` with `K: Into<String>`, `V: Into<String>` for the keyed variant; `<I, S: Into<String>>` for the iterable variant.
+
+Values are passed to codex unparsed — codex tries TOML, falls back to raw string. Caller is responsible for any quoting/escaping (e.g. arrays: `r#"["disk-full-read-access"]"#`).
+
 ## [0.129.1] - 2026-05-15
 
 ### Added
