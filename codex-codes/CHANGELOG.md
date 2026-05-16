@@ -5,6 +5,90 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.128.1] - 2026-05-16
+
+### Changed (breaking)
+
+Approval-flow types and decision enums renamed to match upstream
+`app-server-protocol/src/protocol/v2/item.rs` at `rust-v0.130.0`:
+
+- `CommandExecutionApprovalParams` → `CommandExecutionRequestApprovalParams`
+- `CommandExecutionApprovalResponse` → `CommandExecutionRequestApprovalResponse`
+- `FileChangeApprovalParams` → `FileChangeRequestApprovalParams`
+- `FileChangeApprovalResponse` → `FileChangeRequestApprovalResponse`
+- `CommandApprovalDecision` → `CommandExecutionApprovalDecision`
+  (now carries two new tagged variants: `AcceptWithExecpolicyAmendment`,
+  `ApplyNetworkPolicyAmendment`)
+- `CmdOutputDeltaNotification` → `CommandExecutionOutputDeltaNotification`
+- `ReasoningDeltaNotification` → `ReasoningSummaryTextDeltaNotification`
+  (with required `summary_index: i64`)
+- `McpServerStartupStatusUpdatedNotification` → `McpServerStatusUpdatedNotification`
+- `RateLimits` → `RateLimitSnapshot`
+- `TokenCounts` → `TokenUsageBreakdown` (`u64` fields → `i64`)
+- `TokenUsage` → `ThreadTokenUsage` (`model_context_window: u64` → `Option<i64>`)
+- `TurnStartParams.reasoning_effort` → `effort` (matches upstream field name)
+- `TurnStartParams.{instructions, tools}` — removed (neither exists upstream)
+- `ThreadStartParams.{instructions, tools}` — removed (neither exists upstream)
+- Approval params field `call_id` → `item_id`
+- `FileChangeApprovalParams.changes` — removed (the changes live on the
+  parent `FileChangeItem`, not on the approval request)
+
+### Added
+
+- `TurnStartResponse.turn: Turn` (was an empty struct).
+- `Turn` gains `items_view`, `started_at`, `completed_at`, `duration_ms`.
+- `InitializeResponse` gains `codex_home`, `platform_family`, `platform_os`.
+- `AgentMessageItem` gains optional `phase` and `memory_citation`.
+- `ReasoningItem`: `text: String` replaced by `summary: Vec<String>` and
+  `content: Vec<String>`; optional `text` retained for back-compat with
+  legacy exec-format captures.
+- `CommandExecutionItem` gains `cwd`, `process_id`, `source`,
+  `command_actions`, `duration_ms`.
+- `PatchApplyStatus`: `InProgress` and `Declined` variants added; the
+  wire form is now camelCase.
+- Delta notifications gain the required `turn_id` field
+  (`AgentMessageDelta`, `CommandExecutionOutputDelta`,
+  `FileChangeOutputDelta`, `ReasoningSummaryTextDelta`).
+- `ThreadTokenUsageUpdatedNotification.turn_id` is now required.
+- `ThreadStatus::Active.active_flags` correctly serializes as `activeFlags`
+  (per-variant `rename_all`).
+- `PatchChangeKind` accepts both the bare-string and tagged-object wire
+  shapes (newer codex emits `{"type":"add"}` rather than `"add"`); a
+  new optional `diff` field on `FileUpdateChange` carries the patch
+  payload upstream now ships alongside the kind.
+
+### Layout
+
+- `src/protocol.rs` (1k lines) split into `src/protocol/{v1.rs, v2/*.rs}`
+  mirroring upstream's `codex-rs/app-server-protocol/src/protocol/` tree.
+  All previous `use codex_codes::*` paths continue to work via re-exports.
+
+### Anti-divergence infrastructure
+
+- `tests/protocol_name_conformance.rs` — uses `syn` to walk
+  `src/protocol/**/*.rs`, looks up each file's twin under
+  `tests/test_data/upstream/`, and asserts the wire field-name set for
+  every struct is a subset of upstream's. Catches renamed and invented
+  field names that `cargo build` and the typed dispatch cannot.
+- `tests/test_data/upstream/` — pinned snapshot of upstream protocol
+  source files at `rust-v0.130.0` (commit `58573da4…`).
+- `tools/sync-upstream-bindings.sh` — refreshes the snapshot at a given
+  tag via `gh api`.
+- `#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]`
+  applied to every wire struct/enum so a wire field we don't model fails
+  the integration tests loudly instead of silently dropping data.
+
+### Tests
+
+- `tests/live_client_tests.rs::test_async_client_writes_compilable_quicksort`
+  — end-to-end against the real Codex CLI: asks the agent to write
+  `quicksort.rs`, drives the full approval round-trip, then shells out
+  to `rustc --edition 2021 quicksort.rs` to verify the result compiles.
+  Per-message `tokio::time::timeout` converts a true hang into a clear
+  test failure with the last-seen approval as breadcrumb.
+- 98 tests total green under `--features integration-tests`: 65 unit +
+  17 JSONL fixture + 10 live-CLI + 1 conformance + 5 doctests.
+
 ## [0.128.0] - 2026-05-14
 
 Version jumps from 0.101.x into the 0.1xx range that tracks the Codex CLI it
