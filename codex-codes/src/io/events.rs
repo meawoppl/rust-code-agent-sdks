@@ -21,6 +21,7 @@ use super::items::ThreadItem;
 
 /// Token usage statistics for a completed turn.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct Usage {
     pub input_tokens: u64,
     pub cached_input_tokens: u64,
@@ -29,52 +30,61 @@ pub struct Usage {
 
 /// Error information from a thread.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ThreadError {
     pub message: String,
 }
 
 /// Event indicating a thread has started.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ThreadStartedEvent {
     pub thread_id: String,
 }
 
 /// Event indicating a turn has started.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct TurnStartedEvent {}
 
 /// Event indicating a turn has completed successfully.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct TurnCompletedEvent {
     pub usage: Usage,
 }
 
 /// Event indicating a turn has failed.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct TurnFailedEvent {
     pub error: ThreadError,
 }
 
 /// Event indicating an item has started processing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ItemStartedEvent {
     pub item: ThreadItem,
 }
 
 /// Event indicating an item has been updated.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ItemUpdatedEvent {
     pub item: ThreadItem,
 }
 
 /// Event indicating an item has completed.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ItemCompletedEvent {
     pub item: ThreadItem,
 }
 
 /// A thread-level error event.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ThreadErrorEvent {
     pub message: String,
 }
@@ -85,6 +95,7 @@ pub struct ThreadErrorEvent {
 /// Use [`ThreadEvent::event_type`] to get the type string.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum ThreadEvent {
     #[serde(rename = "thread.started")]
     ThreadStarted(ThreadStartedEvent),

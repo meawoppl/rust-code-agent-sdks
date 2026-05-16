@@ -28,7 +28,7 @@
 //!     thread_id: thread.thread_id().to_string(),
 //!     input: vec![UserInput::Text { text: "Hello!".into() }],
 //!     model: None,
-//!     reasoning_effort: None,
+//!     effort: None,
 //!     sandbox_policy: None,
 //! })?;
 //!
@@ -276,8 +276,8 @@ impl SyncClient {
     ///
     /// When the server sends a [`ServerMessage::Request`], it expects a response.
     /// Use this method with the request's `id` and a result payload. For command
-    /// approval, pass a [`CommandExecutionApprovalResponse`](crate::CommandExecutionApprovalResponse).
-    /// For file change approval, pass a [`FileChangeApprovalResponse`](crate::FileChangeApprovalResponse).
+    /// approval, pass a [`CommandExecutionRequestApprovalResponse`](crate::CommandExecutionRequestApprovalResponse).
+    /// For file change approval, pass a [`FileChangeRequestApprovalResponse`](crate::FileChangeRequestApprovalResponse).
     pub fn respond<R: Serialize>(&mut self, id: RequestId, result: &R) -> Result<()> {
         let resp = JsonRpcResponse {
             id,

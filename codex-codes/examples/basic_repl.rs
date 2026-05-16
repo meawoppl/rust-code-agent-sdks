@@ -4,8 +4,8 @@
 //! Type your prompt and press Enter. Type "exit" to quit.
 
 use codex_codes::{
-    AsyncClient, CommandApprovalDecision, CommandExecutionApprovalResponse,
-    FileChangeApprovalDecision, FileChangeApprovalResponse, Notification, ServerMessage,
+    AsyncClient, CommandExecutionApprovalDecision, CommandExecutionRequestApprovalResponse,
+    FileChangeApprovalDecision, FileChangeRequestApprovalResponse, Notification, ServerMessage,
     ServerRequest, ThreadItem, ThreadStartParams, TurnStartParams, UserInput,
 };
 use std::io::{self, Write};
@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     text: input.to_string(),
                 }],
                 model: None,
-                reasoning_effort: None,
+                effort: None,
                 sandbox_policy: None,
             })
             .await?;
@@ -99,12 +99,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 },
                 ServerMessage::Request { id, request } => match request {
                     ServerRequest::CmdExecApproval(p) => {
-                        println!("\n[Approving command: {}]", p.command);
+                        println!(
+                            "\n[Approving command: {}]",
+                            p.command.as_deref().unwrap_or("<no command>")
+                        );
                         client
                             .respond(
                                 id,
-                                &CommandExecutionApprovalResponse {
-                                    decision: CommandApprovalDecision::Accept,
+                                &CommandExecutionRequestApprovalResponse {
+                                    decision: CommandExecutionApprovalDecision::Accept,
                                 },
                             )
                             .await?;
@@ -114,7 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         client
                             .respond(
                                 id,
-                                &FileChangeApprovalResponse {
+                                &FileChangeRequestApprovalResponse {
                                     decision: FileChangeApprovalDecision::Accept,
                                 },
                             )

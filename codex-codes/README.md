@@ -72,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         thread_id: thread.thread_id().to_string(),
         input: vec![UserInput::Text { text: "What is 2 + 2?".into() }],
         model: None,
-        reasoning_effort: None,
+        effort: None,
         sandbox_policy: None,
     }).await?;
 
@@ -108,7 +108,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         thread_id: thread.thread_id().to_string(),
         input: vec![UserInput::Text { text: "What is 2 + 2?".into() }],
         model: None,
-        reasoning_effort: None,
+        effort: None,
         sandbox_policy: None,
     })?;
 

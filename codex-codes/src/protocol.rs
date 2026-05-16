@@ -11,8 +11,8 @@
 //! - **Server notifications** — Structs like [`TurnCompletedNotification`],
 //!   [`AgentMessageDeltaNotification`] that can be deserialized from the `params`
 //!   field of a [`ServerMessage::Notification`]
-//! - **Approval flow types** — [`CommandExecutionApprovalParams`] and
-//!   [`FileChangeApprovalParams`] for server-to-client requests that need a response
+//! - **Approval flow types** — [`CommandExecutionRequestApprovalParams`] and
+//!   [`FileChangeRequestApprovalParams`] for server-to-client requests that need a response
 //! - **Method constants** — The [`methods`] module contains all JSON-RPC method
 //!   name strings
 //!
@@ -51,6 +51,7 @@ use serde_json::Value;
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum UserInput {
     /// Text input from the user.
     Text { text: String },
@@ -67,6 +68,7 @@ pub enum UserInput {
 /// Identifies the connecting client to the app-server.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ClientInfo {
     /// Client application name (e.g., `"my-codex-app"`).
     pub name: String,
@@ -80,6 +82,7 @@ pub struct ClientInfo {
 /// Client capabilities negotiated during `initialize`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct InitializeCapabilities {
     /// Opt into receiving experimental API methods and fields.
     #[serde(default)]
@@ -94,6 +97,7 @@ pub struct InitializeCapabilities {
 /// Must be the first request sent after connecting to the app-server.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct InitializeParams {
     /// Information about the connecting client.
     pub client_info: ClientInfo,
@@ -105,9 +109,18 @@ pub struct InitializeParams {
 /// Response from the `initialize` request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct InitializeResponse {
     /// The server's user-agent string.
     pub user_agent: String,
+    /// Absolute path to the server's `$CODEX_HOME` directory.
+    pub codex_home: String,
+    /// Platform family of the running app-server target (`"unix"` /
+    /// `"windows"`).
+    pub platform_family: String,
+    /// Operating system of the running app-server target (`"linux"`,
+    /// `"macos"`, `"windows"`, ...).
+    pub platform_os: String,
 }
 
 // ---------------------------------------------------------------------------
@@ -119,6 +132,7 @@ pub struct InitializeResponse {
 /// Use `ThreadStartParams::default()` for a basic thread with no custom instructions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ThreadStartParams {
     /// Optional system instructions for the agent.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -163,6 +177,7 @@ impl ThreadStartResponse {
 /// Parameters for `thread/archive`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ThreadArchiveParams {
     pub thread_id: String,
 }
@@ -170,6 +185,7 @@ pub struct ThreadArchiveParams {
 /// Response from `thread/archive`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ThreadArchiveResponse {}
 
 // ---------------------------------------------------------------------------
@@ -182,30 +198,38 @@ pub struct ThreadArchiveResponse {}
 /// input and streams notifications until the turn completes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct TurnStartParams {
     /// The thread ID from [`ThreadStartResponse`].
     pub thread_id: String,
     /// One or more user inputs (text and/or images).
     pub input: Vec<UserInput>,
-    /// Override the model for this turn (e.g., `"o4-mini"`).
+    /// Override the model for this turn and subsequent turns.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
-    /// Override reasoning effort for this turn (e.g., `"low"`, `"medium"`, `"high"`).
+    /// Override reasoning effort for this turn and subsequent turns
+    /// (e.g., `"low"`, `"medium"`, `"high"`). Upstream names this `effort`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub reasoning_effort: Option<String>,
-    /// Override sandbox policy for this turn.
+    pub effort: Option<String>,
+    /// Override the sandbox policy for this turn and subsequent turns.
+    /// Shape varies; we preserve it as raw JSON.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sandbox_policy: Option<Value>,
 }
 
 /// Response from `turn/start`.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TurnStartResponse {}
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
+pub struct TurnStartResponse {
+    /// The newly-started turn (id, items, status).
+    pub turn: Turn,
+}
 
 /// Parameters for `turn/interrupt`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct TurnInterruptParams {
     pub thread_id: String,
 }
@@ -213,6 +237,7 @@ pub struct TurnInterruptParams {
 /// Response from `turn/interrupt`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct TurnInterruptResponse {}
 
 // ---------------------------------------------------------------------------
@@ -222,6 +247,7 @@ pub struct TurnInterruptResponse {}
 /// Status of a turn within a [`Turn`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum TurnStatus {
     /// The agent finished normally.
     Completed,
@@ -236,6 +262,7 @@ pub enum TurnStatus {
 /// Error information from a failed turn.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct TurnError {
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -247,17 +274,31 @@ pub struct TurnError {
 /// Included in [`TurnCompletedNotification`] when a turn finishes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct Turn {
     /// Unique turn identifier.
     pub id: String,
     /// All items produced during this turn (messages, commands, file changes, etc.).
     #[serde(default)]
     pub items: Vec<ThreadItem>,
+    /// Description of how much of `items` has been loaded for this turn.
+    /// Shape is upstream's `TurnItemsView`; preserved as raw JSON.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub items_view: Option<Value>,
     /// Final status of the turn.
     pub status: TurnStatus,
     /// Error details if `status` is [`TurnStatus::Failed`].
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<TurnError>,
+    /// Unix timestamp (seconds) when the turn started.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<i64>,
+    /// Unix timestamp (seconds) when the turn completed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completed_at: Option<i64>,
+    /// Wall-clock duration between turn start and completion, in milliseconds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration_ms: Option<i64>,
 }
 
 // ---------------------------------------------------------------------------
@@ -268,6 +309,7 @@ pub struct Turn {
 /// thread. Sub-field of [`TokenUsage`].
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct TokenCounts {
     /// Input tokens consumed.
     #[serde(default)]
@@ -293,6 +335,7 @@ pub struct TokenCounts {
 /// window for client-side budget tracking.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct TokenUsage {
     /// Counts for the most recently completed turn.
     pub last: TokenCounts,
@@ -312,12 +355,14 @@ pub struct TokenUsage {
 /// carrying an `activeFlags` array of in-progress markers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum ThreadStatus {
     /// Thread is not yet loaded.
     NotLoaded,
     /// Thread is idle (no active turn).
     Idle,
     /// Thread has an active turn being processed.
+    #[serde(rename_all = "camelCase")]
     Active {
         /// Tags identifying what is in flight (e.g. running tools).
         /// Shape is codex-version-dependent; preserved as raw JSON.
@@ -338,6 +383,7 @@ pub enum ThreadStatus {
 /// the new thread.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ThreadStartedNotification {
     pub thread: ThreadInfo,
 }
@@ -345,6 +391,7 @@ pub struct ThreadStartedNotification {
 /// `thread/status/changed` notification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ThreadStatusChangedNotification {
     pub thread_id: String,
     pub status: ThreadStatus,
@@ -355,6 +402,7 @@ pub struct ThreadStatusChangedNotification {
 /// Carries the freshly-created [`Turn`] (with `status: in_progress`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct TurnStartedNotification {
     pub thread_id: String,
     pub turn: Turn,
@@ -365,6 +413,7 @@ pub struct TurnStartedNotification {
 /// Carries the final [`Turn`] state with its full item list.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct TurnCompletedNotification {
     pub thread_id: String,
     pub turn: Turn,
@@ -373,6 +422,7 @@ pub struct TurnCompletedNotification {
 /// `item/started` notification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ItemStartedNotification {
     pub thread_id: String,
     pub turn_id: String,
@@ -386,6 +436,7 @@ pub struct ItemStartedNotification {
 /// `item/completed` notification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ItemCompletedNotification {
     pub thread_id: String,
     pub turn_id: String,
@@ -399,6 +450,7 @@ pub struct ItemCompletedNotification {
 /// `item/agentMessage/delta` notification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct AgentMessageDeltaNotification {
     pub thread_id: String,
     pub item_id: String,
@@ -408,6 +460,7 @@ pub struct AgentMessageDeltaNotification {
 /// `item/commandExecution/outputDelta` notification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct CmdOutputDeltaNotification {
     pub thread_id: String,
     pub item_id: String,
@@ -417,6 +470,7 @@ pub struct CmdOutputDeltaNotification {
 /// `item/fileChange/outputDelta` notification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct FileChangeOutputDeltaNotification {
     pub thread_id: String,
     pub item_id: String,
@@ -426,6 +480,7 @@ pub struct FileChangeOutputDeltaNotification {
 /// `item/reasoning/summaryTextDelta` notification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ReasoningDeltaNotification {
     pub thread_id: String,
     pub item_id: String,
@@ -435,6 +490,7 @@ pub struct ReasoningDeltaNotification {
 /// `error` notification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ErrorNotification {
     pub error: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -450,6 +506,7 @@ pub struct ErrorNotification {
 /// Emitted after each turn with cumulative and per-turn token counts.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ThreadTokenUsageUpdatedNotification {
     pub thread_id: String,
     /// The turn that triggered this usage update. May be absent for
@@ -462,6 +519,7 @@ pub struct ThreadTokenUsageUpdatedNotification {
 /// A rate-limit window descriptor used inside [`RateLimits`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct RateLimitWindow {
     /// Unix timestamp (seconds) at which this rate-limit window resets.
     pub resets_at: i64,
@@ -474,6 +532,7 @@ pub struct RateLimitWindow {
 /// Rate-limit envelope sent in [`AccountRateLimitsUpdatedNotification`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct RateLimits {
     /// Credit balance, if applicable for this plan. Shape is plan-dependent
     /// so the payload is preserved as raw JSON.
@@ -500,6 +559,7 @@ pub struct RateLimits {
 /// `account/rateLimits/updated` notification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct AccountRateLimitsUpdatedNotification {
     pub rate_limits: RateLimits,
 }
@@ -510,6 +570,7 @@ pub struct AccountRateLimitsUpdatedNotification {
 /// its startup lifecycle (e.g. `starting` → `ready` or `starting` → `failed`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct McpServerStartupStatusUpdatedNotification {
     /// MCP server identifier.
     pub name: String,
@@ -524,6 +585,7 @@ pub struct McpServerStartupStatusUpdatedNotification {
 /// `remoteControl/status/changed` notification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct RemoteControlStatusChangedNotification {
     /// Status string (e.g. `"disabled"`, `"enabled"`).
     pub status: String,
@@ -538,16 +600,29 @@ pub struct RemoteControlStatusChangedNotification {
 
 /// Decision for command execution approval.
 ///
-/// Sent as part of [`CommandExecutionApprovalResponse`] when responding to
-/// a command approval request from the server.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Mirrors upstream's `CommandExecutionApprovalDecision` in
+/// `codex-rs/app-server-protocol/src/protocol/v2/item.rs`. The two tagged
+/// variants carry payloads whose precise shape (`ExecPolicyAmendment` /
+/// `NetworkPolicyAmendment`) is not modeled here; raw [`Value`] preserves
+/// the wire data without dragging in the upstream subtypes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum CommandApprovalDecision {
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
+pub enum CommandExecutionApprovalDecision {
     /// Allow this specific command to execute.
     Accept,
     /// Allow this command and similar future commands in this session.
     AcceptForSession,
-    /// Reject this command.
+    /// Allow this command and apply the proposed execpolicy amendment so
+    /// future matching commands can run without prompting.
+    AcceptWithExecpolicyAmendment {
+        execpolicy_amendment: Value,
+    },
+    /// User chose a persistent network policy rule for this host.
+    ApplyNetworkPolicyAmendment {
+        network_policy_amendment: Value,
+    },
+    /// Reject this command; the turn will continue.
     Decline,
     /// Cancel the entire turn.
     Cancel,
@@ -555,44 +630,84 @@ pub enum CommandApprovalDecision {
 
 /// Parameters for `item/commandExecution/requestApproval` (server → client).
 ///
-/// The server sends this as a [`ServerMessage::Request`] when the agent wants
-/// to execute a command that requires user approval. Respond with
-/// [`CommandExecutionApprovalResponse`].
+/// Mirrors upstream's `CommandExecutionRequestApprovalParams` in
+/// `codex-rs/app-server-protocol/src/protocol/v2/item.rs`. The server sends
+/// this as a [`ServerMessage::Request`] when the agent wants to execute a
+/// command that requires user approval. Respond with
+/// [`CommandExecutionRequestApprovalResponse`].
+///
+/// Several upstream fields reference structured subtypes
+/// (`NetworkApprovalContext`, `AdditionalPermissionProfile`,
+/// `ExecPolicyAmendment`, `NetworkPolicyAmendment`, `CommandAction`) that we
+/// do not model here; those are captured as [`Value`] so the wire round-trips
+/// without losing data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CommandExecutionApprovalParams {
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
+pub struct CommandExecutionRequestApprovalParams {
     pub thread_id: String,
     pub turn_id: String,
-    /// Unique identifier for this tool call.
-    pub call_id: String,
-    /// The shell command the agent wants to run.
-    pub command: String,
-    /// Working directory for the command.
-    pub cwd: String,
+    pub item_id: String,
+    /// Server-side timestamp (ms since Unix epoch) when this approval
+    /// request was raised.
+    pub started_at_ms: i64,
+    /// Disambiguates multiple approval callbacks under the same `item_id`
+    /// (used by zsh-exec-bridge subcommand prompts). `None` for regular
+    /// shell/unified_exec approvals.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub approval_id: Option<String>,
     /// Human-readable explanation of why the command is needed.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+    /// Context for a managed-network approval prompt, when applicable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub network_approval_context: Option<Value>,
+    /// The shell command the agent wants to run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command: Option<String>,
+    /// Working directory for the command.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
+    /// Best-effort parsed command actions for friendly display.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command_actions: Option<Vec<Value>>,
+    /// Additional permissions the agent is requesting for this command.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub additional_permissions: Option<Value>,
+    /// Proposed execpolicy amendment to allow similar commands without
+    /// prompting in the future.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub proposed_execpolicy_amendment: Option<Value>,
+    /// Proposed network policy amendments (allow/deny host) for future
+    /// requests.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub proposed_network_policy_amendments: Option<Vec<Value>>,
+    /// Ordered list of decisions the client may present for this prompt.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub available_decisions: Option<Vec<CommandExecutionApprovalDecision>>,
 }
 
 /// Response for `item/commandExecution/requestApproval`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CommandExecutionApprovalResponse {
-    pub decision: CommandApprovalDecision,
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
+pub struct CommandExecutionRequestApprovalResponse {
+    pub decision: CommandExecutionApprovalDecision,
 }
 
 /// Decision for file change approval.
 ///
-/// Sent as part of [`FileChangeApprovalResponse`] when responding to
-/// a file change approval request from the server.
+/// Mirrors upstream's `FileChangeApprovalDecision` in
+/// `codex-rs/app-server-protocol/src/protocol/v2/item.rs`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum FileChangeApprovalDecision {
     /// Allow this specific file change.
     Accept,
     /// Allow this and similar future file changes in this session.
     AcceptForSession,
-    /// Reject this file change.
+    /// Reject this file change; the turn will continue.
     Decline,
     /// Cancel the entire turn.
     Cancel,
@@ -600,27 +715,36 @@ pub enum FileChangeApprovalDecision {
 
 /// Parameters for `item/fileChange/requestApproval` (server → client).
 ///
-/// The server sends this as a [`ServerMessage::Request`] when the agent wants
-/// to modify files and requires user approval. Respond with
-/// [`FileChangeApprovalResponse`].
+/// Mirrors upstream's `FileChangeRequestApprovalParams` in
+/// `codex-rs/app-server-protocol/src/protocol/v2/item.rs`. The proposed file
+/// changes themselves are carried on the parent `FileChangeItem` (via
+/// `item/started`), not on this approval request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct FileChangeApprovalParams {
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
+pub struct FileChangeRequestApprovalParams {
     pub thread_id: String,
     pub turn_id: String,
-    /// Unique identifier for this tool call.
-    pub call_id: String,
-    /// The proposed file changes (structure varies by patch format).
-    pub changes: Value,
+    pub item_id: String,
+    /// Server-side timestamp (ms since Unix epoch) when this approval
+    /// request was raised.
+    pub started_at_ms: i64,
     /// Human-readable explanation of why the changes are needed.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+    /// When set, the agent is asking the user to grant writes under this
+    /// root for the remainder of the session. Upstream marks this UNSTABLE.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grant_root: Option<String>,
 }
 
 /// Response for `item/fileChange/requestApproval`.
+///
+/// Upstream omits `#[serde(rename_all)]` on this struct, so the `decision`
+/// field is wired as-is.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FileChangeApprovalResponse {
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
+pub struct FileChangeRequestApprovalResponse {
     pub decision: FileChangeApprovalDecision,
 }
 
@@ -690,9 +814,17 @@ mod tests {
 
     #[test]
     fn test_initialize_response() {
-        let json = r#"{"userAgent":"codex-cli/0.104.0"}"#;
+        let json = r#"{
+            "userAgent": "codex-cli/0.130.0",
+            "codexHome": "/home/u/.codex",
+            "platformFamily": "unix",
+            "platformOs": "linux"
+        }"#;
         let resp: InitializeResponse = serde_json::from_str(json).unwrap();
-        assert_eq!(resp.user_agent, "codex-cli/0.104.0");
+        assert_eq!(resp.user_agent, "codex-cli/0.130.0");
+        assert_eq!(resp.codex_home, "/home/u/.codex");
+        assert_eq!(resp.platform_family, "unix");
+        assert_eq!(resp.platform_os, "linux");
     }
 
     #[test]
@@ -751,7 +883,7 @@ mod tests {
                 text: "What is 2+2?".to_string(),
             }],
             model: None,
-            reasoning_effort: None,
+            effort: None,
             sandbox_policy: None,
         };
         let json = serde_json::to_string(&params).unwrap();
@@ -768,9 +900,10 @@ mod tests {
 
     #[test]
     fn test_turn_completed_notification() {
+        // Upstream `TurnCompletedNotification` has only `threadId` and `turn`
+        // — no top-level `turnId`. The turn's own id is nested under `turn.id`.
         let json = r#"{
             "threadId": "th_1",
-            "turnId": "t_1",
             "turn": {
                 "id": "t_1",
                 "items": [],
@@ -790,27 +923,81 @@ mod tests {
     }
 
     #[test]
-    fn test_command_approval_decision() {
+    fn test_command_execution_approval_decision_bare_variants() {
         let json = r#""accept""#;
-        let decision: CommandApprovalDecision = serde_json::from_str(json).unwrap();
-        assert_eq!(decision, CommandApprovalDecision::Accept);
+        let decision: CommandExecutionApprovalDecision = serde_json::from_str(json).unwrap();
+        assert_eq!(decision, CommandExecutionApprovalDecision::Accept);
 
         let json = r#""acceptForSession""#;
-        let decision: CommandApprovalDecision = serde_json::from_str(json).unwrap();
-        assert_eq!(decision, CommandApprovalDecision::AcceptForSession);
+        let decision: CommandExecutionApprovalDecision = serde_json::from_str(json).unwrap();
+        assert_eq!(decision, CommandExecutionApprovalDecision::AcceptForSession);
     }
 
     #[test]
-    fn test_command_approval_params() {
+    fn test_command_execution_approval_decision_tagged_variants() {
+        // Shape observed on the wire from codex-cli 0.130 in the
+        // `availableDecisions` field. The inner field name on the
+        // execpolicy variant is snake_case because `rename_all` on the
+        // outer enum only renames variants, not struct-variant fields —
+        // matching upstream's definition.
+        let json = r#"{
+            "acceptWithExecpolicyAmendment": {
+                "execpolicy_amendment": ["touch"]
+            }
+        }"#;
+        let decision: CommandExecutionApprovalDecision = serde_json::from_str(json).unwrap();
+        assert!(matches!(
+            decision,
+            CommandExecutionApprovalDecision::AcceptWithExecpolicyAmendment { .. }
+        ));
+    }
+
+    #[test]
+    fn test_command_execution_request_approval_params_current_wire() {
+        // Shape observed on codex-cli 0.130. Mirrors upstream's
+        // `CommandExecutionRequestApprovalParams`.
         let json = r#"{
             "threadId": "th_1",
             "turnId": "t_1",
-            "callId": "call_1",
-            "command": "rm -rf /tmp/test",
-            "cwd": "/home/user"
+            "itemId": "call_X7SaEBLhZSJlFA1PGftlLsTP",
+            "startedAtMs": 1778939797972,
+            "reason": "Do you want to allow creating quicksort.rs?",
+            "command": "/bin/bash -lc 'touch quicksort.rs'",
+            "cwd": "/tmp/work",
+            "commandActions": [{"type":"unknown","command":"touch quicksort.rs"}],
+            "proposedExecpolicyAmendment": ["touch"],
+            "availableDecisions": [
+                "accept",
+                {"acceptWithExecpolicyAmendment": {"execpolicy_amendment": ["touch"]}},
+                "cancel"
+            ]
         }"#;
-        let params: CommandExecutionApprovalParams = serde_json::from_str(json).unwrap();
-        assert_eq!(params.command, "rm -rf /tmp/test");
+        let params: CommandExecutionRequestApprovalParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.item_id, "call_X7SaEBLhZSJlFA1PGftlLsTP");
+        assert_eq!(params.started_at_ms, 1778939797972);
+        assert_eq!(params.command.as_deref(), Some("/bin/bash -lc 'touch quicksort.rs'"));
+        assert_eq!(params.command_actions.as_ref().map(|v| v.len()), Some(1));
+        assert_eq!(
+            params.available_decisions.as_ref().map(|v| v.len()),
+            Some(3)
+        );
+    }
+
+    #[test]
+    fn test_file_change_request_approval_params_minimal() {
+        // Upstream `FileChangeRequestApprovalParams` only requires the
+        // three ids and a timestamp; `reason` and `grant_root` are optional.
+        let json = r#"{
+            "threadId": "th_1",
+            "turnId": "t_1",
+            "itemId": "call_2",
+            "startedAtMs": 1778939797000
+        }"#;
+        let params: FileChangeRequestApprovalParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.item_id, "call_2");
+        assert_eq!(params.started_at_ms, 1778939797000);
+        assert!(params.reason.is_none());
+        assert!(params.grant_root.is_none());
     }
 
     #[test]

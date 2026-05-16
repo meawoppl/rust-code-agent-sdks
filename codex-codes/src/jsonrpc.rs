@@ -33,6 +33,7 @@ use serde_json::Value;
 /// The client uses integer IDs; the server may use either form.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum RequestId {
     String(String),
     Integer(i64),
@@ -49,6 +50,7 @@ impl std::fmt::Display for RequestId {
 
 /// A JSON-RPC request (client-to-server or server-to-client).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct JsonRpcRequest {
     pub id: RequestId,
     pub method: String,
@@ -58,6 +60,7 @@ pub struct JsonRpcRequest {
 
 /// A JSON-RPC notification (no response expected).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct JsonRpcNotification {
     pub method: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -66,6 +69,7 @@ pub struct JsonRpcNotification {
 
 /// A JSON-RPC success response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct JsonRpcResponse {
     pub id: RequestId,
     pub result: Value,
@@ -73,6 +77,7 @@ pub struct JsonRpcResponse {
 
 /// The error payload within a JSON-RPC error response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct JsonRpcErrorData {
     pub code: i64,
     pub message: String,
@@ -82,6 +87,7 @@ pub struct JsonRpcErrorData {
 
 /// A JSON-RPC error response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct JsonRpcError {
     pub error: JsonRpcErrorData,
     pub id: RequestId,
@@ -99,6 +105,7 @@ pub struct JsonRpcError {
 /// - Notification has only `method` (no `id`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum JsonRpcMessage {
     Request(JsonRpcRequest),
     Response(JsonRpcResponse),

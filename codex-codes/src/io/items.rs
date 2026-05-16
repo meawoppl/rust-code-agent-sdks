@@ -14,6 +14,7 @@ use serde_json::Value;
 /// Status of a command execution within a [`CommandExecutionItem`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum CommandExecutionStatus {
     /// The command is currently running.
     #[serde(alias = "inProgress")]
@@ -37,6 +38,7 @@ pub enum CommandExecutionStatus {
 /// both formats deserialize cleanly.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct CommandExecutionItem {
     pub id: String,
     /// The shell command that was executed.
@@ -53,27 +55,74 @@ pub struct CommandExecutionItem {
 }
 
 /// Kind of patch change applied to a file.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+///
+/// On the wire this appears in two shapes across codex versions:
+/// - older builds emit a bare string (`"add"`, `"delete"`, `"update"`),
+/// - codex-cli ≥ 0.130 emits a tagged object (`{"type":"add"}`).
+///
+/// Both forms deserialize into this enum. Serialization uses the bare-string
+/// form for back-compat with existing fixtures and exec-protocol consumers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PatchChangeKind {
-    #[serde(alias = "add")]
     Add,
-    #[serde(alias = "delete")]
     Delete,
-    #[serde(alias = "update")]
     Update,
+}
+
+impl Serialize for PatchChangeKind {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(match self {
+            PatchChangeKind::Add => "add",
+            PatchChangeKind::Delete => "delete",
+            PatchChangeKind::Update => "update",
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for PatchChangeKind {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Repr {
+            Bare(String),
+            Tagged {
+                #[serde(rename = "type")]
+                tag: String,
+            },
+        }
+        let tag = match Repr::deserialize(d)? {
+            Repr::Bare(s) => s,
+            Repr::Tagged { tag } => tag,
+        };
+        match tag.as_str() {
+            "add" => Ok(PatchChangeKind::Add),
+            "delete" => Ok(PatchChangeKind::Delete),
+            "update" => Ok(PatchChangeKind::Update),
+            other => Err(serde::de::Error::unknown_variant(
+                other,
+                &["add", "delete", "update"],
+            )),
+        }
+    }
 }
 
 /// A single file update within a file change item.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct FileUpdateChange {
     pub path: String,
     pub kind: PatchChangeKind,
+    /// Patch payload carried alongside the change on newer codex builds
+    /// (the full text for `add`, a unified diff for `update`, etc.).
+    /// Absent on older wire shapes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub diff: Option<String>,
 }
 
 /// Status of a patch apply operation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum PatchApplyStatus {
     #[serde(alias = "completed")]
     Completed,
@@ -83,6 +132,7 @@ pub enum PatchApplyStatus {
 
 /// A file change item representing one or more file modifications.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct FileChangeItem {
     pub id: String,
     pub changes: Vec<FileUpdateChange>,
@@ -92,6 +142,7 @@ pub struct FileChangeItem {
 /// Status of an MCP tool call.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum McpToolCallStatus {
     #[serde(alias = "inProgress")]
     InProgress,
@@ -103,6 +154,7 @@ pub enum McpToolCallStatus {
 
 /// Result of an MCP tool call.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct McpToolCallResult {
     pub content: Vec<Value>,
     pub structured_content: Value,
@@ -110,12 +162,14 @@ pub struct McpToolCallResult {
 
 /// Error from an MCP tool call.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct McpToolCallError {
     pub message: String,
 }
 
 /// An MCP tool call item.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct McpToolCallItem {
     pub id: String,
     pub server: String,
@@ -134,6 +188,7 @@ pub struct McpToolCallItem {
 /// the app-server protocol — codex emits the message envelope before any
 /// tokens have been generated.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct AgentMessageItem {
     pub id: String,
     #[serde(default)]
@@ -142,6 +197,7 @@ pub struct AgentMessageItem {
 
 /// A single content block within a [`UserMessageItem`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct UserMessageContent {
     /// Block kind tag (e.g. `"text"`).
     #[serde(rename = "type")]
@@ -160,6 +216,7 @@ pub struct UserMessageContent {
 /// Emitted by the app-server as the first item in a turn. The exec JSONL
 /// protocol does not typically emit this item kind.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct UserMessageItem {
     pub id: String,
     pub content: Vec<UserMessageContent>,
@@ -170,6 +227,7 @@ pub struct UserMessageItem {
 /// `text` may be empty on `item/started` events; populated by the time
 /// `item/completed` arrives.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ReasoningItem {
     pub id: String,
     #[serde(default)]
@@ -178,6 +236,7 @@ pub struct ReasoningItem {
 
 /// A web search item.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct WebSearchItem {
     pub id: String,
     pub query: String,
@@ -185,6 +244,7 @@ pub struct WebSearchItem {
 
 /// An error item.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ErrorItem {
     pub id: String,
     pub message: String,
@@ -192,6 +252,7 @@ pub struct ErrorItem {
 
 /// A single todo entry within a todo list.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct TodoItem {
     pub text: String,
     pub completed: bool,
@@ -199,6 +260,7 @@ pub struct TodoItem {
 
 /// A todo list item.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct TodoListItem {
     pub id: String,
     pub items: Vec<TodoItem>,
@@ -215,6 +277,7 @@ pub struct TodoListItem {
 /// type tags for compatibility with the exec and app-server protocols.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum ThreadItem {
     /// The user's prompt for the turn (app-server protocol only).
     #[serde(alias = "userMessage")]

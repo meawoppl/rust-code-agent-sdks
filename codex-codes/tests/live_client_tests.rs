@@ -8,8 +8,9 @@
 #![cfg(feature = "integration-tests")]
 
 use codex_codes::{
-    AsyncClient, ClientInfo, InitializeCapabilities, InitializeParams, Notification, ServerMessage,
-    SyncClient, ThreadStartParams, TurnStartParams, UserInput,
+    AppServerBuilder, AsyncClient, ClientInfo, InitializeCapabilities, InitializeParams,
+    Notification, ServerMessage, ServerRequest, SyncClient, ThreadStartParams, TurnStartParams,
+    UserInput,
 };
 
 // ── Version check ───────────────────────────────────────────────────
@@ -62,7 +63,7 @@ async fn test_async_client_basic_turn() {
                 text: "What is 2 + 2? Reply with just the number.".to_string(),
             }],
             model: None,
-            reasoning_effort: None,
+            effort: None,
             sandbox_policy: None,
         })
         .await
@@ -110,8 +111,6 @@ async fn test_async_client_basic_turn() {
 
 #[tokio::test]
 async fn test_async_client_custom_initialize() {
-    use codex_codes::AppServerBuilder;
-
     let mut client = AsyncClient::spawn(AppServerBuilder::new())
         .await
         .expect("Failed to spawn app-server");
@@ -180,7 +179,7 @@ fn test_sync_client_basic_turn() {
                 text: "What is 2 + 2? Reply with just the number.".to_string(),
             }],
             model: None,
-            reasoning_effort: None,
+            effort: None,
             sandbox_policy: None,
         })
         .expect("Failed to start turn");
@@ -236,7 +235,7 @@ async fn test_async_client_multi_turn() {
                 text: "Remember the number 42. Just say OK.".to_string(),
             }],
             model: None,
-            reasoning_effort: None,
+            effort: None,
             sandbox_policy: None,
         })
         .await
@@ -270,7 +269,7 @@ async fn test_async_client_multi_turn() {
                     .to_string(),
             }],
             model: None,
-            reasoning_effort: None,
+            effort: None,
             sandbox_policy: None,
         })
         .await
@@ -325,7 +324,7 @@ async fn test_async_client_event_stream() {
                 text: "Say hello.".to_string(),
             }],
             model: None,
-            reasoning_effort: None,
+            effort: None,
             sandbox_policy: None,
         })
         .await
@@ -392,7 +391,7 @@ async fn test_typed_message_audit_strict() {
                     .to_string(),
             }],
             model: None,
-            reasoning_effort: None,
+            effort: None,
             sandbox_policy: None,
         })
         .await
@@ -467,4 +466,161 @@ async fn test_typed_message_audit_strict() {
     );
 
     client.shutdown().await.expect("shutdown");
+}
+
+// ── End-to-end: write a real Rust source file and compile it ────────
+//
+// Asks the agent to produce `quicksort.rs` in a fresh scratch workspace,
+// then verifies it compiles with a concrete `rustc` invocation. The point
+// of this test is twofold: prove the typed approval flow round-trips
+// against a real CLI, and make hangs (which the upstream-facing wrappers
+// can otherwise swallow) loud — every approval is logged with its kind
+// and key fields before we respond, and each `next_message()` is bounded
+// so a real hang fails the test with the last-seen approval as context
+// instead of sitting on stdio forever.
+#[tokio::test]
+async fn test_async_client_writes_compilable_quicksort() {
+    use std::process::Command;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    use tokio::time::timeout;
+
+    let _ = env_logger::builder().is_test(true).try_init();
+
+    // Codex refuses to operate outside a git repo by default, so init one
+    // in the scratch dir before spawning the app-server there.
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let scratch = std::env::temp_dir().join(format!("codex-codes-quicksort-{nonce}"));
+    let _ = std::fs::remove_dir_all(&scratch);
+    std::fs::create_dir_all(&scratch).expect("create scratch dir");
+    let git_init = Command::new("git")
+        .args(["init", "-q"])
+        .current_dir(&scratch)
+        .status()
+        .expect("spawn git init");
+    assert!(git_init.success(), "git init failed in {}", scratch.display());
+
+    let mut client = AsyncClient::spawn(AppServerBuilder::new().working_directory(&scratch))
+        .await
+        .expect("spawn app-server");
+    client
+        .initialize(&InitializeParams {
+            client_info: ClientInfo {
+                name: "codex-codes-test".to_string(),
+                version: env!("CARGO_PKG_VERSION").to_string(),
+                title: Some("Quicksort Integration".to_string()),
+            },
+            capabilities: None,
+        })
+        .await
+        .expect("initialize");
+
+    let thread = client
+        .thread_start(&ThreadStartParams::default())
+        .await
+        .expect("thread_start");
+
+    let prompt = "Create a file named `quicksort.rs` in the current working directory \
+        containing a self-contained Rust program: an in-place `quicksort` function over \
+        `[i32]`, plus a `main` that sorts a small literal slice and prints the result. \
+        Do not create a `Cargo.toml` and do not use any external crates. The file MUST \
+        compile with: `rustc --edition 2021 quicksort.rs -o /dev/null`.";
+
+    client
+        .turn_start(&TurnStartParams {
+            thread_id: thread.thread_id().to_string(),
+            input: vec![UserInput::Text {
+                text: prompt.to_string(),
+            }],
+            model: None,
+            effort: None,
+            sandbox_policy: None,
+        })
+        .await
+        .expect("turn_start");
+
+    let per_message = Duration::from_secs(90);
+    let mut approvals_seen = 0u32;
+    let mut message_count = 0u32;
+    let mut last_approval: Option<String> = None;
+
+    loop {
+        let next = timeout(per_message, client.next_message()).await;
+        let msg = match next {
+            Ok(Ok(Some(m))) => m,
+            Ok(Ok(None)) => panic!(
+                "app-server stream ended before TurnCompleted \
+                 (messages={message_count}, approvals={approvals_seen}, last_approval={:?})",
+                last_approval
+            ),
+            Ok(Err(e)) => panic!("read error after {message_count} messages: {e}"),
+            Err(_) => panic!(
+                "no message for {}s — possible hang \
+                 (messages={message_count}, approvals={approvals_seen}, last_approval={:?})",
+                per_message.as_secs(),
+                last_approval
+            ),
+        };
+        message_count += 1;
+
+        match msg {
+            ServerMessage::Notification(Notification::TurnCompleted(_)) => break,
+            ServerMessage::Notification(_) => {}
+            ServerMessage::Request { id, request } => {
+                approvals_seen += 1;
+                let summary = match &request {
+                    ServerRequest::CmdExecApproval(p) => format!(
+                        "cmdExec item={} cwd={:?} cmd={:?} reason={:?}",
+                        p.item_id, p.cwd, p.command, p.reason
+                    ),
+                    ServerRequest::FileChangeApproval(p) => format!(
+                        "fileChange item={} reason={:?}",
+                        p.item_id, p.reason
+                    ),
+                    ServerRequest::Unknown { method, .. } => format!("unknown method={method}"),
+                };
+                eprintln!("[approval #{approvals_seen}] {summary}");
+                last_approval = Some(summary);
+                client
+                    .respond(id, &serde_json::json!({"decision": "accept"}))
+                    .await
+                    .expect("respond to approval");
+            }
+        }
+
+        if message_count > 5000 {
+            panic!(
+                "too many messages without TurnCompleted (count={message_count}, \
+                 approvals={approvals_seen})"
+            );
+        }
+    }
+
+    client.shutdown().await.expect("shutdown");
+
+    let written = scratch.join("quicksort.rs");
+    assert!(
+        written.exists(),
+        "quicksort.rs not written to {}",
+        scratch.display()
+    );
+
+    let out = scratch.join("quicksort_bin");
+    let compile = Command::new("rustc")
+        .args(["--edition", "2021", "quicksort.rs", "-o"])
+        .arg(&out)
+        .current_dir(&scratch)
+        .output()
+        .expect("spawn rustc");
+    assert!(
+        compile.status.success(),
+        "rustc failed for {}:\n--- stderr ---\n{}\n--- stdout ---\n{}",
+        written.display(),
+        String::from_utf8_lossy(&compile.stderr),
+        String::from_utf8_lossy(&compile.stdout)
+    );
+
+    let _ = std::fs::remove_dir_all(&scratch);
 }

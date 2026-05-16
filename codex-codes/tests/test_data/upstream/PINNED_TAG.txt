@@ -1,0 +1,4 @@
+repo:   openai/codex
+tag:    rust-v0.130.0
+commit: 58573da43ab697e8b79f152c53df4b42230395a8
+synced: 2026-05-16T14:44:23Z

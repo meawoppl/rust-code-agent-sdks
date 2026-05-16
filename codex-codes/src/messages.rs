@@ -26,8 +26,8 @@
 use crate::jsonrpc::RequestId;
 use crate::protocol::{
     methods, AccountRateLimitsUpdatedNotification, AgentMessageDeltaNotification,
-    CmdOutputDeltaNotification, CommandExecutionApprovalParams, ErrorNotification,
-    FileChangeApprovalParams, FileChangeOutputDeltaNotification, ItemCompletedNotification,
+    CmdOutputDeltaNotification, CommandExecutionRequestApprovalParams, ErrorNotification,
+    FileChangeOutputDeltaNotification, FileChangeRequestApprovalParams, ItemCompletedNotification,
     ItemStartedNotification, McpServerStartupStatusUpdatedNotification, ReasoningDeltaNotification,
     RemoteControlStatusChangedNotification, ThreadStartedNotification,
     ThreadStatusChangedNotification, ThreadTokenUsageUpdatedNotification,
@@ -232,9 +232,9 @@ impl<'de> Deserialize<'de> for Notification {
 #[derive(Debug, Clone)]
 pub enum ServerRequest {
     /// `item/commandExecution/requestApproval`
-    CmdExecApproval(CommandExecutionApprovalParams),
+    CmdExecApproval(CommandExecutionRequestApprovalParams),
     /// `item/fileChange/requestApproval`
-    FileChangeApproval(FileChangeApprovalParams),
+    FileChangeApproval(FileChangeRequestApprovalParams),
     /// A request method this crate version does not yet model.
     Unknown {
         method: String,

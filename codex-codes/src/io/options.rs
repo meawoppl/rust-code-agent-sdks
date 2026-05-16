@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 /// Approval mode for tool execution.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum ApprovalMode {
     Never,
     OnRequest,
@@ -13,6 +14,7 @@ pub enum ApprovalMode {
 /// Sandbox mode controlling file system access.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum SandboxMode {
     ReadOnly,
     WorkspaceWrite,
@@ -33,6 +35,7 @@ impl SandboxMode {
 /// Model reasoning effort level.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum ModelReasoningEffort {
     Minimal,
     Low,
@@ -44,6 +47,7 @@ pub enum ModelReasoningEffort {
 /// Web search mode.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum WebSearchMode {
     Disabled,
     Cached,
@@ -52,6 +56,7 @@ pub enum WebSearchMode {
 
 /// Per-thread options controlling model, sandbox, and behavior.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ThreadOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,

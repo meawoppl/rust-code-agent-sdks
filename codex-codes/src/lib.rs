@@ -29,7 +29,7 @@
 //!         thread_id: thread.thread_id().to_string(),
 //!         input: vec![UserInput::Text { text: "What is 2 + 2?".into() }],
 //!         model: None,
-//!         reasoning_effort: None,
+//!         effort: None,
 //!         sandbox_policy: None,
 //!     }).await?;
 //!
@@ -64,7 +64,7 @@
 //!         thread_id: thread.thread_id().to_string(),
 //!         input: vec![UserInput::Text { text: "What is 2 + 2?".into() }],
 //!         model: None,
-//!         reasoning_effort: None,
+//!         effort: None,
 //!         sandbox_policy: None,
 //!     })?;
 //!
@@ -206,9 +206,10 @@ pub use jsonrpc::{
 // App-server protocol types (always available)
 pub use protocol::{
     AccountRateLimitsUpdatedNotification, AgentMessageDeltaNotification, ClientInfo,
-    CmdOutputDeltaNotification, CommandApprovalDecision, CommandExecutionApprovalParams,
-    CommandExecutionApprovalResponse, ErrorNotification, FileChangeApprovalDecision,
-    FileChangeApprovalParams, FileChangeApprovalResponse, FileChangeOutputDeltaNotification,
+    CmdOutputDeltaNotification, CommandExecutionApprovalDecision,
+    CommandExecutionRequestApprovalParams, CommandExecutionRequestApprovalResponse,
+    ErrorNotification, FileChangeApprovalDecision, FileChangeOutputDeltaNotification,
+    FileChangeRequestApprovalParams, FileChangeRequestApprovalResponse,
     InitializeCapabilities, InitializeParams, InitializeResponse, ItemCompletedNotification,
     ItemStartedNotification, McpServerStartupStatusUpdatedNotification, RateLimitWindow,
     RateLimits, ReasoningDeltaNotification, RemoteControlStatusChangedNotification,

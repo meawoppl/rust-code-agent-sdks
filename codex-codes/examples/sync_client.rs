@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             text: "What is the capital of France?".to_string(),
         }],
         model: None,
-        reasoning_effort: None,
+        effort: None,
         sandbox_policy: None,
     })?;
 
