@@ -82,12 +82,19 @@ pub struct FileUpdateChange {
 
 /// Status of a patch apply operation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase")]
 pub enum PatchApplyStatus {
+    /// Patch is currently being applied. Surfaced on `item/started`.
+    #[serde(alias = "in_progress")]
+    InProgress,
     #[serde(alias = "completed")]
     Completed,
     #[serde(alias = "failed")]
     Failed,
+    /// The user declined the file-change approval. Surfaced on
+    /// `item/completed` after a rejected approval.
+    #[serde(alias = "declined")]
+    Declined,
 }
 
 /// A file change item representing one or more file modifications.
