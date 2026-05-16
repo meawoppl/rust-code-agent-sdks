@@ -52,6 +52,24 @@ pub struct CommandExecutionItem {
     #[serde(alias = "exit_code", default, skip_serializing_if = "Option::is_none")]
     pub exit_code: Option<i32>,
     pub status: CommandExecutionStatus,
+    /// Working directory for the command. Required upstream; absent on
+    /// older exec JSONL captures.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
+    /// Identifier for the underlying PTY process, when available.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_id: Option<String>,
+    /// Origin of the command (e.g. `"agent"`, `"unifiedExecStartup"`).
+    /// Shape varies; preserved as raw string.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    /// Best-effort parsed command actions for friendly display. Each entry
+    /// is upstream's `CommandAction`; shape varies, kept as raw JSON.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub command_actions: Vec<Value>,
+    /// Wall-clock duration of the command in milliseconds, if it finished.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration_ms: Option<i64>,
 }
 
 /// Kind of patch change applied to a file.
@@ -121,13 +139,17 @@ pub struct FileUpdateChange {
 
 /// Status of a patch apply operation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub enum PatchApplyStatus {
+    #[serde(alias = "in_progress")]
+    InProgress,
     #[serde(alias = "completed")]
     Completed,
     #[serde(alias = "failed")]
     Failed,
+    #[serde(alias = "declined")]
+    Declined,
 }
 
 /// A file change item representing one or more file modifications.
@@ -182,17 +204,25 @@ pub struct McpToolCallItem {
     pub status: McpToolCallStatus,
 }
 
-/// An agent message item containing text output.
+/// An agent message item.
 ///
-/// `text` may be empty (or absent on the wire) for `item/started` events on
-/// the app-server protocol — codex emits the message envelope before any
-/// tokens have been generated.
+/// Mirrors upstream's `ThreadItem::AgentMessage` variant in the app-server
+/// `v2/item.rs`. `text` is empty on `item/started` events and populated on
+/// `item/completed`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct AgentMessageItem {
     pub id: String,
     #[serde(default)]
     pub text: String,
+    /// Optional phase metadata (e.g. mid-turn commentary vs. final answer).
+    /// Shape varies; preserved as raw JSON.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phase: Option<Value>,
+    /// Optional memory citation. Shape varies; preserved as raw JSON.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memory_citation: Option<Value>,
 }
 
 /// A single content block within a [`UserMessageItem`].
@@ -224,14 +254,23 @@ pub struct UserMessageItem {
 
 /// A reasoning item containing the model's chain-of-thought.
 ///
-/// `text` may be empty on `item/started` events; populated by the time
-/// `item/completed` arrives.
+/// Mirrors upstream's `ThreadItem::Reasoning` variant in the app-server
+/// `v2/item.rs`. Both `summary` and `content` are empty on `item/started` and
+/// populated on `item/completed`. The optional `text` field is a back-compat
+/// accommodation for older exec-format captures that carried the reasoning
+/// body in a single string.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ReasoningItem {
     pub id: String,
     #[serde(default)]
-    pub text: String,
+    pub summary: Vec<String>,
+    #[serde(default)]
+    pub content: Vec<String>,
+    /// Legacy single-string reasoning body emitted by pre-v2 codex captures.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
 }
 
 /// A web search item.
@@ -351,9 +390,16 @@ mod tests {
 
     #[test]
     fn test_deserialize_reasoning() {
-        let json = r#"{"type":"reasoning","id":"r_1","text":"Let me think about this..."}"#;
+        let json = r#"{
+            "type":"reasoning",
+            "id":"r_1",
+            "summary":["Let me think about this..."],
+            "content":["full reasoning text"]
+        }"#;
         let item: ThreadItem = serde_json::from_str(json).unwrap();
-        assert!(matches!(item, ThreadItem::Reasoning(ref r) if r.text.contains("think")));
+        assert!(
+            matches!(item, ThreadItem::Reasoning(ref r) if r.summary[0].contains("think"))
+        );
     }
 
     #[test]

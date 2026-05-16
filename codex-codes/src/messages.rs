@@ -330,7 +330,12 @@ mod tests {
     fn test_notification_round_trip_envelope() {
         let wire = serde_json::json!({
             "method": "item/agentMessage/delta",
-            "params": {"threadId": "t1", "itemId": "i1", "delta": "hi"},
+            "params": {
+                "threadId": "t1",
+                "turnId": "tu1",
+                "itemId": "i1",
+                "delta": "hi"
+            },
         });
         let n: Notification = serde_json::from_value(wire.clone()).unwrap();
         assert!(matches!(n, Notification::AgentMessageDelta(_)));

@@ -40,6 +40,7 @@ pub struct ItemCompletedNotification {
 #[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct AgentMessageDeltaNotification {
     pub thread_id: String,
+    pub turn_id: String,
     pub item_id: String,
     pub delta: String,
 }
@@ -50,6 +51,7 @@ pub struct AgentMessageDeltaNotification {
 #[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct CommandExecutionOutputDeltaNotification {
     pub thread_id: String,
+    pub turn_id: String,
     pub item_id: String,
     pub delta: String,
 }
@@ -60,6 +62,7 @@ pub struct CommandExecutionOutputDeltaNotification {
 #[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct FileChangeOutputDeltaNotification {
     pub thread_id: String,
+    pub turn_id: String,
     pub item_id: String,
     pub delta: String,
 }
@@ -70,8 +73,12 @@ pub struct FileChangeOutputDeltaNotification {
 #[cfg_attr(feature = "integration-tests", serde(deny_unknown_fields))]
 pub struct ReasoningSummaryTextDeltaNotification {
     pub thread_id: String,
+    pub turn_id: String,
     pub item_id: String,
     pub delta: String,
+    /// Index into the parent reasoning item's `summary` vector this delta
+    /// applies to. Required upstream.
+    pub summary_index: i64,
 }
 
 // ── Approval flow types (server-to-client requests) ─────────────────

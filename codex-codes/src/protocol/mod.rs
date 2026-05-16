@@ -200,7 +200,7 @@ mod tests {
 
     #[test]
     fn test_agent_message_delta() {
-        let json = r#"{"threadId":"th_1","itemId":"msg_1","delta":"Hello "}"#;
+        let json = r#"{"threadId":"th_1","turnId":"t_1","itemId":"msg_1","delta":"Hello "}"#;
         let notif: AgentMessageDeltaNotification = serde_json::from_str(json).unwrap();
         assert_eq!(notif.delta, "Hello ");
     }
