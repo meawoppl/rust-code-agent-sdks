@@ -206,16 +206,16 @@ pub use jsonrpc::{
 // App-server protocol types (always available)
 pub use protocol::{
     AccountRateLimitsUpdatedNotification, AgentMessageDeltaNotification, ClientInfo,
-    CmdOutputDeltaNotification, CommandExecutionApprovalDecision,
+    CommandExecutionApprovalDecision, CommandExecutionOutputDeltaNotification,
     CommandExecutionRequestApprovalParams, CommandExecutionRequestApprovalResponse,
     ErrorNotification, FileChangeApprovalDecision, FileChangeOutputDeltaNotification,
     FileChangeRequestApprovalParams, FileChangeRequestApprovalResponse,
     InitializeCapabilities, InitializeParams, InitializeResponse, ItemCompletedNotification,
-    ItemStartedNotification, McpServerStartupStatusUpdatedNotification, RateLimitWindow,
-    RateLimits, ReasoningDeltaNotification, RemoteControlStatusChangedNotification,
+    ItemStartedNotification, McpServerStatusUpdatedNotification, RateLimitSnapshot,
+    RateLimitWindow, ReasoningSummaryTextDeltaNotification, RemoteControlStatusChangedNotification,
     ThreadArchiveParams, ThreadArchiveResponse, ThreadInfo, ThreadStartParams, ThreadStartResponse,
-    ThreadStartedNotification, ThreadStatus, ThreadStatusChangedNotification,
-    ThreadTokenUsageUpdatedNotification, TokenCounts, TokenUsage, Turn, TurnCompletedNotification,
+    ThreadStartedNotification, ThreadStatus, ThreadStatusChangedNotification, ThreadTokenUsage,
+    ThreadTokenUsageUpdatedNotification, TokenUsageBreakdown, Turn, TurnCompletedNotification,
     TurnError, TurnInterruptParams, TurnInterruptResponse, TurnStartParams, TurnStartResponse,
     TurnStartedNotification, TurnStatus, UserInput,
 };

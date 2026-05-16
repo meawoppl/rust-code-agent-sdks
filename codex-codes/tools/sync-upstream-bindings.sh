@@ -18,9 +18,12 @@ SRC_BASE="codex-rs/app-server-protocol/src/protocol"
 # as the conformance mapping grows.
 FILES=(
     v1.rs
-    v2/permissions.rs
-    v2/notification.rs
+    v2/account.rs
     v2/item.rs
+    v2/mcp.rs
+    v2/notification.rs
+    v2/permissions.rs
+    v2/remote_control.rs
     v2/thread.rs
     v2/thread_data.rs
     v2/turn.rs

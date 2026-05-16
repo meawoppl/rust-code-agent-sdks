@@ -26,12 +26,12 @@
 use crate::jsonrpc::RequestId;
 use crate::protocol::{
     methods, AccountRateLimitsUpdatedNotification, AgentMessageDeltaNotification,
-    CmdOutputDeltaNotification, CommandExecutionRequestApprovalParams, ErrorNotification,
-    FileChangeOutputDeltaNotification, FileChangeRequestApprovalParams, ItemCompletedNotification,
-    ItemStartedNotification, McpServerStartupStatusUpdatedNotification, ReasoningDeltaNotification,
-    RemoteControlStatusChangedNotification, ThreadStartedNotification,
-    ThreadStatusChangedNotification, ThreadTokenUsageUpdatedNotification,
-    TurnCompletedNotification, TurnStartedNotification,
+    CommandExecutionOutputDeltaNotification, CommandExecutionRequestApprovalParams,
+    ErrorNotification, FileChangeOutputDeltaNotification, FileChangeRequestApprovalParams,
+    ItemCompletedNotification, ItemStartedNotification, McpServerStatusUpdatedNotification,
+    ReasoningSummaryTextDeltaNotification, RemoteControlStatusChangedNotification,
+    ThreadStartedNotification, ThreadStatusChangedNotification,
+    ThreadTokenUsageUpdatedNotification, TurnCompletedNotification, TurnStartedNotification,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
@@ -60,17 +60,17 @@ pub enum Notification {
     /// `item/agentMessage/delta`
     AgentMessageDelta(AgentMessageDeltaNotification),
     /// `item/commandExecution/outputDelta`
-    CmdOutputDelta(CmdOutputDeltaNotification),
+    CmdOutputDelta(CommandExecutionOutputDeltaNotification),
     /// `item/fileChange/outputDelta`
     FileChangeOutputDelta(FileChangeOutputDeltaNotification),
     /// `item/reasoning/summaryTextDelta`
-    ReasoningDelta(ReasoningDeltaNotification),
+    ReasoningDelta(ReasoningSummaryTextDeltaNotification),
     /// `error`
     Error(ErrorNotification),
     /// `account/rateLimits/updated`
     AccountRateLimitsUpdated(AccountRateLimitsUpdatedNotification),
     /// `mcpServer/startupStatus/updated`
-    McpServerStartupStatusUpdated(McpServerStartupStatusUpdatedNotification),
+    McpServerStartupStatusUpdated(McpServerStatusUpdatedNotification),
     /// `remoteControl/status/changed`
     RemoteControlStatusChanged(RemoteControlStatusChangedNotification),
     /// A method this crate version does not yet model. The raw params are

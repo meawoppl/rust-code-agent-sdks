@@ -1,28 +1,43 @@
-//! Name-conformance test: every wire field name we use must appear in the
-//! corresponding upstream struct.
+//! Name-conformance test: our `src/protocol/` tree must mirror upstream's
+//! `app-server-protocol/src/protocol/` tree, and every wire field name we
+//! use must appear in the upstream struct of the same name in the
+//! same-named file.
 //!
 //! ## Why this exists
 //!
 //! This crate hand-translates upstream's `app-server-protocol` types. We've
 //! historically invented struct names (e.g. `CommandExecutionApprovalParams`
-//! where upstream has `PermissionsRequestApprovalParams`) and field names
-//! (e.g. `call_id` where upstream has `item_id`). Neither `cargo build` nor
-//! the typed dispatch in `messages.rs` can catch that — both compile fine,
-//! and the only signal at runtime is a deserialization error against a live
-//! CLI.
+//! where upstream has `CommandExecutionRequestApprovalParams`) and field
+//! names (e.g. `call_id` where upstream has `item_id`). Neither `cargo
+//! build` nor the typed dispatch in `messages.rs` can catch that — both
+//! compile fine, and the only signal at runtime is a deserialization error
+//! against a live CLI.
 //!
-//! This test parses a pinned snapshot of upstream's Rust source under
-//! `tests/test_data/upstream/v2/`, parses our own crate source, computes the
-//! wire field-name set for each side (applying `serde(rename_all)` and
-//! `serde(rename)` rules), and asserts ours ⊆ upstream for every mapping in
-//! [`MAPPINGS`].
+//! ## How it works
+//!
+//! - Walks `src/protocol/**/*.rs` recursively.
+//! - For each file with a relative path under `src/protocol/` (e.g.
+//!   `v2/item.rs`), looks for the same-named file under
+//!   `tests/test_data/upstream/`.
+//! - Parses both with `syn`, computes each struct's wire field-name set
+//!   (applying `serde(rename_all)` + `serde(rename)`, skipping
+//!   `flatten`/`skip`), and asserts ours is a subset of upstream's.
+//! - `mod.rs` files are skipped (re-exports / module wiring).
+//! - Structs listed in [`INTENTIONALLY_LOCAL`] are skipped — those are
+//!   convenience wrappers without an upstream counterpart.
 //!
 //! ## Refreshing the snapshot
 //!
 //! `tools/sync-upstream-bindings.sh [TAG]` pulls fresh upstream source files
-//! at the given tag into `tests/test_data/upstream/v2/`. After bumping, run
-//! `cargo test -p codex-codes --test protocol_name_conformance` to see what
-//! divergence the new tag introduces.
+//! at the given tag. After bumping, run `cargo test -p codex-codes --test
+//! protocol_name_conformance` to see what divergence the new tag introduces.
+//!
+//! ## Opting a struct out
+//!
+//! If you add a struct under `src/protocol/` that intentionally has no
+//! upstream counterpart (a local convenience wrapper), add it to
+//! [`INTENTIONALLY_LOCAL`] with a one-line reason in a code comment. That
+//! comment IS the justification record for future readers.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -30,82 +45,21 @@ use std::path::{Path, PathBuf};
 
 use syn::{Attribute, Expr, Fields, Item, ItemStruct, Lit, Meta};
 
-// ── Conformance mapping table ───────────────────────────────────────
+// ── Opt-out list ────────────────────────────────────────────────────
 //
-// One entry per (our struct, upstream struct) pair we want to enforce. Each
-// entry asserts: every wire field name our struct emits must also appear in
-// the upstream struct's wire field names. Upstream is the source of truth;
-// we may model a subset.
-//
-// Grow this table as types are aligned. New pairs are cheap to add; the
-// hard work is in the mapping decision itself (which upstream type is our
-// type a wrapper for?).
-struct Mapping {
-    /// File under `codex-codes/src/` containing our struct.
-    ours_file: &'static str,
-    /// Our struct name as it appears in that file.
-    ours_name: &'static str,
-    /// File under `tests/test_data/upstream/` containing upstream's struct
-    /// (mirrors the upstream layout: e.g. `v1.rs` or `v2/item.rs`).
-    upstream_file: &'static str,
-    /// Upstream struct name as it appears in that file.
-    upstream_name: &'static str,
-}
-
-const MAPPINGS: &[Mapping] = &[
-    // The two approval-flow request methods and their responses. Both live
-    // under upstream's `v2/item.rs` (NOT `v2/permissions.rs`, which models
-    // a different, newer permissions endpoint that happens to share some
-    // field shape).
-    Mapping {
-        ours_file: "protocol.rs",
-        ours_name: "CommandExecutionRequestApprovalParams",
-        upstream_file: "v2/item.rs",
-        upstream_name: "CommandExecutionRequestApprovalParams",
-    },
-    Mapping {
-        ours_file: "protocol.rs",
-        ours_name: "CommandExecutionRequestApprovalResponse",
-        upstream_file: "v2/item.rs",
-        upstream_name: "CommandExecutionRequestApprovalResponse",
-    },
-    Mapping {
-        ours_file: "protocol.rs",
-        ours_name: "FileChangeRequestApprovalParams",
-        upstream_file: "v2/item.rs",
-        upstream_name: "FileChangeRequestApprovalParams",
-    },
-    Mapping {
-        ours_file: "protocol.rs",
-        ours_name: "FileChangeRequestApprovalResponse",
-        upstream_file: "v2/item.rs",
-        upstream_name: "FileChangeRequestApprovalResponse",
-    },
-    // Initialize handshake — lives in upstream's `v1.rs`.
-    Mapping {
-        ours_file: "protocol.rs",
-        ours_name: "InitializeParams",
-        upstream_file: "v1.rs",
-        upstream_name: "InitializeParams",
-    },
-    Mapping {
-        ours_file: "protocol.rs",
-        ours_name: "InitializeResponse",
-        upstream_file: "v1.rs",
-        upstream_name: "InitializeResponse",
-    },
-    Mapping {
-        ours_file: "protocol.rs",
-        ours_name: "InitializeCapabilities",
-        upstream_file: "v1.rs",
-        upstream_name: "InitializeCapabilities",
-    },
-    Mapping {
-        ours_file: "protocol.rs",
-        ours_name: "ClientInfo",
-        upstream_file: "v1.rs",
-        upstream_name: "ClientInfo",
-    },
+// Each entry: `(relative_file, struct_name)`. Skipped by the conformance
+// test. Add a comment justifying each entry — it's the durable record of
+// why this name exists in our crate but not upstream.
+const INTENTIONALLY_LOCAL: &[(&str, &str)] = &[
+    // Local convenience wrapper around `thread/start` response — we only
+    // strictly model `id` and route the rest through a flatten extras
+    // field. Upstream uses its `Thread` struct (in `thread_data.rs`).
+    ("v2/thread.rs", "ThreadInfo"),
+    // Same: wraps upstream's `ThreadStartResponse` with an extras-bearing
+    // `extra: Value` that we deliberately flatten. `flatten` is
+    // incompatible with `deny_unknown_fields`, so this struct cannot be
+    // strict.
+    ("v2/thread.rs", "ThreadStartResponse"),
 ];
 
 // ── Parsing + rename computation ────────────────────────────────────
@@ -190,16 +144,14 @@ fn to_pascal_case(s: &str) -> String {
 }
 
 /// Extract every `serde(...)` argument list from an attribute set. Returns
-/// each argument as a string in the form serde emits them — `rename_all = "x"`,
-/// `rename = "x"`, `flatten`, `skip`, etc. — for later inspection.
+/// each argument as a string in the form serde emits them — `rename_all =
+/// "x"`, `rename = "x"`, `flatten`, `skip`, etc. — for later inspection.
 fn serde_args(attrs: &[Attribute]) -> Vec<String> {
     let mut out = Vec::new();
     for attr in attrs {
         if !attr.path().is_ident("serde") {
             continue;
         }
-        // Each `#[serde(...)]` has a list-style meta; parse the inside as
-        // comma-separated `Meta` items and convert each back to a string.
         if let Meta::List(list) = &attr.meta {
             let parser = syn::punctuated::Punctuated::<Meta, syn::Token![,]>::parse_terminated;
             if let Ok(items) = list.parse_args_with(parser) {
@@ -227,9 +179,6 @@ fn meta_to_string(meta: &Meta) -> String {
             let val = match &nv.value {
                 Expr::Lit(el) => match &el.lit {
                     Lit::Str(s) => s.value(),
-                    // Non-string serde values (numbers, bools) aren't part of
-                    // the rename/skip/flatten surface we care about; emit a
-                    // placeholder so the calling matcher just won't match.
                     _ => String::new(),
                 },
                 _ => String::new(),
@@ -310,11 +259,20 @@ fn wire_names_for_struct(s: &ItemStruct) -> BTreeSet<String> {
     out
 }
 
+fn structs_in_file(file: &syn::File) -> Vec<&ItemStruct> {
+    file.items
+        .iter()
+        .filter_map(|it| match it {
+            Item::Struct(s) => Some(s),
+            _ => None,
+        })
+        .collect()
+}
+
 fn find_struct<'a>(file: &'a syn::File, name: &str) -> Option<&'a ItemStruct> {
-    file.items.iter().find_map(|it| match it {
-        Item::Struct(s) if s.ident == name => Some(s),
-        _ => None,
-    })
+    structs_in_file(file)
+        .into_iter()
+        .find(|s| s.ident == name)
 }
 
 fn parse_file(path: &Path) -> syn::File {
@@ -328,70 +286,112 @@ fn crate_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
 
+/// Walk `dir` recursively, returning every `.rs` file's relative path.
+fn walk_rs_files(dir: &Path, prefix: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let Ok(entries) = fs::read_dir(dir) else {
+        return out;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            out.extend(walk_rs_files(&path, prefix));
+        } else if path.extension().and_then(|e| e.to_str()) == Some("rs") {
+            if let Ok(rel) = path.strip_prefix(prefix) {
+                out.push(rel.to_path_buf());
+            }
+        }
+    }
+    out
+}
+
 // ── The test ────────────────────────────────────────────────────────
 
 #[test]
-fn wire_field_names_are_subset_of_upstream() {
-    let our_src = crate_root().join("src");
-    let upstream_src = crate_root().join("tests/test_data/upstream");
+fn wire_field_names_match_upstream_by_file_path() {
+    let our_root = crate_root().join("src/protocol");
+    let upstream_root = crate_root().join("tests/test_data/upstream");
 
     let mut failures: Vec<String> = Vec::new();
+    let mut checked = 0u32;
 
-    for m in MAPPINGS {
-        let our_path = our_src.join(m.ours_file);
-        let upstream_path = upstream_src.join(m.upstream_file);
+    for rel in walk_rs_files(&our_root, &our_root) {
+        // `mod.rs` files are pure plumbing (mod declarations, re-exports,
+        // tests). They don't define wire types in our convention.
+        if rel.file_name() == Some(std::ffi::OsStr::new("mod.rs")) {
+            continue;
+        }
+
+        let our_path = our_root.join(&rel);
+        let upstream_path = upstream_root.join(&rel);
+
+        if !upstream_path.exists() {
+            failures.push(format!(
+                "our `src/protocol/{}` has no upstream counterpart at \
+                 `tests/test_data/upstream/{}`. Either rename our file to \
+                 match upstream's layout or extend the sync script and \
+                 re-snapshot.",
+                rel.display(),
+                rel.display()
+            ));
+            continue;
+        }
 
         let ours_file = parse_file(&our_path);
         let upstream_file = parse_file(&upstream_path);
 
-        let Some(ours_struct) = find_struct(&ours_file, m.ours_name) else {
-            failures.push(format!(
-                "could not find struct `{}` in {}",
-                m.ours_name,
-                our_path.display()
-            ));
-            continue;
-        };
-        let Some(upstream_struct) = find_struct(&upstream_file, m.upstream_name) else {
-            failures.push(format!(
-                "could not find struct `{}` in {}",
-                m.upstream_name,
-                upstream_path.display()
-            ));
-            continue;
-        };
+        for ours_struct in structs_in_file(&ours_file) {
+            let name = ours_struct.ident.to_string();
+            let rel_str = rel.to_string_lossy().replace('\\', "/");
+            if INTENTIONALLY_LOCAL.iter().any(|(f, n)| *f == rel_str && *n == name) {
+                continue;
+            }
 
-        let ours_fields = wire_names_for_struct(ours_struct);
-        let upstream_fields = wire_names_for_struct(upstream_struct);
+            let Some(upstream_struct) = find_struct(&upstream_file, &name) else {
+                failures.push(format!(
+                    "{}::{} has no struct of the same name in upstream's \
+                     {}. Either rename ours to match upstream, move it to \
+                     the correct file, or add it to INTENTIONALLY_LOCAL \
+                     with a comment.",
+                    rel.display(),
+                    name,
+                    rel.display()
+                ));
+                continue;
+            };
 
-        let extra: Vec<&String> = ours_fields.difference(&upstream_fields).collect();
-        if !extra.is_empty() {
-            failures.push(format!(
-                "{} → {} (upstream {}): our struct has wire fields not in upstream: {:?}\n  \
-                 ours:     {:?}\n  upstream: {:?}",
-                m.ours_name, m.upstream_name, m.upstream_file, extra, ours_fields, upstream_fields
-            ));
+            let ours_fields = wire_names_for_struct(ours_struct);
+            let upstream_fields = wire_names_for_struct(upstream_struct);
+
+            let extra: Vec<&String> = ours_fields.difference(&upstream_fields).collect();
+            if !extra.is_empty() {
+                failures.push(format!(
+                    "{}::{} has wire fields not in upstream: {:?}\n  \
+                     ours:     {:?}\n  upstream: {:?}",
+                    rel.display(),
+                    name,
+                    extra,
+                    ours_fields,
+                    upstream_fields
+                ));
+            }
+            checked += 1;
         }
     }
 
+    assert!(
+        checked > 0,
+        "name-conformance test walked zero structs — paths probably wrong"
+    );
+
     if !failures.is_empty() {
         panic!(
-            "\n── Protocol name-conformance failures ──────────────────\n{}\n\n\
+            "\n── Protocol name-conformance failures ({} checked, {} failed) ──\n{}\n\n\
              If upstream genuinely changed shape, refresh the snapshot:\n  \
              tools/sync-upstream-bindings.sh\n",
+            checked,
+            failures.len(),
             failures.join("\n\n")
         );
     }
-}
-
-// ── Mapping table is non-empty ──────────────────────────────────────
-//
-// Cheap sentinel so this file never silently becomes a no-op (e.g. if
-// MAPPINGS gets emptied during a refactor).
-#[test]
-fn mappings_table_is_not_empty() {
-    assert!(
-        !MAPPINGS.is_empty(),
-        "MAPPINGS table is empty — conformance test does nothing"
-    );
 }
