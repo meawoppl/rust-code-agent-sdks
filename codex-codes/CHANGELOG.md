@@ -5,6 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.129.3] - 2026-05-17
+
+### Changed (breaking)
+
+The schema-driven codegen now owns every wire type. The hand-written
+shadows in `protocol.rs` that pre-dated the codegen are gone, and the
+allowlist mechanism that exempted them is gone with them. Names that
+diverged from upstream now match what the schema defines, and consumers
+move to those names. Notable renames:
+
+- `CommandExecutionApprovalParams`/`Response` → `CommandExecutionRequestApprovalParams`/`Response`
+- `FileChangeApprovalParams`/`Response`       → `FileChangeRequestApprovalParams`/`Response`
+- `CommandApprovalDecision`                   → `CommandExecutionApprovalDecision`
+- `CmdOutputDeltaNotification`                → `CommandExecutionOutputDeltaNotification`
+- `ReasoningDeltaNotification`                → `ReasoningSummaryTextDeltaNotification`
+- `McpServerStartupStatusUpdatedNotification` → `McpServerStatusUpdatedNotification`
+- `RateLimits`                                → `RateLimitSnapshot`
+- `TokenUsage`                                → `ThreadTokenUsage`
+- `TokenCounts`                               → `TokenUsageBreakdown`
+
+Field renames worth flagging:
+
+- Approval-params id field `call_id`              → `item_id`
+- `TurnStartParams.reasoning_effort`              → `effort`
+- Several params types gained additional optional fields that exist
+  upstream (`started_at_ms`, `grant_root`, `request_attestation`,
+  `command_actions`, `proposed_execpolicy_amendment`, etc.).
+
+`ThreadStartParams::default()` no longer exists; construct an empty
+params payload via `serde_json::from_value(serde_json::json!({}))?` (or
+list every `Option<…>` field explicitly).
+
+`ThreadStartResponse::thread_id()` removed; access `.thread.id` directly.
+
+`ThreadItem` now uses upstream's inline struct-variant shape
+(`ThreadItem::CommandExecution { command, .. }`) rather than the
+tuple-variant shape (`ThreadItem::CommandExecution(item)`). The
+exec-protocol JSONL parser still uses the original tuple-variant layout
+via `codex_codes::io::items::ThreadItem` (the `io` module is now
+`pub mod`).
+
+### Added
+
+- **Codegen handles every schema shape** — extended `scripts/codegen_protocol.py`
+  with handlers for bare-string newtypes, `oneOf` of pure string enums
+  (single- or multi-value), `oneOf` mixing string enums with single-key
+  object wrappers, `oneOf` of objects discriminated on a non-`type`
+  key (e.g. `kind`), and top-level `anyOf` (untagged Rust enums). The
+  number of opaque `pub struct Foo(pub Value)` fallback stubs in the
+  generated output dropped from 28 to 0.
+- **Schema-required fields tolerate missing wire payloads** — required
+  fields whose Rust type already implements `Default` (`String`, `i64`,
+  `bool`, `Vec`, `Option`, `Value`, `BTreeMap`) gain `#[serde(default)]`
+  so codex's omit-when-empty behavior round-trips without losing types.
+  Required fields whose type isn't `Default`-able stay strict.
+- **`test_async_client_writes_compilable_quicksort`** — live integration
+  test that drives the agent through writing `quicksort.rs`, handling
+  every approval request, then verifying the produced source compiles
+  with `rustc --edition 2021`.
+
+### Removed
+
+- The `HAND_WRITTEN` allowlist in `scripts/codegen_protocol.py` is gone.
+  Any type that appears in the upstream schema is emitted by the codegen;
+  any type that doesn't lives in `crate::io` or `crate::jsonrpc`.
+- All hand-written wire-type definitions in `protocol.rs`. The module is
+  now a re-export shim plus the JSON-RPC method-name constants.
+- One stale unit test (`parse_error_carries_method_and_params_for_server_request_with_missing_field`)
+  whose premise (missing required field is a deserialization error) no
+  longer matches the codegen's permissive treatment of schema-required
+  fields.
+
 ## [0.129.2] - 2026-05-16
 
 ### Added

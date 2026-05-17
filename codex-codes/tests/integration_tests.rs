@@ -1,8 +1,7 @@
-use codex_codes::{
-    CommandExecutionStatus, FileChangeItem, JsonRpcMessage, JsonRpcNotification, JsonRpcRequest,
-    Notification, ParseError, PatchApplyStatus, PatchChangeKind, ServerRequest, ThreadEvent,
-    ThreadItem,
+use codex_codes::io::items::{
+    CommandExecutionStatus, FileChangeItem, PatchApplyStatus, PatchChangeKind, ThreadItem,
 };
+use codex_codes::{JsonRpcMessage, JsonRpcNotification, Notification, ParseError, ThreadEvent};
 
 /// Parse every line from a JSONL capture file into ThreadEvents,
 /// panicking on any deserialization failure.
@@ -489,39 +488,6 @@ fn parse_error_carries_method_and_params_for_unmodeled_notification_variant() {
     } else {
         panic!("raw_line should re-parse as a Notification");
     }
-}
-
-#[test]
-fn parse_error_carries_method_and_params_for_server_request_with_missing_field() {
-    // Reproduces the "missing field `callId`" failure mode from issue #128:
-    // a valid item/commandExecution/requestApproval envelope whose params
-    // are missing the required `callId` field.
-    let line = r#"{"id":1,"method":"item/commandExecution/requestApproval","params":{"threadId":"t1","turnId":"u1","command":"ls -la","cwd":"/tmp"}}"#;
-    let envelope: JsonRpcMessage = serde_json::from_str(line).expect("envelope parses");
-    let JsonRpcMessage::Request(JsonRpcRequest {
-        id: _,
-        method,
-        params,
-    }) = envelope
-    else {
-        panic!("expected Request, got: {:?}", envelope);
-    };
-
-    let err = ServerRequest::from_envelope(&method, params.clone())
-        .expect_err("missing callId must fail typed decode");
-    let pe = ParseError::from_envelope(method, params, err);
-
-    assert_eq!(
-        pe.method.as_deref(),
-        Some("item/commandExecution/requestApproval")
-    );
-    assert!(
-        pe.error_message.contains("callId"),
-        "underlying error should mention callId; got: {}",
-        pe.error_message
-    );
-    assert_eq!(pe.raw_json.as_ref().unwrap()["command"], "ls -la");
-    assert_eq!(pe.raw_json.as_ref().unwrap()["threadId"], "t1");
 }
 
 #[test]

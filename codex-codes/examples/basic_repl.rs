@@ -4,8 +4,8 @@
 //! Type your prompt and press Enter. Type "exit" to quit.
 
 use codex_codes::{
-    AsyncClient, CommandApprovalDecision, CommandExecutionApprovalResponse,
-    FileChangeApprovalDecision, FileChangeApprovalResponse, Notification, ServerMessage,
+    AsyncClient, CommandExecutionApprovalDecision, CommandExecutionRequestApprovalResponse,
+    FileChangeApprovalDecision, FileChangeRequestApprovalResponse, Notification, ServerMessage,
     ServerRequest, ThreadItem, ThreadStartParams, TurnStartParams, UserInput,
 };
 use std::io::{self, Write};
@@ -19,8 +19,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Type your queries and press Enter. Type 'exit' to quit.\n");
 
     let mut client = AsyncClient::start().await?;
-    let thread = client.thread_start(&ThreadStartParams::default()).await?;
-    let thread_id = thread.thread_id().to_string();
+    let thread = client
+        .thread_start(&serde_json::from_value::<ThreadStartParams>(serde_json::json!({})).unwrap())
+        .await?;
+    let thread_id = thread.thread.id.clone();
     println!("Thread: {}\n", thread_id);
 
     loop {
@@ -45,10 +47,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 thread_id: thread_id.clone(),
                 input: vec![UserInput::Text {
                     text: input.to_string(),
+                    text_elements: None,
                 }],
+                approval_policy: None,
+                approvals_reviewer: None,
+                cwd: None,
+                effort: None,
                 model: None,
-                reasoning_effort: None,
+                output_schema: None,
+                personality: None,
                 sandbox_policy: None,
+                service_tier: None,
+                summary: None,
             })
             .await?;
 
@@ -78,10 +88,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         print!("[thinking] {}", d.delta);
                     }
                     Notification::ItemStarted(item_event) => match item_event.item {
-                        ThreadItem::CommandExecution(c) => {
-                            println!("\n[Command: {}]", c.command);
+                        ThreadItem::CommandExecution { command, .. } => {
+                            println!("\n[Command: {}]", command);
                         }
-                        ThreadItem::FileChange(_) => {
+                        ThreadItem::FileChange { .. } => {
                             println!("\n[File change]");
                         }
                         _ => {}
@@ -91,7 +101,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         break;
                     }
                     Notification::Error(e) => {
-                        eprintln!("\n[Error: {}]", e.error);
+                        eprintln!("\n[Error: {}]", e.error.message);
                     }
                     other => {
                         log::debug!("Notification: {}", other.method());
@@ -99,12 +109,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 },
                 ServerMessage::Request { id, request } => match request {
                     ServerRequest::CmdExecApproval(p) => {
-                        println!("\n[Approving command: {}]", p.command);
+                        println!(
+                            "\n[Approving command: {}]",
+                            p.command.as_deref().unwrap_or("<no command>")
+                        );
                         client
                             .respond(
                                 id,
-                                &CommandExecutionApprovalResponse {
-                                    decision: CommandApprovalDecision::Accept,
+                                &CommandExecutionRequestApprovalResponse {
+                                    decision: CommandExecutionApprovalDecision::Accept,
                                 },
                             )
                             .await?;
@@ -114,7 +127,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         client
                             .respond(
                                 id,
-                                &FileChangeApprovalResponse {
+                                &FileChangeRequestApprovalResponse {
                                     decision: FileChangeApprovalDecision::Accept,
                                 },
                             )

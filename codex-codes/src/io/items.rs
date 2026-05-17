@@ -35,7 +35,7 @@ pub enum CommandExecutionStatus {
 /// while the app-server protocol uses camelCase (`aggregatedOutput`, `exitCode`)
 /// and may emit `null` for missing output. Fields below carry serde aliases so
 /// both formats deserialize cleanly.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommandExecutionItem {
     pub id: String,
@@ -71,7 +71,7 @@ pub enum PatchChangeKind {
 }
 
 /// A single file update within a file change item.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FileUpdateChange {
     pub path: String,
     pub kind: PatchChangeKind,
@@ -82,16 +82,23 @@ pub struct FileUpdateChange {
 
 /// Status of a patch apply operation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase")]
 pub enum PatchApplyStatus {
+    /// Patch is currently being applied. Surfaced on `item/started`.
+    #[serde(alias = "in_progress")]
+    InProgress,
     #[serde(alias = "completed")]
     Completed,
     #[serde(alias = "failed")]
     Failed,
+    /// The user declined the file-change approval. Surfaced on
+    /// `item/completed` after a rejected approval.
+    #[serde(alias = "declined")]
+    Declined,
 }
 
 /// A file change item representing one or more file modifications.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FileChangeItem {
     pub id: String,
     pub changes: Vec<FileUpdateChange>,
@@ -111,20 +118,20 @@ pub enum McpToolCallStatus {
 }
 
 /// Result of an MCP tool call.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct McpToolCallResult {
     pub content: Vec<Value>,
     pub structured_content: Value,
 }
 
 /// Error from an MCP tool call.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct McpToolCallError {
     pub message: String,
 }
 
 /// An MCP tool call item.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct McpToolCallItem {
     pub id: String,
     pub server: String,
@@ -142,7 +149,7 @@ pub struct McpToolCallItem {
 /// `text` may be empty (or absent on the wire) for `item/started` events on
 /// the app-server protocol — codex emits the message envelope before any
 /// tokens have been generated.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AgentMessageItem {
     pub id: String,
     #[serde(default)]
@@ -150,7 +157,7 @@ pub struct AgentMessageItem {
 }
 
 /// A single content block within a [`UserMessageItem`].
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UserMessageContent {
     /// Block kind tag (e.g. `"text"`).
     #[serde(rename = "type")]
@@ -168,7 +175,7 @@ pub struct UserMessageContent {
 ///
 /// Emitted by the app-server as the first item in a turn. The exec JSONL
 /// protocol does not typically emit this item kind.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UserMessageItem {
     pub id: String,
     pub content: Vec<UserMessageContent>,
@@ -178,7 +185,7 @@ pub struct UserMessageItem {
 ///
 /// `text` may be empty on `item/started` events; populated by the time
 /// `item/completed` arrives.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ReasoningItem {
     pub id: String,
     #[serde(default)]
@@ -186,28 +193,28 @@ pub struct ReasoningItem {
 }
 
 /// A web search item.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WebSearchItem {
     pub id: String,
     pub query: String,
 }
 
 /// An error item.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ErrorItem {
     pub id: String,
     pub message: String,
 }
 
 /// A single todo entry within a todo list.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TodoItem {
     pub text: String,
     pub completed: bool,
 }
 
 /// A todo list item.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TodoListItem {
     pub id: String,
     pub items: Vec<TodoItem>,
@@ -222,7 +229,7 @@ pub struct TodoListItem {
 ///
 /// Accepts both snake_case (`agent_message`) and camelCase (`agentMessage`)
 /// type tags for compatibility with the exec and app-server protocols.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ThreadItem {
     /// The user's prompt for the turn (app-server protocol only).

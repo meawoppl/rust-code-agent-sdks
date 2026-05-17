@@ -27,18 +27,19 @@ use crate::jsonrpc::RequestId;
 use crate::protocol::{
     methods, AccountLoginCompletedNotification, AccountRateLimitsUpdatedNotification,
     AccountUpdatedNotification, AgentMessageDeltaNotification, AppListUpdatedNotification,
-    CmdOutputDeltaNotification, CommandExecOutputDeltaNotification, CommandExecutionApprovalParams,
-    ConfigWarningNotification, ContextCompactedNotification, DeprecationNoticeNotification,
-    ErrorNotification, ExternalAgentConfigImportCompletedNotification, FileChangeApprovalParams,
-    FileChangeOutputDeltaNotification, FileChangePatchUpdatedNotification, FsChangedNotification,
+    CommandExecOutputDeltaNotification, CommandExecutionOutputDeltaNotification,
+    CommandExecutionRequestApprovalParams, ConfigWarningNotification, ContextCompactedNotification,
+    DeprecationNoticeNotification, ErrorNotification,
+    ExternalAgentConfigImportCompletedNotification, FileChangeOutputDeltaNotification,
+    FileChangePatchUpdatedNotification, FileChangeRequestApprovalParams, FsChangedNotification,
     FuzzyFileSearchSessionCompletedNotification, FuzzyFileSearchSessionUpdatedNotification,
     GuardianWarningNotification, HookCompletedNotification, HookStartedNotification,
     ItemCompletedNotification, ItemGuardianApprovalReviewCompletedNotification,
     ItemGuardianApprovalReviewStartedNotification, ItemStartedNotification,
-    McpServerOauthLoginCompletedNotification, McpServerStartupStatusUpdatedNotification,
+    McpServerOauthLoginCompletedNotification, McpServerStatusUpdatedNotification,
     McpToolCallProgressNotification, ModelReroutedNotification, ModelVerificationNotification,
     PlanDeltaNotification, ProcessExitedNotification, ProcessOutputDeltaNotification,
-    ReasoningDeltaNotification, ReasoningSummaryPartAddedNotification,
+    ReasoningSummaryPartAddedNotification, ReasoningSummaryTextDeltaNotification,
     ReasoningTextDeltaNotification, RemoteControlStatusChangedNotification,
     ServerRequestResolvedNotification, SkillsChangedNotification, TerminalInteractionNotification,
     ThreadArchivedNotification, ThreadClosedNotification, ThreadGoalClearedNotification,
@@ -79,17 +80,17 @@ pub enum Notification {
     /// `item/agentMessage/delta`
     AgentMessageDelta(AgentMessageDeltaNotification),
     /// `item/commandExecution/outputDelta`
-    CmdOutputDelta(CmdOutputDeltaNotification),
+    CmdOutputDelta(CommandExecutionOutputDeltaNotification),
     /// `item/fileChange/outputDelta`
     FileChangeOutputDelta(FileChangeOutputDeltaNotification),
     /// `item/reasoning/summaryTextDelta`
-    ReasoningDelta(ReasoningDeltaNotification),
+    ReasoningDelta(ReasoningSummaryTextDeltaNotification),
     /// `error`
     Error(ErrorNotification),
     /// `account/rateLimits/updated`
     AccountRateLimitsUpdated(AccountRateLimitsUpdatedNotification),
     /// `mcpServer/startupStatus/updated`
-    McpServerStartupStatusUpdated(McpServerStartupStatusUpdatedNotification),
+    McpServerStartupStatusUpdated(McpServerStatusUpdatedNotification),
     /// `remoteControl/status/changed`
     RemoteControlStatusChanged(RemoteControlStatusChangedNotification),
     /// `mcpServer/oauthLogin/completed`
@@ -609,9 +610,9 @@ impl<'de> Deserialize<'de> for Notification {
 #[derive(Debug, Clone)]
 pub enum ServerRequest {
     /// `item/commandExecution/requestApproval`
-    CmdExecApproval(CommandExecutionApprovalParams),
+    CmdExecApproval(CommandExecutionRequestApprovalParams),
     /// `item/fileChange/requestApproval`
-    FileChangeApproval(FileChangeApprovalParams),
+    FileChangeApproval(FileChangeRequestApprovalParams),
     /// `item/tool/requestUserInput`
     ToolRequestUserInput(crate::protocol::ToolRequestUserInputParams),
     /// `mcpServer/elicitation/request`
@@ -753,7 +754,7 @@ mod tests {
     fn test_notification_round_trip_envelope() {
         let wire = serde_json::json!({
             "method": "item/agentMessage/delta",
-            "params": {"threadId": "t1", "itemId": "i1", "delta": "hi"},
+            "params": {"threadId": "t1", "turnId": "u1", "itemId": "i1", "delta": "hi"},
         });
         let n: Notification = serde_json::from_value(wire.clone()).unwrap();
         assert!(matches!(n, Notification::AgentMessageDelta(_)));

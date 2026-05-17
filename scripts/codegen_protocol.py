@@ -2,19 +2,14 @@
 """
 Generate Rust protocol types + samples for codex-codes from the upstream JSON Schema.
 
-Reads both schema bundles in codex-codes/tests/schemas/:
-  - codex_app_server_protocol.v2.schemas.json    (flat, has all params/notif refs)
-  - codex_app_server_protocol.schemas.json        (full, has ServerRequest envelope)
+The schema bundles in codex-codes/tests/schemas/ are the source of truth for
+every wire type. This script walks every notification, client-request, and
+server-request enumerated in the envelopes plus every transitively-referenced
+definition and writes:
 
-Walks every notification + client-request + server-request enumerated in the
-envelopes, plus every transitively-referenced definition, and emits:
-
-  - codex-codes/src/protocol/generated.rs       (every reachable type as a Rust struct/enum)
-  - codex-codes/src/protocol/generated_dispatch.rs  (method lookups → typed Params)
-  - codex-codes/src/protocol/generated_samples.rs   (one validating sample per method)
-
-The hand-written `protocol.rs` keeps the curated names callers already depend on;
-the generated module is the source of truth for everything else.
+  - codex-codes/src/protocol_generated/types.rs   (Rust struct/enum per definition)
+  - codex-codes/src/protocol_generated/samples.rs (one validating JSON sample per method)
+  - codex-codes/src/protocol_generated/mod.rs     (module index)
 """
 
 from __future__ import annotations
@@ -239,7 +234,10 @@ def emit_struct(name: str, schema: dict[str, Any]) -> str:
     props = schema.get("properties") or {}
     required = set(schema.get("required") or [])
     rs = []
-    rs.append("#[derive(Debug, Clone, Serialize, Deserialize)]")
+    # PartialEq (but not Eq) so structs compose into enums that need
+    # equality; serde_json::Value implements PartialEq but not Eq, so Eq
+    # would propagate-fail on any field carrying raw JSON.
+    rs.append("#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]")
     rs.append('#[serde(rename_all = "camelCase")]')
     rs.append(f"pub struct {rust_name(name)} {{")
     if not props:
@@ -255,17 +253,36 @@ def emit_struct(name: str, schema: dict[str, Any]) -> str:
         is_opt = rs_type.startswith("Option<") or field_name not in required
         if is_opt and not rs_type.startswith("Option<"):
             rs_type = f"Option<{rs_type}>"
-        rs.append("    #[serde(")
         attrs = []
         if rs_field != field_name:
             attrs.append(f'rename = "{field_name}"')
         if is_opt:
             attrs.append("default")
             attrs.append('skip_serializing_if = "Option::is_none"')
-        rs[-1] = "    #[serde(" + ", ".join(attrs) + ")]"
+        elif _is_default_able_type(rs_type):
+            # Codex marks some fields required in the schema but omits
+            # them on the wire (e.g. `installationId` on
+            # RemoteControlStatusChangedNotification when remote control
+            # isn't active). For required fields whose Rust type already
+            # has a `Default` impl, fill in the default rather than
+            # failing typed deserialization.
+            attrs.append("default")
+        rs.append("    #[serde(" + ", ".join(attrs) + ")]")
         rs.append(f"    pub {rs_field}: {rs_type},")
     rs.append("}")
     return "\n".join(rs)
+
+
+# Types we know have a `Default` impl in scope — primitives and standard
+# containers. Generated types do not (since we don't derive Default on
+# struct/enum output to avoid cascading constraints on each variant). When a
+# schema-required field uses one of these types we can safely `#[serde(default)]`
+# it; for other required types we leave it strict and let the typed parse fail
+# if codex omits the field, which signals a real schema/wire mismatch.
+def _is_default_able_type(rs_type: str) -> bool:
+    if rs_type in {"String", "i64", "i32", "u64", "u32", "f64", "bool", "Value"}:
+        return True
+    return rs_type.startswith(("Vec<", "Option<", "std::collections::BTreeMap<"))
 
 
 def emit_string_enum(name: str, schema: dict[str, Any]) -> str:
@@ -290,7 +307,7 @@ def emit_string_enum(name: str, schema: dict[str, Any]) -> str:
 def emit_tagged_enum(name: str, schema: dict[str, Any]) -> str:
     """oneOf with each variant having a `type: {enum: ["..."]}` discriminator."""
     rs = []
-    rs.append("#[derive(Debug, Clone, Serialize, Deserialize)]")
+    rs.append("#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]")
     rs.append('#[serde(tag = "type", rename_all = "camelCase")]')
     rs.append(f"pub enum {rust_name(name)} {{")
     seen_idents: set[str] = set()
@@ -345,24 +362,306 @@ def emit_tagged_enum(name: str, schema: dict[str, Any]) -> str:
     return "\n".join(rs)
 
 
+def _is_string_enum_variant(v: Any) -> bool:
+    """`{enum: [...], type: "string"}` — one or more string values, any count."""
+    return (
+        isinstance(v, dict)
+        and v.get("type") == "string"
+        and isinstance(v.get("enum"), list)
+        and len(v["enum"]) >= 1
+        and all(isinstance(x, str) for x in v["enum"])
+    )
+
+
+def _is_single_key_object_variant(v: Any) -> tuple[str, dict[str, Any]] | None:
+    """Return (key, value_schema) if `v` is `{properties: {<one_key>: <schema>}, required: [<one_key>], type: object}`."""
+    if not isinstance(v, dict):
+        return None
+    if v.get("type") != "object":
+        return None
+    props = v.get("properties") or {}
+    required = v.get("required") or []
+    if len(props) != 1 or len(required) != 1 or list(props.keys()) != required:
+        return None
+    key = required[0]
+    return key, props[key]
+
+
+def _common_object_discriminator(variants: list[Any]) -> str | None:
+    """If every object variant has a single-element string-enum on the same key, return that key."""
+    keys: set[str] = set()
+    for v in variants:
+        if not isinstance(v, dict) or v.get("type") != "object":
+            return None
+        props = v.get("properties") or {}
+        local: set[str] = set()
+        for k, ks in props.items():
+            if (
+                isinstance(ks, dict)
+                and ks.get("type") == "string"
+                and isinstance(ks.get("enum"), list)
+                and len(ks["enum"]) == 1
+            ):
+                local.add(k)
+        if not local:
+            return None
+        keys = local if not keys else keys & local
+        if not keys:
+            return None
+    return next(iter(keys)) if len(keys) == 1 else None
+
+
+def emit_string_newtype(name: str, schema: dict[str, Any]) -> str:
+    """`{"type": "string"}` with no enum — transparent newtype over `String`."""
+    desc = schema.get("description")
+    rs = []
+    if desc:
+        for line in str(desc).strip().splitlines():
+            rs.append(f"/// {line}")
+    rs.append("#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq, Hash)]")
+    rs.append("#[serde(transparent)]")
+    rs.append(f"pub struct {rust_name(name)}(pub String);")
+    return "\n".join(rs)
+
+
+def _variant_ident(tag: str) -> str:
+    """Turn a string-enum tag into a valid PascalCase Rust ident."""
+    cleaned = re.sub(r"[^A-Za-z0-9_]+", "_", tag)
+    if cleaned and cleaned[0].isdigit():
+        cleaned = "_" + cleaned
+    # PascalCase: split on _ and capitalize each piece.
+    parts = [p for p in cleaned.split("_") if p]
+    if not parts:
+        return "Unknown"
+    ident = "".join(p[:1].upper() + p[1:] for p in parts)
+    if ident in KEYWORDS:
+        ident = ident + "_"
+    return ident
+
+
+def _push_string_variant(rs: list[str], tag: str, seen: set[str]) -> None:
+    """Append one Rust unit variant for a string-enum tag, deduping if needed."""
+    ident = _variant_ident(tag)
+    base = ident
+    i = 2
+    while ident in seen:
+        ident = f"{base}{i}"
+        i += 1
+    seen.add(ident)
+    if tag != ident:
+        rs.append(f'    #[serde(rename = "{tag}")]')
+    rs.append(f"    {ident},")
+
+
+def emit_oneof_string_enum(name: str, schema: dict[str, Any]) -> str:
+    """`oneOf` where every variant is a string-enum (single- or multi-valued) — Rust unit enum.
+
+    Multi-value variants are expanded into one Rust variant per enum value,
+    so `oneOf: [{enum:["auto","concise"]}, {enum:["none"]}]` becomes
+    `enum Foo { Auto, Concise, None_ }`.
+    """
+    rs = []
+    rs.append("#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]")
+    rs.append(f"pub enum {rust_name(name)} {{")
+    seen: set[str] = set()
+    for v in schema["oneOf"]:
+        for tag in v["enum"]:
+            _push_string_variant(rs, str(tag), seen)
+    rs.append("}")
+    return "\n".join(rs)
+
+
+def emit_oneof_mixed(name: str, schema: dict[str, Any]) -> str:
+    """`oneOf` mixing string-enum variants with single-key object variants — externally-tagged Rust enum.
+
+    Serde's default external tagging emits unit variants as bare strings and
+    single-key-struct variants as `{"variantName": {...}}` — exactly the wire
+    shape this pattern is meant to round-trip.
+    """
+    rs = []
+    rs.append("#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]")
+    rs.append(f"pub enum {rust_name(name)} {{")
+    seen: set[str] = set()
+    for v in schema["oneOf"]:
+        if _is_string_enum_variant(v):
+            for tag in v["enum"]:
+                _push_string_variant(rs, str(tag), seen)
+            continue
+        single = _is_single_key_object_variant(v)
+        if single is not None:
+            key, inner = single
+            ident = _variant_ident(key)
+            base = ident
+            i = 2
+            while ident in seen:
+                ident = f"{base}{i}"
+                i += 1
+            seen.add(ident)
+            if key != ident:
+                rs.append(f'    #[serde(rename = "{key}")]')
+            # Inline the single inner field — preserves its sub-fields as a struct-variant body.
+            inner_props = inner.get("properties") or {}
+            required = set(inner.get("required") or [])
+            if inner.get("type") == "object" and inner_props:
+                rs.append(f"    {ident} {{")
+                for fn in sorted(inner_props):
+                    fs = inner_props[fn]
+                    rs_field = to_snake(fn)
+                    rs_type = schema_to_rust(fs)
+                    is_opt = rs_type.startswith("Option<") or fn not in required
+                    if is_opt and not rs_type.startswith("Option<"):
+                        rs_type = f"Option<{rs_type}>"
+                    attrs = []
+                    if rs_field != fn:
+                        attrs.append(f'rename = "{fn}"')
+                    if is_opt:
+                        attrs.append("default")
+                        attrs.append('skip_serializing_if = "Option::is_none"')
+                    if attrs:
+                        rs.append("        #[serde(" + ", ".join(attrs) + ")]")
+                    rs.append(f"        {rs_field}: {rs_type},")
+                rs.append("    },")
+            else:
+                # Inner isn't a struct shape — tuple variant with the inner type.
+                rs.append(f"    {ident}({schema_to_rust(inner)}),")
+            continue
+        # Unknown variant shape — keep going but record raw.
+        rs.append(f"    // codegen: unhandled variant shape {list(v.keys()) if isinstance(v, dict) else v}")
+    rs.append("}")
+    return "\n".join(rs)
+
+
+def emit_anyof_untagged(name: str, schema: dict[str, Any]) -> str:
+    """`anyOf` of $refs or inline shapes — untagged Rust enum with one variant per branch."""
+    variants = schema["anyOf"]
+    rs = []
+    rs.append("#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]")
+    rs.append("#[serde(untagged)]")
+    rs.append(f"pub enum {rust_name(name)} {{")
+    seen: set[str] = set()
+    for idx, v in enumerate(variants):
+        if not isinstance(v, dict):
+            continue
+        ident = None
+        body_type = None
+        ref = v.get("$ref")
+        if isinstance(ref, str) and ref.startswith("#/definitions/"):
+            ref_name = ref.rsplit("/", 1)[-1]
+            ident = _variant_ident(ref_name)
+            body_type = rust_name(ref_name)
+        else:
+            body_type = schema_to_rust(v)
+            # Synthesize an ident from a title or fall back to indexed name.
+            title = v.get("title")
+            if title:
+                ident = _variant_ident(str(title))
+            else:
+                ident = f"Variant{idx}"
+        base = ident
+        i = 2
+        while ident in seen:
+            ident = f"{base}{i}"
+            i += 1
+        seen.add(ident)
+        rs.append(f"    {ident}({body_type}),")
+    rs.append("}")
+    return "\n".join(rs)
+
+
+def emit_tagged_enum_on_key(name: str, schema: dict[str, Any], tag_key: str) -> str:
+    """`oneOf` of object variants discriminated on `tag_key` (e.g. `kind`)."""
+    rs = []
+    rs.append("#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]")
+    rs.append(f'#[serde(tag = "{tag_key}", rename_all = "camelCase")]')
+    rs.append(f"pub enum {rust_name(name)} {{")
+    seen: set[str] = set()
+    for v in schema["oneOf"]:
+        v_props = v.get("properties", {})
+        tag_enum = v_props.get(tag_key, {}).get("enum")
+        if not tag_enum:
+            continue
+        tag = tag_enum[0]
+        ident = _variant_ident(str(tag))
+        base = ident
+        i = 2
+        while ident in seen:
+            ident = f"{base}{i}"
+            i += 1
+        seen.add(ident)
+        other_props = {k: vp for k, vp in v_props.items() if k != tag_key}
+        required = set(v.get("required") or []) - {tag_key}
+        if str(tag) != to_snake(ident):
+            rs.append(f'    #[serde(rename = "{tag}")]')
+        if not other_props:
+            rs.append(f"    {ident},")
+        else:
+            rs.append(f"    {ident} {{")
+            for fn in sorted(other_props):
+                fs = other_props[fn]
+                rs_field = to_snake(fn)
+                rs_type = schema_to_rust(fs)
+                is_opt = rs_type.startswith("Option<") or fn not in required
+                if is_opt and not rs_type.startswith("Option<"):
+                    rs_type = f"Option<{rs_type}>"
+                attrs = []
+                if rs_field != fn:
+                    attrs.append(f'rename = "{fn}"')
+                if is_opt:
+                    attrs.append("default")
+                    attrs.append('skip_serializing_if = "Option::is_none"')
+                if attrs:
+                    rs.append("        #[serde(" + ", ".join(attrs) + ")]")
+                rs.append(f"        {rs_field}: {rs_type},")
+            rs.append("    },")
+    rs.append("}")
+    return "\n".join(rs)
+
+
 def emit_type(name: str, schema: dict[str, Any]) -> str:
     """Pick the right shape for a definition and emit Rust."""
+    # 1. Pure string enum: `{enum: [...], type: "string"}`.
     if "enum" in schema and schema.get("type") == "string":
         return emit_string_enum(name, schema)
-    if "oneOf" in schema and all(
-        isinstance(v, dict) and v.get("properties", {}).get("type", {}).get("enum")
-        for v in schema["oneOf"]
-    ):
-        return emit_tagged_enum(name, schema)
+
+    # 2. Bare string newtype: `{type: "string"}` with no enum.
+    if schema.get("type") == "string" and "enum" not in schema:
+        return emit_string_newtype(name, schema)
+
+    # 3. oneOf — try string-only, mixed, then tagged-on-discriminator forms.
+    if "oneOf" in schema:
+        variants = schema["oneOf"]
+        if variants and all(_is_string_enum_variant(v) for v in variants):
+            return emit_oneof_string_enum(name, schema)
+        # Mixed: every variant is either a bare string-enum or a single-key
+        # object wrapper. Externally-tagged Rust enum round-trips this.
+        if variants and all(
+            _is_string_enum_variant(v) or _is_single_key_object_variant(v) is not None
+            for v in variants
+        ):
+            return emit_oneof_mixed(name, schema)
+        # All variants have a `type`-keyed string-enum discriminator.
+        if all(
+            isinstance(v, dict) and v.get("properties", {}).get("type", {}).get("enum")
+            for v in variants
+        ):
+            return emit_tagged_enum(name, schema)
+        # All variants have a single shared discriminator key (often `kind`).
+        disc = _common_object_discriminator(variants)
+        if disc:
+            return emit_tagged_enum_on_key(name, schema, disc)
+
+    # 4. anyOf — untagged Rust enum per branch.
+    if "anyOf" in schema:
+        return emit_anyof_untagged(name, schema)
+
+    # 5. Object with properties.
     if schema.get("type") == "object" or "properties" in schema:
         return emit_struct(name, schema)
-    if "anyOf" in schema:
-        # Top-level anyOf — model as a transparent newtype over Value for now.
-        return f"""#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(transparent)]
-pub struct {rust_name(name)}(pub Value);"""
-    # Fallback: opaque newtype over Value.
-    return f"""#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+
+    # 6. Last-resort opaque newtype — should never trigger now; leaving the
+    # `// codegen unhandled` marker so a regression is grepable.
+    return f"""// codegen unhandled shape for {name}: {sorted(schema.keys())}
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct {rust_name(name)}(pub Value);"""
 
@@ -429,55 +728,6 @@ def sample_for(schema: Any, depth: int = 0) -> Any:
 # ──────────────────────────────────────────────────────────────────────────
 
 
-# Names we deliberately keep hand-written in protocol.rs — don't emit duplicates.
-HAND_WRITTEN: set[str] = {
-    # Curated, hand-edited types kept in protocol.rs / io/items.rs:
-    "ClientInfo", "InitializeCapabilities", "InitializeParams", "InitializeResponse",
-    "ThreadInfo", "ThreadStartParams", "ThreadStartResponse",
-    "ThreadArchiveParams", "ThreadArchiveResponse",
-    "TurnStartParams", "TurnStartResponse",
-    "TurnInterruptParams", "TurnInterruptResponse",
-    "UserInput", "Turn", "TurnStatus", "TurnError",
-    "TokenCounts", "TokenUsage", "RateLimits", "RateLimitWindow",
-    "ThreadStatus", "ThreadStartedNotification", "ThreadStatusChangedNotification",
-    "ThreadTokenUsageUpdatedNotification", "TurnStartedNotification",
-    "TurnCompletedNotification", "ItemStartedNotification", "ItemCompletedNotification",
-    "AgentMessageDeltaNotification", "CmdOutputDeltaNotification",
-    "FileChangeOutputDeltaNotification", "ReasoningDeltaNotification",
-    "ErrorNotification", "AccountRateLimitsUpdatedNotification",
-    "McpServerStartupStatusUpdatedNotification", "RemoteControlStatusChangedNotification",
-    "CommandExecutionApprovalParams", "CommandExecutionApprovalResponse",
-    "FileChangeApprovalParams", "FileChangeApprovalResponse",
-    "CommandApprovalDecision", "FileChangeApprovalDecision",
-    # Notification types we already hand-wrote in increment 1 + 2:
-    "FileChangePatchUpdatedNotification", "PlanDeltaNotification",
-    "TurnPlanUpdatedNotification", "TurnPlanStep", "TurnPlanStepStatus",
-    "TurnDiffUpdatedNotification", "ReasoningSummaryPartAddedNotification",
-    "ReasoningTextDeltaNotification", "McpServerOauthLoginCompletedNotification",
-    "AccountLoginCompletedNotification", "DeprecationNoticeNotification",
-    "GuardianWarningNotification", "WarningNotification",
-    "ThreadArchivedNotification", "ThreadClosedNotification",
-    "ThreadUnarchivedNotification", "ThreadGoalClearedNotification",
-    "ThreadNameUpdatedNotification", "SkillsChangedNotification",
-    "FsChangedNotification", "ConfigWarningNotification",
-    # Notification stubs from increment 5 (the 29 Value-wrappers) — we'll
-    # REGENERATE these as fully-typed structs and replace the stubs.
-    # So keep them OUT of HAND_WRITTEN to allow regen.
-    # Item types kept in io/items.rs:
-    "ThreadItem", "AgentMessageItem", "CommandExecutionItem", "CommandExecutionStatus",
-    "ReasoningItem", "FileChangeItem", "FileUpdateChange", "PatchChangeKind",
-    "PatchApplyStatus", "McpToolCallItem", "McpToolCallStatus", "McpToolCallResult",
-    "McpToolCallError", "WebSearchItem", "TodoItem", "TodoListItem", "ErrorItem",
-    "UserMessageItem", "UserMessageContent",
-    # Config option types:
-    "ApprovalMode", "ModelReasoningEffort", "SandboxMode", "ThreadOptions", "WebSearchMode",
-    # JSON-RPC types:
-    "RequestId",
-    # Envelope types — don't emit; they're dispatch-only.
-    "ClientNotification", "ClientRequest", "ServerNotification", "ServerRequest",
-    "JSONRPCMessage", "JSONRPCRequest", "JSONRPCNotification", "JSONRPCResponse",
-    "JSONRPCError", "JSONRPCErrorError",
-}
 
 
 def emit_generated_module() -> str:
@@ -486,58 +736,17 @@ def emit_generated_module() -> str:
     out.append("// AUTO-GENERATED by scripts/codegen_protocol.py — DO NOT EDIT BY HAND.")
     out.append("// Run `python3 scripts/codegen_protocol.py` to regenerate.")
     out.append("//")
-    out.append("// This module defines the wire types reachable from every method in the")
-    out.append("// upstream codex app-server v2 schema bundle. Hand-curated types live in")
-    out.append("// `protocol.rs` and `io/items.rs` and are re-exported alongside these.")
+    out.append("// Every wire type reachable from a method in the upstream codex")
+    out.append("// app-server schema bundle is emitted here as a Rust struct or enum.")
+    out.append("// Cross-references resolve to other types in this module.")
     out.append("")
     out.append("#![allow(unused_imports, non_camel_case_types, clippy::large_enum_variant, clippy::enum_variant_names, clippy::empty_docs)]")
     out.append("")
     out.append("use serde::{Deserialize, Serialize};")
     out.append("use serde_json::Value;")
     out.append("")
-    out.append("// Hand-written / curated types that generated code can $ref into.")
-    out.append("use crate::io::items::{")
-    out.append("    AgentMessageItem, CommandExecutionItem, CommandExecutionStatus, ErrorItem,")
-    out.append("    FileChangeItem, FileUpdateChange, McpToolCallError, McpToolCallItem,")
-    out.append("    McpToolCallResult, McpToolCallStatus, PatchApplyStatus, PatchChangeKind,")
-    out.append("    ReasoningItem, ThreadItem, TodoItem, TodoListItem, WebSearchItem,")
-    out.append("    UserMessageContent, UserMessageItem,")
-    out.append("};")
-    out.append("use crate::io::options::{")
-    out.append("    ApprovalMode, ModelReasoningEffort, SandboxMode, ThreadOptions, WebSearchMode,")
-    out.append("};")
-    out.append("use crate::jsonrpc::RequestId;")
-    out.append("use crate::protocol::{")
-    out.append("    AccountLoginCompletedNotification, AccountRateLimitsUpdatedNotification,")
-    out.append("    AgentMessageDeltaNotification, ClientInfo, CmdOutputDeltaNotification,")
-    out.append("    CommandApprovalDecision, CommandExecutionApprovalParams,")
-    out.append("    CommandExecutionApprovalResponse, ConfigWarningNotification,")
-    out.append("    DeprecationNoticeNotification, ErrorNotification, FileChangeApprovalDecision,")
-    out.append("    FileChangeApprovalParams, FileChangeApprovalResponse,")
-    out.append("    FileChangeOutputDeltaNotification, FileChangePatchUpdatedNotification,")
-    out.append("    FsChangedNotification, GuardianWarningNotification, InitializeCapabilities,")
-    out.append("    InitializeParams, InitializeResponse, ItemCompletedNotification,")
-    out.append("    ItemStartedNotification, McpServerOauthLoginCompletedNotification,")
-    out.append("    McpServerStartupStatusUpdatedNotification, PlanDeltaNotification, RateLimits,")
-    out.append("    RateLimitWindow, ReasoningDeltaNotification,")
-    out.append("    ReasoningSummaryPartAddedNotification, ReasoningTextDeltaNotification,")
-    out.append("    RemoteControlStatusChangedNotification, SkillsChangedNotification,")
-    out.append("    ThreadArchiveParams, ThreadArchiveResponse, ThreadArchivedNotification,")
-    out.append("    ThreadClosedNotification, ThreadGoalClearedNotification, ThreadInfo,")
-    out.append("    ThreadNameUpdatedNotification, ThreadStartParams, ThreadStartResponse,")
-    out.append("    ThreadStartedNotification, ThreadStatus, ThreadStatusChangedNotification,")
-    out.append("    ThreadTokenUsageUpdatedNotification, ThreadUnarchivedNotification,")
-    out.append("    TokenCounts, TokenUsage, Turn, TurnCompletedNotification,")
-    out.append("    TurnDiffUpdatedNotification, TurnError, TurnInterruptParams,")
-    out.append("    TurnInterruptResponse, TurnPlanStep, TurnPlanStepStatus,")
-    out.append("    TurnPlanUpdatedNotification, TurnStartParams, TurnStartResponse,")
-    out.append("    TurnStartedNotification, TurnStatus, UserInput, WarningNotification,")
-    out.append("};")
-    out.append("")
     # Emit definitions sorted by name (deterministic).
     for name in sorted(REACHABLE):
-        if name in HAND_WRITTEN:
-            continue
         schema = DEFS.get(name)
         if not schema:
             continue
