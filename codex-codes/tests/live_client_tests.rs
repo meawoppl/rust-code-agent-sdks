@@ -31,14 +31,11 @@ async fn test_async_client_start_and_thread_start() {
         .expect("Failed to start app-server");
 
     let thread = client
-        .thread_start(&ThreadStartParams::default())
+        .thread_start(&serde_json::from_value::<ThreadStartParams>(serde_json::json!({})).unwrap())
         .await
         .expect("Failed to start thread");
 
-    assert!(
-        !thread.thread_id().is_empty(),
-        "thread_id must not be empty"
-    );
+    assert!(!thread.thread.id.is_empty(), "thread_id must not be empty");
 
     client.shutdown().await.expect("Failed to shutdown");
 }
@@ -52,19 +49,27 @@ async fn test_async_client_basic_turn() {
         .expect("Failed to start app-server");
 
     let thread = client
-        .thread_start(&ThreadStartParams::default())
+        .thread_start(&serde_json::from_value::<ThreadStartParams>(serde_json::json!({})).unwrap())
         .await
         .expect("Failed to start thread");
 
     client
         .turn_start(&TurnStartParams {
-            thread_id: thread.thread_id().to_string(),
+            thread_id: thread.thread.id.clone(),
             input: vec![UserInput::Text {
                 text: "What is 2 + 2? Reply with just the number.".to_string(),
+                text_elements: None,
             }],
+            approval_policy: None,
+            approvals_reviewer: None,
+            cwd: None,
+            effort: None,
             model: None,
-            reasoning_effort: None,
+            output_schema: None,
+            personality: None,
             sandbox_policy: None,
+            service_tier: None,
+            summary: None,
         })
         .await
         .expect("Failed to start turn");
@@ -123,8 +128,9 @@ async fn test_async_client_custom_initialize() {
                 title: Some("Integration Test".to_string()),
             },
             capabilities: Some(InitializeCapabilities {
-                experimental_api: false,
+                experimental_api: Some(false),
                 opt_out_notification_methods: None,
+                request_attestation: None,
             }),
         })
         .await
@@ -137,11 +143,11 @@ async fn test_async_client_custom_initialize() {
 
     // Verify we can use the client after custom initialization
     let thread = client
-        .thread_start(&ThreadStartParams::default())
+        .thread_start(&serde_json::from_value::<ThreadStartParams>(serde_json::json!({})).unwrap())
         .await
         .expect("Failed to start thread after custom init");
 
-    assert!(!thread.thread_id().is_empty());
+    assert!(!thread.thread.id.is_empty());
 
     client.shutdown().await.expect("Failed to shutdown");
 }
@@ -153,13 +159,10 @@ fn test_sync_client_start_and_thread_start() {
     let mut client = SyncClient::start().expect("Failed to start app-server");
 
     let thread = client
-        .thread_start(&ThreadStartParams::default())
+        .thread_start(&serde_json::from_value::<ThreadStartParams>(serde_json::json!({})).unwrap())
         .expect("Failed to start thread");
 
-    assert!(
-        !thread.thread_id().is_empty(),
-        "thread_id must not be empty"
-    );
+    assert!(!thread.thread.id.is_empty(), "thread_id must not be empty");
 }
 
 // ── Sync client: full turn lifecycle ────────────────────────────────
@@ -169,18 +172,26 @@ fn test_sync_client_basic_turn() {
     let mut client = SyncClient::start().expect("Failed to start app-server");
 
     let thread = client
-        .thread_start(&ThreadStartParams::default())
+        .thread_start(&serde_json::from_value::<ThreadStartParams>(serde_json::json!({})).unwrap())
         .expect("Failed to start thread");
 
     client
         .turn_start(&TurnStartParams {
-            thread_id: thread.thread_id().to_string(),
+            thread_id: thread.thread.id.clone(),
             input: vec![UserInput::Text {
                 text: "What is 2 + 2? Reply with just the number.".to_string(),
+                text_elements: None,
             }],
+            approval_policy: None,
+            approvals_reviewer: None,
+            cwd: None,
+            effort: None,
             model: None,
-            reasoning_effort: None,
+            output_schema: None,
+            personality: None,
             sandbox_policy: None,
+            service_tier: None,
+            summary: None,
         })
         .expect("Failed to start turn");
 
@@ -223,20 +234,28 @@ async fn test_async_client_multi_turn() {
         .expect("Failed to start app-server");
 
     let thread = client
-        .thread_start(&ThreadStartParams::default())
+        .thread_start(&serde_json::from_value::<ThreadStartParams>(serde_json::json!({})).unwrap())
         .await
         .expect("Failed to start thread");
 
     // First turn: establish context
     client
         .turn_start(&TurnStartParams {
-            thread_id: thread.thread_id().to_string(),
+            thread_id: thread.thread.id.clone(),
             input: vec![UserInput::Text {
                 text: "Remember the number 42. Just say OK.".to_string(),
+                text_elements: None,
             }],
+            approval_policy: None,
+            approvals_reviewer: None,
+            cwd: None,
+            effort: None,
             model: None,
-            reasoning_effort: None,
+            output_schema: None,
+            personality: None,
             sandbox_policy: None,
+            service_tier: None,
+            summary: None,
         })
         .await
         .expect("Failed to start first turn");
@@ -263,14 +282,22 @@ async fn test_async_client_multi_turn() {
     // Second turn: check context is maintained
     client
         .turn_start(&TurnStartParams {
-            thread_id: thread.thread_id().to_string(),
+            thread_id: thread.thread.id.clone(),
             input: vec![UserInput::Text {
                 text: "What number did I ask you to remember? Reply with just the number."
                     .to_string(),
+                text_elements: None,
             }],
+            approval_policy: None,
+            approvals_reviewer: None,
+            cwd: None,
+            effort: None,
             model: None,
-            reasoning_effort: None,
+            output_schema: None,
+            personality: None,
             sandbox_policy: None,
+            service_tier: None,
+            summary: None,
         })
         .await
         .expect("Failed to start second turn");
@@ -313,19 +340,27 @@ async fn test_async_client_event_stream() {
         .expect("Failed to start app-server");
 
     let thread = client
-        .thread_start(&ThreadStartParams::default())
+        .thread_start(&serde_json::from_value::<ThreadStartParams>(serde_json::json!({})).unwrap())
         .await
         .expect("Failed to start thread");
 
     client
         .turn_start(&TurnStartParams {
-            thread_id: thread.thread_id().to_string(),
+            thread_id: thread.thread.id.clone(),
             input: vec![UserInput::Text {
                 text: "Say hello.".to_string(),
+                text_elements: None,
             }],
+            approval_policy: None,
+            approvals_reviewer: None,
+            cwd: None,
+            effort: None,
             model: None,
-            reasoning_effort: None,
+            output_schema: None,
+            personality: None,
             sandbox_policy: None,
+            service_tier: None,
+            summary: None,
         })
         .await
         .expect("Failed to start turn");
@@ -379,20 +414,28 @@ async fn test_typed_message_audit_strict() {
         .expect("Failed to start app-server");
 
     let thread = client
-        .thread_start(&ThreadStartParams::default())
+        .thread_start(&serde_json::from_value::<ThreadStartParams>(serde_json::json!({})).unwrap())
         .await
         .expect("Failed to start thread");
 
     client
         .turn_start(&TurnStartParams {
-            thread_id: thread.thread_id().to_string(),
+            thread_id: thread.thread.id.clone(),
             input: vec![UserInput::Text {
                 text: "Run `ls` in the current directory, then briefly describe what you saw."
                     .to_string(),
+                text_elements: None,
             }],
+            approval_policy: None,
+            approvals_reviewer: None,
+            cwd: None,
+            effort: None,
             model: None,
-            reasoning_effort: None,
+            output_schema: None,
+            personality: None,
             sandbox_policy: None,
+            service_tier: None,
+            summary: None,
         })
         .await
         .expect("Failed to start turn");
@@ -593,7 +636,7 @@ async fn test_async_client_writes_compilable_quicksort() {
         .expect("initialize");
 
     let thread = client
-        .thread_start(&ThreadStartParams::default())
+        .thread_start(&serde_json::from_value::<ThreadStartParams>(serde_json::json!({})).unwrap())
         .await
         .expect("thread_start");
 
@@ -605,13 +648,21 @@ async fn test_async_client_writes_compilable_quicksort() {
 
     client
         .turn_start(&TurnStartParams {
-            thread_id: thread.thread_id().to_string(),
+            thread_id: thread.thread.id.clone(),
             input: vec![UserInput::Text {
                 text: prompt.to_string(),
+                text_elements: None,
             }],
+            approval_policy: None,
+            approvals_reviewer: None,
+            cwd: None,
+            effort: None,
             model: None,
-            reasoning_effort: None,
+            output_schema: None,
+            personality: None,
             sandbox_policy: None,
+            service_tier: None,
+            summary: None,
         })
         .await
         .expect("turn_start");
@@ -647,11 +698,11 @@ async fn test_async_client_writes_compilable_quicksort() {
                 approvals_seen += 1;
                 let summary = match &request {
                     ServerRequest::CmdExecApproval(p) => format!(
-                        "cmdExec call={} cwd={:?} cmd={:?} reason={:?}",
-                        p.call_id, p.cwd, p.command, p.reason
+                        "cmdExec item={} cwd={:?} cmd={:?} reason={:?}",
+                        p.item_id, p.cwd, p.command, p.reason
                     ),
                     ServerRequest::FileChangeApproval(p) => {
-                        format!("fileChange call={} reason={:?}", p.call_id, p.reason)
+                        format!("fileChange item={} reason={:?}", p.item_id, p.reason)
                     }
                     ServerRequest::Unknown { method, .. } => format!("unknown method={method}"),
                     other => format!("{} (unhandled)", other.method()),

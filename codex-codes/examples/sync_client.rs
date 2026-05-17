@@ -15,19 +15,29 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut client = SyncClient::start()?;
 
     // Start a thread
-    let thread = client.thread_start(&ThreadStartParams::default())?;
-    println!("Thread started: {}", thread.thread_id());
+    let thread = client.thread_start(
+        &serde_json::from_value::<ThreadStartParams>(serde_json::json!({})).unwrap(),
+    )?;
+    println!("Thread started: {}", thread.thread.id.as_str());
 
     // Start a turn with a question
     println!("\nSending query: What is the capital of France?\n");
     client.turn_start(&TurnStartParams {
-        thread_id: thread.thread_id().to_string(),
+        thread_id: thread.thread.id.clone(),
         input: vec![UserInput::Text {
             text: "What is the capital of France?".to_string(),
+            text_elements: None,
         }],
+        approval_policy: None,
+        approvals_reviewer: None,
+        cwd: None,
+        effort: None,
         model: None,
-        reasoning_effort: None,
+        output_schema: None,
+        personality: None,
         sandbox_policy: None,
+        service_tier: None,
+        summary: None,
     })?;
 
     // Iterate notifications until the turn completes
@@ -42,7 +52,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     break;
                 }
                 ServerMessage::Notification(Notification::Error(e)) => {
-                    eprintln!("[error] {}", e.error);
+                    eprintln!("[error] {}", e.error.message);
                 }
                 ServerMessage::Notification(_) => {}
                 ServerMessage::Request { request, .. } => {

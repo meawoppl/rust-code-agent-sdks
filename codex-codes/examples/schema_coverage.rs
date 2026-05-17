@@ -389,7 +389,7 @@ fn print_section(title: &str, rows: &[Row]) {
 /// JSON `Value`. The schema validator then checks the wire shape matches.
 mod samples {
     use codex_codes::protocol::methods;
-    use codex_codes::ErrorNotification;
+    use codex_codes::{ErrorNotification, TurnError};
     use serde_json::Value;
     use std::collections::{BTreeMap, HashSet};
 
@@ -569,9 +569,13 @@ mod samples {
         m.insert(
             methods::ERROR,
             serde_json::to_value(ErrorNotification {
-                error: "something blew up".into(),
-                thread_id: Some("th_abc".into()),
-                turn_id: Some("tn_xyz".into()),
+                error: TurnError {
+                    message: "something blew up".into(),
+                    additional_details: None,
+                    codex_error_info: None,
+                },
+                thread_id: "th_abc".into(),
+                turn_id: "tn_xyz".into(),
                 will_retry: false,
             })
             .expect("ErrorNotification serializes"),

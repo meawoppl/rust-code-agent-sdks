@@ -11,73 +11,24 @@
 //! cargo add codex-codes
 //! ```
 //!
-//! ## Using the Async Client (Recommended)
+//! See `examples/async_client.rs` and `examples/sync_client.rs` for runnable
+//! versions of the usage patterns below. The high-level shape:
 //!
 //! ```ignore
-//! use codex_codes::{AsyncClient, ThreadStartParams, TurnStartParams, UserInput, ServerMessage};
-//!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Start the app-server (spawns `codex app-server --listen stdio://`)
-//!     let mut client = AsyncClient::start().await?;
-//!
-//!     // Create a thread (a conversation session)
-//!     let thread = client.thread_start(&ThreadStartParams::default()).await?;
-//!
-//!     // Send a turn (a user message that triggers an agent response)
-//!     client.turn_start(&TurnStartParams {
-//!         thread_id: thread.thread_id().to_string(),
-//!         input: vec![UserInput::Text { text: "What is 2 + 2?".into() }],
-//!         model: None,
-//!         reasoning_effort: None,
-//!         sandbox_policy: None,
-//!     }).await?;
-//!
-//!     // Stream notifications until the turn completes
-//!     while let Some(msg) = client.next_message().await? {
-//!         match msg {
-//!             ServerMessage::Notification { method, params } => {
-//!                 if method == "turn/completed" { break; }
-//!             }
-//!             ServerMessage::Request { id, .. } => {
-//!                 // Approval request — auto-accept for this example
-//!                 client.respond(id, &serde_json::json!({"decision": "accept"})).await?;
-//!             }
-//!         }
-//!     }
-//!
-//!     client.shutdown().await?;
-//!     Ok(())
-//! }
-//! ```
-//!
-//! ## Using the Sync Client
-//!
-//! ```ignore
-//! use codex_codes::{SyncClient, ThreadStartParams, TurnStartParams, UserInput, ServerMessage};
-//!
-//! fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let mut client = SyncClient::start()?;
-//!     let thread = client.thread_start(&ThreadStartParams::default())?;
-//!
-//!     client.turn_start(&TurnStartParams {
-//!         thread_id: thread.thread_id().to_string(),
-//!         input: vec![UserInput::Text { text: "What is 2 + 2?".into() }],
-//!         model: None,
-//!         reasoning_effort: None,
-//!         sandbox_policy: None,
-//!     })?;
-//!
-//!     for result in client.events() {
-//!         match result? {
-//!             ServerMessage::Notification { method, .. } => {
-//!                 if method == "turn/completed" { break; }
-//!             }
-//!             _ => {}
-//!         }
-//!     }
-//!     Ok(())
-//! }
+//! let mut client = AsyncClient::start().await?;
+//! let thread = client
+//!     .thread_start(&serde_json::from_value(serde_json::json!({}))?)
+//!     .await?;
+//! client.turn_start(&TurnStartParams {
+//!     thread_id: thread.thread.id.clone(),
+//!     input: vec![UserInput::Text {
+//!         text: "What is 2 + 2?".into(),
+//!         text_elements: None,
+//!     }],
+//!     // All other fields default to None — populate when overriding
+//!     // model / approval / sandbox / etc. for this turn.
+//!     ..serde_json::from_value(serde_json::json!({"threadId": thread.thread.id, "input": []}))?
+//! }).await?;
 //! ```
 //!
 //! # Architecture
@@ -153,7 +104,7 @@
 //! let msg: JsonRpcMessage = serde_json::from_str(rpc).unwrap();
 //! ```
 
-mod io;
+pub mod io;
 
 pub mod error;
 pub mod jsonrpc;
@@ -182,19 +133,6 @@ pub use io::events::{
     ThreadEvent, ThreadStartedEvent, TurnCompletedEvent, TurnFailedEvent, TurnStartedEvent, Usage,
 };
 
-// Thread item types (shared between exec and app-server)
-pub use io::items::{
-    AgentMessageItem, CommandExecutionItem, CommandExecutionStatus, ErrorItem, FileChangeItem,
-    FileUpdateChange, McpToolCallError, McpToolCallItem, McpToolCallResult, McpToolCallStatus,
-    PatchApplyStatus, PatchChangeKind, ReasoningItem, ThreadItem, TodoItem, TodoListItem,
-    WebSearchItem,
-};
-
-// Configuration types
-pub use io::options::{
-    ApprovalMode, ModelReasoningEffort, SandboxMode, ThreadOptions, WebSearchMode,
-};
-
 // Error types (always available)
 pub use error::{Error, ParseError, Result};
 
@@ -204,47 +142,9 @@ pub use jsonrpc::{
     JsonRpcResponse, RequestId,
 };
 
-// App-server protocol types (always available)
-pub use protocol::{
-    AccountLoginCompletedNotification, AccountRateLimitsUpdatedNotification,
-    AccountUpdatedNotification, AgentMessageDeltaNotification, AppListUpdatedNotification,
-    ClientInfo, CmdOutputDeltaNotification, CommandApprovalDecision,
-    CommandExecOutputDeltaNotification, CommandExecutionApprovalParams,
-    CommandExecutionApprovalResponse, ConfigWarningNotification, ContextCompactedNotification,
-    DeprecationNoticeNotification, ErrorNotification,
-    ExternalAgentConfigImportCompletedNotification, FileChangeApprovalDecision,
-    FileChangeApprovalParams, FileChangeApprovalResponse, FileChangeOutputDeltaNotification,
-    FileChangePatchUpdatedNotification, FsChangedNotification,
-    FuzzyFileSearchSessionCompletedNotification, FuzzyFileSearchSessionUpdatedNotification,
-    GuardianWarningNotification, HookCompletedNotification, HookStartedNotification,
-    InitializeCapabilities, InitializeParams, InitializeResponse, ItemCompletedNotification,
-    ItemGuardianApprovalReviewCompletedNotification, ItemGuardianApprovalReviewStartedNotification,
-    ItemStartedNotification, McpServerOauthLoginCompletedNotification,
-    McpServerStartupStatusUpdatedNotification, McpToolCallProgressNotification,
-    ModelReroutedNotification, ModelVerificationNotification, PlanDeltaNotification,
-    ProcessExitedNotification, ProcessOutputDeltaNotification, RateLimitWindow, RateLimits,
-    ReasoningDeltaNotification, ReasoningSummaryPartAddedNotification,
-    ReasoningTextDeltaNotification, RemoteControlStatusChangedNotification,
-    ServerRequestResolvedNotification, SkillsChangedNotification, TerminalInteractionNotification,
-    ThreadArchiveParams, ThreadArchiveResponse, ThreadArchivedNotification,
-    ThreadClosedNotification, ThreadGoalClearedNotification, ThreadGoalUpdatedNotification,
-    ThreadInfo, ThreadNameUpdatedNotification, ThreadRealtimeClosedNotification,
-    ThreadRealtimeErrorNotification, ThreadRealtimeItemAddedNotification,
-    ThreadRealtimeOutputAudioDeltaNotification, ThreadRealtimeSdpNotification,
-    ThreadRealtimeStartedNotification, ThreadRealtimeTranscriptDeltaNotification,
-    ThreadRealtimeTranscriptDoneNotification, ThreadStartParams, ThreadStartResponse,
-    ThreadStartedNotification, ThreadStatus, ThreadStatusChangedNotification,
-    ThreadTokenUsageUpdatedNotification, ThreadUnarchivedNotification, TokenCounts, TokenUsage,
-    Turn, TurnCompletedNotification, TurnDiffUpdatedNotification, TurnError, TurnInterruptParams,
-    TurnInterruptResponse, TurnPlanStep, TurnPlanStepStatus, TurnPlanUpdatedNotification,
-    TurnStartParams, TurnStartResponse, TurnStartedNotification, TurnStatus, UserInput,
-    WarningNotification, WindowsSandboxSetupCompletedNotification,
-    WindowsWorldWritableWarningNotification,
-};
-
-// Also re-export the `UserMessageItem` and its content block so callers can
-// pattern-match on the new ThreadItem variant added in 0.102.
-pub use io::items::{UserMessageContent, UserMessageItem};
+// App-server protocol types — generated from the upstream JSON Schema and
+// re-exported through `protocol::*`.
+pub use protocol::*;
 
 // Typed message dispatch (notifications + server-to-client requests)
 pub use messages::{Notification, ServerMessage, ServerRequest};
