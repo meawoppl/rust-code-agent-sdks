@@ -640,6 +640,58 @@ impl ToolPermissionRequest {
     pub fn deny_and_stop(&self, message: impl Into<String>, request_id: &str) -> ControlResponse {
         ControlResponse::from_result(request_id, PermissionResult::deny_and_interrupt(message))
     }
+
+    /// Allow an `AskUserQuestion` permission request by supplying the user's
+    /// answers.
+    ///
+    /// The CLI echoes the `updatedInput` we return back into the
+    /// `tool_use_result` it sends to its frontend; that frontend reads
+    /// `tool_use_result.questions` and calls `questions.map(...)`. If we
+    /// returned only `{answers: …}` (the natural shape if you think of
+    /// the response as "just the new info"), the frontend would crash with
+    /// `undefined is not an object (evaluating 'q.map')`.
+    ///
+    /// This helper parses `self.input` as
+    /// [`AskUserQuestionInput`](crate::AskUserQuestionInput), attaches the
+    /// supplied `answers`, and serializes it back — preserving the
+    /// original `questions` (and any `metadata`) on the wire alongside the
+    /// new answers. Returns an error if `self.input` doesn't parse as an
+    /// `AskUserQuestionInput`; non-`AskUserQuestion` callers should keep
+    /// using [`allow`](Self::allow) / [`allow_with`](Self::allow_with).
+    ///
+    /// # Example
+    /// ```
+    /// # use claude_codes::ToolPermissionRequest;
+    /// # use serde_json::json;
+    /// # use std::collections::HashMap;
+    /// let req = ToolPermissionRequest {
+    ///     tool_name: "AskUserQuestion".to_string(),
+    ///     input: json!({"questions": [
+    ///         {"question": "?", "header": "Q", "options": [], "multiSelect": false}
+    ///     ]}),
+    ///     permission_suggestions: vec![],
+    ///     blocked_path: None,
+    ///     decision_reason: None,
+    ///     tool_use_id: None,
+    /// };
+    /// let mut answers = HashMap::new();
+    /// answers.insert("Q".into(), "yes".into());
+    /// let response = req.answer_questions(answers, "req-123").unwrap();
+    /// ```
+    pub fn answer_questions(
+        &self,
+        answers: std::collections::HashMap<String, String>,
+        request_id: &str,
+    ) -> Result<ControlResponse, serde_json::Error> {
+        let mut typed: crate::tool_inputs::AskUserQuestionInput =
+            serde_json::from_value(self.input.clone())?;
+        typed.answers = Some(answers);
+        let updated_input = serde_json::to_value(&typed)?;
+        Ok(ControlResponse::from_result(
+            request_id,
+            PermissionResult::allow(updated_input),
+        ))
+    }
 }
 
 /// Result of a permission decision
@@ -1418,5 +1470,58 @@ mod tests {
 
         let response = req.allow_and_remember_suggestion("req-123");
         assert!(response.is_none());
+    }
+
+    /// Reproducer for the bug where a downstream viewer/frontend rendering
+    /// an `AskUserQuestion` response crashes with
+    /// `undefined is not an object (evaluating 'q.map')`. The frontend reads
+    /// `tool_use_result.questions` (which the CLI populates by echoing the
+    /// `updatedInput` we returned in the `Allow` response) and calls
+    /// `questions.map(...)`. When `updatedInput` omits the `questions`
+    /// array — which is the natural shape if a caller just supplies an
+    /// `{answers: …}` payload — the field is missing and `q.map` blows up.
+    ///
+    /// This test asserts that the convenience for answering questions
+    /// preserves the original `questions` list alongside the user's
+    /// answers, so the wire payload has both fields.
+    #[test]
+    fn test_ask_user_question_answer_preserves_questions_in_updated_input() {
+        let req = ToolPermissionRequest {
+            tool_name: "AskUserQuestion".to_string(),
+            input: serde_json::json!({
+                "questions": [{
+                    "question": "Which color do you prefer?",
+                    "header": "Color",
+                    "options": [
+                        {"label": "Red", "description": "A warm color"},
+                        {"label": "Blue", "description": "A cool color"},
+                    ],
+                    "multiSelect": false,
+                }],
+            }),
+            permission_suggestions: vec![],
+            blocked_path: None,
+            decision_reason: None,
+            tool_use_id: None,
+        };
+
+        let mut answers = std::collections::HashMap::new();
+        answers.insert("Color".to_string(), "Blue".to_string());
+
+        let response = req
+            .answer_questions(answers, "req-q1")
+            .expect("AskUserQuestion input round-trips through the typed helper");
+        let wire = serde_json::to_value(&response).expect("ControlResponse serializes");
+
+        // ControlResponse nests the PermissionResult value at
+        // `response.response`; the PermissionResult itself carries
+        // `behavior: "allow"` + `updatedInput`.
+        let updated_input = &wire["response"]["response"]["updatedInput"];
+        assert_eq!(
+            updated_input["questions"][0]["header"], "Color",
+            "questions array must round-trip in updatedInput so the \
+             frontend's `questions.map(...)` doesn't fault on undefined"
+        );
+        assert_eq!(updated_input["answers"]["Color"], "Blue");
     }
 }
