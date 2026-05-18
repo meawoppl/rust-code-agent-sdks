@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.141] - 2026-05-17
+
+### Added
+
+- **`ToolPermissionRequest::answer_questions(answers, request_id)`** —
+  typed helper for replying to an `AskUserQuestion` permission request.
+  Parses `self.input` as `AskUserQuestionInput`, attaches the supplied
+  `HashMap<String, String>` answers, and returns a `ControlResponse`
+  whose `updatedInput` carries both the original `questions` array AND
+  the new `answers`. Eliminates the `"undefined is not an object
+  (evaluating 'q.map')"` failure mode in downstream viewers that read
+  `tool_use_result.questions` and call `questions.map(...)` — that
+  crash happens when the response payload is built by hand and the
+  original `questions` are dropped. Existing `allow` / `allow_with`
+  continue to work for non-AskUserQuestion approvals.
+
+### Verified
+
+- All 26 integration tests pass against the live Claude CLI, including
+  `test_ask_user_question_answered_and_converges` which drives Claude
+  through the new helper and confirms the agent's follow-up reply
+  references the chosen answer (`"You picked Blue."`).
+
 ## [2.1.140] - 2026-05-13
 
 ### Added

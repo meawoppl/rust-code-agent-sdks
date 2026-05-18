@@ -2202,6 +2202,11 @@ async fn test_ask_user_question_answered_and_converges() {
                                     serde_json::to_string(&perm_req.input).unwrap_or_default()
                                 );
                                 if perm_req.tool_name == "AskUserQuestion" {
+                                    // Parse to read the headers (so we know
+                                    // which key to answer under), then
+                                    // hand off to the typed helper that
+                                    // preserves the questions array on the
+                                    // way back.
                                     let parsed: AskUserQuestionInput = serde_json::from_value(
                                         perm_req.input.clone(),
                                     )
@@ -2213,20 +2218,13 @@ async fn test_ask_user_question_answered_and_converges() {
                                     tool_use_input_seen = Some(parsed);
                                     answered_with = Some(answers.clone());
 
-                                    let mut updated_input = perm_req.input.clone();
-                                    updated_input
-                                        .as_object_mut()
-                                        .expect("input is object")
-                                        .insert(
-                                            "answers".to_string(),
-                                            serde_json::to_value(&answers).unwrap(),
-                                        );
+                                    let response = perm_req
+                                        .answer_questions(answers, &req.request_id)
+                                        .expect("answer_questions round-trips");
                                     eprintln!(
-                                        "[TRACE]   replying allow_with: {}",
-                                        serde_json::to_string(&updated_input).unwrap_or_default()
+                                        "[TRACE]   replying answer_questions: {}",
+                                        serde_json::to_string(&response).unwrap_or_default()
                                     );
-                                    let response =
-                                        perm_req.allow_with(updated_input, &req.request_id);
                                     client
                                         .send_control_response(response)
                                         .await

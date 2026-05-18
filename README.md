@@ -15,7 +15,7 @@ This workspace provides two independent crates for interacting with [Claude Code
 
 Each crate's version tracks the CLI it wraps:
 
-- **`claude-codes`** version mirrors the Claude CLI version it has been tested against. For example, `claude-codes 2.1.140` is tested against Claude CLI `2.1.140`.
+- **`claude-codes`** version mirrors the Claude CLI version it has been tested against. For example, `claude-codes 2.1.141` is tested against Claude CLI `2.1.141`.
 - **`codex-codes`** version tracks the Codex CLI it has been tested against, sitting a small offset behind while the bindings stabilize. Currently `0.129.3`, tested against Codex CLI `0.130.0`.
 
 Both crates will warn (or fail gracefully) if the installed CLI version diverges from the tested version.
