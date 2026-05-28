@@ -2211,15 +2211,17 @@ async fn test_ask_user_question_answered_and_converges() {
                                         perm_req.input.clone(),
                                     )
                                     .expect("AskUserQuestion input must deserialize");
-                                    let mut answers = HashMap::new();
-                                    for q in &parsed.questions {
-                                        answers.insert(q.header.clone(), CHOSEN.to_string());
+                                    let mut answers_by_index = HashMap::new();
+                                    let mut answers_by_text = HashMap::new();
+                                    for (i, q) in parsed.questions.iter().enumerate() {
+                                        answers_by_index.insert(i, CHOSEN.to_string());
+                                        answers_by_text.insert(q.question.clone(), CHOSEN.to_string());
                                     }
                                     tool_use_input_seen = Some(parsed);
-                                    answered_with = Some(answers.clone());
+                                    answered_with = Some(answers_by_text);
 
                                     let response = perm_req
-                                        .answer_questions(answers, &req.request_id)
+                                        .answer_questions(&answers_by_index, &req.request_id)
                                         .expect("answer_questions round-trips");
                                     eprintln!(
                                         "[TRACE]   replying answer_questions: {}",
@@ -2368,8 +2370,8 @@ async fn test_ask_user_question_answered_and_converges() {
     let tur = tool_use_result_field
         .expect("UserMessage.tool_use_result was not captured by the typed parse");
     assert_eq!(
-        tur["answers"]["Color"], CHOSEN,
-        "tool_use_result.answers.Color should match the answer we sent via allow_with"
+        tur["answers"]["Which color do you prefer?"], CHOSEN,
+        "tool_use_result.answers[question_text] should match the answer we sent via allow_with"
     );
     assert_eq!(
         tur["questions"][0]["header"], "Color",

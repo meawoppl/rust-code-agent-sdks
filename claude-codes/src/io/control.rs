@@ -1,6 +1,9 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fmt;
+
+use crate::tool_inputs::AskUserQuestionInput;
 
 // ============================================================================
 // Permission Enums
@@ -641,57 +644,113 @@ impl ToolPermissionRequest {
         ControlResponse::from_result(request_id, PermissionResult::deny_and_interrupt(message))
     }
 
-    /// Allow an `AskUserQuestion` permission request by supplying the user's
-    /// answers.
+    /// Build an `allow` response for an `AskUserQuestion` permission request
+    /// by supplying the user's chosen answers.
     ///
-    /// The CLI echoes the `updatedInput` we return back into the
-    /// `tool_use_result` it sends to its frontend; that frontend reads
-    /// `tool_use_result.questions` and calls `questions.map(...)`. If we
-    /// returned only `{answers: …}` (the natural shape if you think of
-    /// the response as "just the new info"), the frontend would crash with
-    /// `undefined is not an object (evaluating 'q.map')`.
+    /// The CLI's `AskUserQuestion` tool has a finicky wire contract that
+    /// is easy to get wrong by hand:
     ///
-    /// This helper parses `self.input` as
-    /// [`AskUserQuestionInput`](crate::AskUserQuestionInput), attaches the
-    /// supplied `answers`, and serializes it back — preserving the
-    /// original `questions` (and any `metadata`) on the wire alongside the
-    /// new answers. Returns an error if `self.input` doesn't parse as an
-    /// `AskUserQuestionInput`; non-`AskUserQuestion` callers should keep
-    /// using [`allow`](Self::allow) / [`allow_with`](Self::allow_with).
+    /// - The response's `input` must preserve the original `questions`
+    ///   array. Stripping it (sending just `{"answers": ...}`) makes the
+    ///   downstream viewer crash with
+    ///   `undefined is not an object (evaluating 'q.map')` (the CLI echoes
+    ///   the `updatedInput` we return into `tool_use_result`, and viewers
+    ///   read `tool_use_result.questions`).
+    /// - The `answers` map must be keyed by the full **question text**
+    ///   (the `question` field). Keying by `header` or by question index
+    ///   makes the CLI's tool render `"Your questions have been answered: ."`
+    ///   with an empty answer body, leaving Claude unable to see which
+    ///   option the user picked.
+    ///
+    /// This helper does both correctly: it parses `self.input` as
+    /// [`AskUserQuestionInput`](crate::AskUserQuestionInput), looks each
+    /// answer up by question index, and inserts the answer keyed by
+    /// `q.question`. The original `questions` (and any `metadata`) pass
+    /// through unchanged.
+    ///
+    /// `answers_by_index` maps 0-based question index into the original
+    /// `questions` array to the user's chosen answer label. For
+    /// multi-select questions, join the selected labels with `", "`.
+    /// Questions not in the map are treated as unanswered.
+    ///
+    /// Non-`AskUserQuestion` callers should keep using
+    /// [`allow`](Self::allow) / [`allow_with`](Self::allow_with).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AskUserQuestionResponseError`] if the request isn't an
+    /// `AskUserQuestion` request, the input doesn't parse, or an answer
+    /// references a question index that doesn't exist.
     ///
     /// # Example
-    /// ```
-    /// # use claude_codes::ToolPermissionRequest;
-    /// # use serde_json::json;
-    /// # use std::collections::HashMap;
-    /// let req = ToolPermissionRequest {
-    ///     tool_name: "AskUserQuestion".to_string(),
-    ///     input: json!({"questions": [
-    ///         {"question": "?", "header": "Q", "options": [], "multiSelect": false}
-    ///     ]}),
-    ///     permission_suggestions: vec![],
-    ///     blocked_path: None,
-    ///     decision_reason: None,
-    ///     tool_use_id: None,
-    /// };
-    /// let mut answers = HashMap::new();
-    /// answers.insert("Q".into(), "yes".into());
-    /// let response = req.answer_questions(answers, "req-123").unwrap();
+    ///
+    /// ```no_run
+    /// use claude_codes::ToolPermissionRequest;
+    /// use std::collections::HashMap;
+    ///
+    /// fn answer(req: &ToolPermissionRequest, request_id: &str) {
+    ///     let mut answers = HashMap::new();
+    ///     answers.insert(0_usize, "Blue".to_string());
+    ///     let response = req
+    ///         .answer_questions(&answers, request_id)
+    ///         .expect("request is AskUserQuestion-shaped");
+    ///     // send `response` back to the CLI
+    /// }
     /// ```
     pub fn answer_questions(
         &self,
-        answers: std::collections::HashMap<String, String>,
+        answers_by_index: &HashMap<usize, String>,
         request_id: &str,
-    ) -> Result<ControlResponse, serde_json::Error> {
-        let mut typed: crate::tool_inputs::AskUserQuestionInput =
-            serde_json::from_value(self.input.clone())?;
-        typed.answers = Some(answers);
-        let updated_input = serde_json::to_value(&typed)?;
+    ) -> Result<ControlResponse, AskUserQuestionResponseError> {
+        if self.tool_name != "AskUserQuestion" {
+            return Err(AskUserQuestionResponseError::WrongTool(
+                self.tool_name.clone(),
+            ));
+        }
+        let parsed: AskUserQuestionInput = serde_json::from_value(self.input.clone())
+            .map_err(AskUserQuestionResponseError::ParseInput)?;
+        let total = parsed.questions.len();
+
+        let mut answers_map = serde_json::Map::new();
+        for (idx, answer) in answers_by_index {
+            let q = parsed.questions.get(*idx).ok_or(
+                AskUserQuestionResponseError::QuestionIndexOutOfRange { index: *idx, total },
+            )?;
+            answers_map.insert(q.question.clone(), Value::String(answer.clone()));
+        }
+
+        let mut updated_input = self.input.clone();
+        // Input is an object — we just deserialized it as `AskUserQuestionInput`.
+        updated_input
+            .as_object_mut()
+            .expect("AskUserQuestion input is a JSON object")
+            .insert("answers".to_string(), Value::Object(answers_map));
+
         Ok(ControlResponse::from_result(
             request_id,
             PermissionResult::allow(updated_input),
         ))
     }
+}
+
+/// Errors that can occur when building an `AskUserQuestion` response via
+/// [`ToolPermissionRequest::answer_questions`].
+#[derive(Debug, thiserror::Error)]
+pub enum AskUserQuestionResponseError {
+    /// The request was for a different tool, not `AskUserQuestion`.
+    #[error("expected tool_name=AskUserQuestion, got `{0}`")]
+    WrongTool(String),
+    /// The `input` field didn't deserialize into `AskUserQuestionInput`.
+    #[error("failed to parse AskUserQuestion input: {0}")]
+    ParseInput(#[source] serde_json::Error),
+    /// An answer entry referenced a question index outside the questions array.
+    #[error("answer references question index {index}, but only {total} question(s) were asked")]
+    QuestionIndexOutOfRange {
+        /// The out-of-range index the caller supplied.
+        index: usize,
+        /// The number of questions actually in the request.
+        total: usize,
+    },
 }
 
 /// Result of a permission decision
@@ -1472,56 +1531,139 @@ mod tests {
         assert!(response.is_none());
     }
 
-    /// Reproducer for the bug where a downstream viewer/frontend rendering
-    /// an `AskUserQuestion` response crashes with
-    /// `undefined is not an object (evaluating 'q.map')`. The frontend reads
-    /// `tool_use_result.questions` (which the CLI populates by echoing the
-    /// `updatedInput` we returned in the `Allow` response) and calls
-    /// `questions.map(...)`. When `updatedInput` omits the `questions`
-    /// array — which is the natural shape if a caller just supplies an
-    /// `{answers: …}` payload — the field is missing and `q.map` blows up.
-    ///
-    /// This test asserts that the convenience for answering questions
-    /// preserves the original `questions` list alongside the user's
-    /// answers, so the wire payload has both fields.
-    #[test]
-    fn test_ask_user_question_answer_preserves_questions_in_updated_input() {
-        let req = ToolPermissionRequest {
+    fn ask_user_question_request() -> ToolPermissionRequest {
+        ToolPermissionRequest {
             tool_name: "AskUserQuestion".to_string(),
             input: serde_json::json!({
-                "questions": [{
-                    "question": "Which color do you prefer?",
-                    "header": "Color",
-                    "options": [
-                        {"label": "Red", "description": "A warm color"},
-                        {"label": "Blue", "description": "A cool color"},
-                    ],
-                    "multiSelect": false,
-                }],
+                "questions": [
+                    {
+                        "question": "Which color do you prefer?",
+                        "header": "Color",
+                        "options": [
+                            {"label": "Red", "description": "warm"},
+                            {"label": "Blue", "description": "cool"}
+                        ],
+                        "multiSelect": false
+                    },
+                    {
+                        "question": "Pick a size",
+                        "header": "Size",
+                        "options": [
+                            {"label": "Small"},
+                            {"label": "Large"}
+                        ],
+                        "multiSelect": false
+                    }
+                ]
             }),
+            permission_suggestions: vec![],
+            blocked_path: None,
+            decision_reason: None,
+            tool_use_id: None,
+        }
+    }
+
+    fn extract_updated_input(resp: &ControlResponse) -> Value {
+        let ControlResponsePayload::Success { response, .. } = &resp.response else {
+            panic!("expected Success payload");
+        };
+        let inner = response.as_ref().expect("response body present");
+        inner
+            .get("updatedInput")
+            .cloned()
+            .expect("updatedInput field present")
+    }
+
+    #[test]
+    fn answer_questions_keys_by_question_text_and_preserves_questions() {
+        let req = ask_user_question_request();
+        let mut answers = HashMap::new();
+        answers.insert(0, "Blue".to_string());
+        answers.insert(1, "Large".to_string());
+
+        let resp = req.answer_questions(&answers, "rid-1").unwrap();
+        let updated = extract_updated_input(&resp);
+
+        // questions array is preserved verbatim
+        assert_eq!(
+            updated["questions"], req.input["questions"],
+            "questions array must round-trip unchanged"
+        );
+        // answers keyed by question text (not header, not index)
+        assert_eq!(
+            updated["answers"]["Which color do you prefer?"],
+            Value::String("Blue".into())
+        );
+        assert_eq!(
+            updated["answers"]["Pick a size"],
+            Value::String("Large".into())
+        );
+        // header is NOT used as the key
+        assert!(updated["answers"].get("Color").is_none());
+        assert!(updated["answers"].get("Size").is_none());
+    }
+
+    #[test]
+    fn answer_questions_partial_answers_omits_unanswered() {
+        let req = ask_user_question_request();
+        let mut answers = HashMap::new();
+        answers.insert(1, "Small".to_string());
+
+        let resp = req.answer_questions(&answers, "rid-2").unwrap();
+        let updated = extract_updated_input(&resp);
+
+        assert_eq!(
+            updated["answers"]["Pick a size"],
+            Value::String("Small".into())
+        );
+        assert!(updated["answers"]
+            .get("Which color do you prefer?")
+            .is_none());
+    }
+
+    #[test]
+    fn answer_questions_rejects_wrong_tool() {
+        let mut req = ask_user_question_request();
+        req.tool_name = "Bash".to_string();
+
+        let mut answers = HashMap::new();
+        answers.insert(0, "Blue".to_string());
+        match req.answer_questions(&answers, "rid-3").unwrap_err() {
+            AskUserQuestionResponseError::WrongTool(name) => assert_eq!(name, "Bash"),
+            other => panic!("expected WrongTool, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn answer_questions_rejects_unparseable_input() {
+        let req = ToolPermissionRequest {
+            tool_name: "AskUserQuestion".to_string(),
+            input: serde_json::json!({"not_questions": "garbage"}),
             permission_suggestions: vec![],
             blocked_path: None,
             decision_reason: None,
             tool_use_id: None,
         };
 
-        let mut answers = std::collections::HashMap::new();
-        answers.insert("Color".to_string(), "Blue".to_string());
+        let answers = HashMap::new();
+        match req.answer_questions(&answers, "rid-4").unwrap_err() {
+            AskUserQuestionResponseError::ParseInput(_) => {}
+            other => panic!("expected ParseInput, got {other:?}"),
+        }
+    }
 
-        let response = req
-            .answer_questions(answers, "req-q1")
-            .expect("AskUserQuestion input round-trips through the typed helper");
-        let wire = serde_json::to_value(&response).expect("ControlResponse serializes");
+    #[test]
+    fn answer_questions_rejects_out_of_range_index() {
+        let req = ask_user_question_request();
+        let mut answers = HashMap::new();
+        answers.insert(7, "ghost".to_string());
 
-        // ControlResponse nests the PermissionResult value at
-        // `response.response`; the PermissionResult itself carries
-        // `behavior: "allow"` + `updatedInput`.
-        let updated_input = &wire["response"]["response"]["updatedInput"];
-        assert_eq!(
-            updated_input["questions"][0]["header"], "Color",
-            "questions array must round-trip in updatedInput so the \
-             frontend's `questions.map(...)` doesn't fault on undefined"
-        );
-        assert_eq!(updated_input["answers"]["Color"], "Blue");
+        match req.answer_questions(&answers, "rid-5").unwrap_err() {
+            AskUserQuestionResponseError::QuestionIndexOutOfRange { index, total } => {
+                assert_eq!(index, 7);
+                assert_eq!(total, 2);
+            }
+            other => panic!("expected QuestionIndexOutOfRange, got {other:?}"),
+        }
     }
 }
