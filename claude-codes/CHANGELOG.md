@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.142] - 2026-05-27
+
+### Changed
+
+- **`ToolPermissionRequest::answer_questions`** — Signature changed from `HashMap<String, String>` (keyed by caller-chosen string) to `&HashMap<usize, String>` (keyed by question index). The previous signature let callers — and the rustdoc example — accidentally key answers by `header` instead of the full question text, which makes the CLI render `"Your questions have been answered: ."` with an empty body and leaves Claude unable to see the choice. The new signature looks each index up in the request's `questions` array and uses `q.question` as the wire key, so the wrong-key footgun is impossible.
+- **`answer_questions` now returns `AskUserQuestionResponseError`** instead of a bare `serde_json::Error`, distinguishing `WrongTool` / `ParseInput` / `QuestionIndexOutOfRange { index, total }` failure modes. Also validates that `tool_name == "AskUserQuestion"` before parsing the input.
+
+### Added
+
+- **`AskUserQuestionResponseError`** — Re-exported error type for the helper.
+
+### Migration
+
+If you wired up to the 2.1.141 `answer_questions(HashMap<String, String>)` form, swap to passing a `HashMap<usize, String>` keyed by question index (matches the natural UI shape of "the user picked option X for question 0"). No other callsite changes needed.
+
 ## [2.1.141] - 2026-05-17
 
 ### Added
