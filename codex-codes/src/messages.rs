@@ -47,11 +47,12 @@ use crate::protocol::{
     ThreadRealtimeErrorNotification, ThreadRealtimeItemAddedNotification,
     ThreadRealtimeOutputAudioDeltaNotification, ThreadRealtimeSdpNotification,
     ThreadRealtimeStartedNotification, ThreadRealtimeTranscriptDeltaNotification,
-    ThreadRealtimeTranscriptDoneNotification, ThreadStartedNotification,
-    ThreadStatusChangedNotification, ThreadTokenUsageUpdatedNotification,
-    ThreadUnarchivedNotification, TurnCompletedNotification, TurnDiffUpdatedNotification,
-    TurnPlanUpdatedNotification, TurnStartedNotification, WarningNotification,
-    WindowsSandboxSetupCompletedNotification, WindowsWorldWritableWarningNotification,
+    ThreadRealtimeTranscriptDoneNotification, ThreadSettingsUpdatedNotification,
+    ThreadStartedNotification, ThreadStatusChangedNotification,
+    ThreadTokenUsageUpdatedNotification, ThreadUnarchivedNotification, TurnCompletedNotification,
+    TurnDiffUpdatedNotification, TurnModerationMetadataNotification, TurnPlanUpdatedNotification,
+    TurnStartedNotification, WarningNotification, WindowsSandboxSetupCompletedNotification,
+    WindowsWorldWritableWarningNotification,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
@@ -189,6 +190,10 @@ pub enum Notification {
     WindowsWorldWritableWarning(WindowsWorldWritableWarningNotification),
     /// `windowsSandbox/setupCompleted`
     WindowsSandboxSetupCompleted(WindowsSandboxSetupCompletedNotification),
+    /// `thread/settings/updated`
+    ThreadSettingsUpdated(ThreadSettingsUpdatedNotification),
+    /// `turn/moderationMetadata`
+    TurnModerationMetadata(TurnModerationMetadataNotification),
     /// A method this crate version does not yet model. The raw params are
     /// preserved for caller inspection. Encountering this typically means
     /// the installed codex CLI is newer than the bindings.
@@ -273,6 +278,8 @@ impl Notification {
             Self::ThreadRealtimeTranscriptDone(_) => methods::THREAD_REALTIME_TRANSCRIPT_DONE,
             Self::WindowsWorldWritableWarning(_) => methods::WINDOWS_WORLD_WRITABLE_WARNING,
             Self::WindowsSandboxSetupCompleted(_) => methods::WINDOWS_SANDBOX_SETUP_COMPLETED,
+            Self::ThreadSettingsUpdated(_) => methods::THREAD_SETTINGS_UPDATED,
+            Self::TurnModerationMetadata(_) => methods::TURN_MODERATION_METADATA,
             Self::Unknown { method, .. } => method,
         }
     }
@@ -463,6 +470,12 @@ impl Notification {
             methods::WINDOWS_SANDBOX_SETUP_COMPLETED => {
                 serde_json::from_value(params_value).map(Self::WindowsSandboxSetupCompleted)
             }
+            methods::THREAD_SETTINGS_UPDATED => {
+                serde_json::from_value(params_value).map(Self::ThreadSettingsUpdated)
+            }
+            methods::TURN_MODERATION_METADATA => {
+                serde_json::from_value(params_value).map(Self::TurnModerationMetadata)
+            }
             _ => Ok(Self::Unknown {
                 method: method.to_string(),
                 params,
@@ -568,6 +581,8 @@ impl Notification {
             Self::WindowsSandboxSetupCompleted(v) => {
                 pack(methods::WINDOWS_SANDBOX_SETUP_COMPLETED, v)
             }
+            Self::ThreadSettingsUpdated(v) => pack(methods::THREAD_SETTINGS_UPDATED, v),
+            Self::TurnModerationMetadata(v) => pack(methods::TURN_MODERATION_METADATA, v),
             Self::Unknown { method, params } => Ok((method.clone(), params.clone())),
         }
     }
