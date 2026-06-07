@@ -104,6 +104,13 @@ pub mod methods {
     pub const CONFIGREQUIREMENTS_READ: &str = "configRequirements/read";
     pub const ACCOUNT_READ: &str = "account/read";
     pub const FUZZYFILESEARCH: &str = "fuzzyFileSearch";
+    pub const ACCOUNT_USAGE_READ: &str = "account/usage/read";
+    pub const PERMISSION_PROFILE_LIST: &str = "permissionProfile/list";
+    pub const PLUGIN_INSTALLED: &str = "plugin/installed";
+    pub const SKILLS_EXTRA_ROOTS_SET: &str = "skills/extraRoots/set";
+    pub const THREAD_GOAL_GET: &str = "thread/goal/get";
+    pub const THREAD_GOAL_SET: &str = "thread/goal/set";
+    pub const THREAD_GOAL_CLEAR: &str = "thread/goal/clear";
 
     // Server → client notifications
     pub const THREAD_STARTED: &str = "thread/started";
@@ -170,6 +177,8 @@ pub mod methods {
     pub const THREAD_REALTIME_TRANSCRIPT_DONE: &str = "thread/realtime/transcript/done";
     pub const WINDOWS_WORLD_WRITABLE_WARNING: &str = "windows/worldWritableWarning";
     pub const WINDOWS_SANDBOX_SETUP_COMPLETED: &str = "windowsSandbox/setupCompleted";
+    pub const THREAD_SETTINGS_UPDATED: &str = "thread/settings/updated";
+    pub const TURN_MODERATION_METADATA: &str = "turn/moderationMetadata";
 
     // Server → client requests (approval flow, v2 envelope)
     pub const CMD_EXEC_APPROVAL: &str = "item/commandExecution/requestApproval";

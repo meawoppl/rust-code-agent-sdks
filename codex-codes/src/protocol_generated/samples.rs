@@ -120,7 +120,7 @@ pub fn server_notification_samples() -> Vec<(&'static str, Value)> {
         ),
         (
             "remoteControl/status/changed",
-            json!({"installationId": "x", "status": "disabled"}),
+            json!({"installationId": "x", "serverName": "x", "status": "disabled"}),
         ),
         (
             "serverRequest/resolved",
@@ -163,6 +163,10 @@ pub fn server_notification_samples() -> Vec<(&'static str, Value)> {
             json!({"role": "x", "text": "x", "threadId": "x"}),
         ),
         (
+            "thread/settings/updated",
+            json!({"threadId": "x", "threadSettings": {"approvalPolicy": "untrusted", "approvalsReviewer": "user", "collaborationMode": {"mode": "plan", "settings": {"model": "x"}}, "cwd": "x", "model": "x", "modelProvider": "x", "sandboxPolicy": {"type": "dangerFullAccess"}}}),
+        ),
+        (
             "thread/started",
             json!({"thread": {"cliVersion": "x", "createdAt": 0, "cwd": null, "ephemeral": false, "id": "x", "modelProvider": "x", "preview": "x", "sessionId": "x", "source": null, "status": null, "turns": [], "updatedAt": 0}}),
         ),
@@ -182,6 +186,10 @@ pub fn server_notification_samples() -> Vec<(&'static str, Value)> {
         (
             "turn/diff/updated",
             json!({"diff": "x", "threadId": "x", "turnId": "x"}),
+        ),
+        (
+            "turn/moderationMetadata",
+            json!({"metadata": null, "threadId": "x", "turnId": "x"}),
         ),
         (
             "turn/plan/updated",
@@ -218,6 +226,7 @@ pub fn client_request_samples() -> Vec<(&'static str, Value)> {
             "account/sendAddCreditsNudgeEmail",
             json!({"creditType": "credits"}),
         ),
+        ("account/usage/read", json!({})),
         ("app/list", json!({})),
         ("command/exec", json!({"command": []})),
         (
@@ -241,10 +250,7 @@ pub fn client_request_samples() -> Vec<(&'static str, Value)> {
         ("experimentalFeature/list", json!({})),
         ("externalAgentConfig/detect", json!({})),
         ("externalAgentConfig/import", json!({"migrationItems": []})),
-        (
-            "feedback/upload",
-            json!({"classification": "x", "includeLogs": false}),
-        ),
+        ("feedback/upload", json!({"classification": "x"})),
         (
             "fs/copy",
             json!({"destinationPath": null, "sourcePath": null}),
@@ -278,7 +284,9 @@ pub fn client_request_samples() -> Vec<(&'static str, Value)> {
         ("mcpServerStatus/list", json!({})),
         ("model/list", json!({})),
         ("modelProvider/capabilities/read", json!({})),
+        ("permissionProfile/list", json!({})),
         ("plugin/install", json!({"pluginName": "x"})),
+        ("plugin/installed", json!({})),
         ("plugin/list", json!({})),
         ("plugin/read", json!({"pluginName": "x"})),
         ("plugin/share/checkout", json!({"remotePluginId": "x"})),
@@ -299,6 +307,7 @@ pub fn client_request_samples() -> Vec<(&'static str, Value)> {
             json!({"target": {"type": "uncommittedChanges"}, "threadId": "x"}),
         ),
         ("skills/config/write", json!({"enabled": false})),
+        ("skills/extraRoots/set", json!({"extraRoots": []})),
         ("skills/list", json!({})),
         (
             "thread/approveGuardianDeniedAction",
@@ -307,6 +316,9 @@ pub fn client_request_samples() -> Vec<(&'static str, Value)> {
         ("thread/archive", json!({"threadId": "x"})),
         ("thread/compact/start", json!({"threadId": "x"})),
         ("thread/fork", json!({"threadId": "x"})),
+        ("thread/goal/clear", json!({"threadId": "x"})),
+        ("thread/goal/get", json!({"threadId": "x"})),
+        ("thread/goal/set", json!({"threadId": "x"})),
         ("thread/inject_items", json!({"items": [], "threadId": "x"})),
         ("thread/list", json!({})),
         ("thread/loaded/list", json!({})),

@@ -51,6 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }],
                 approval_policy: None,
                 approvals_reviewer: None,
+                client_user_message_id: None,
                 cwd: None,
                 effort: None,
                 model: None,

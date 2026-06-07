@@ -57,11 +57,64 @@ pub struct AccountRateLimitsUpdatedNotification {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct AccountTokenUsageDailyBucket {
+    #[serde(rename = "startDate", default)]
+    pub start_date: String,
+    #[serde(default)]
+    pub tokens: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountTokenUsageSummary {
+    #[serde(
+        rename = "currentStreakDays",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub current_streak_days: Option<i64>,
+    #[serde(
+        rename = "lifetimeTokens",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub lifetime_tokens: Option<i64>,
+    #[serde(
+        rename = "longestRunningTurnSec",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub longest_running_turn_sec: Option<i64>,
+    #[serde(
+        rename = "longestStreakDays",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub longest_streak_days: Option<i64>,
+    #[serde(
+        rename = "peakDailyTokens",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub peak_daily_tokens: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AccountUpdatedNotification {
     #[serde(rename = "authMode", default, skip_serializing_if = "Option::is_none")]
     pub auth_mode: Option<AuthMode>,
     #[serde(rename = "planType", default, skip_serializing_if = "Option::is_none")]
     pub plan_type: Option<PlanType>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivePermissionProfile {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extends: Option<String>,
+    #[serde(default)]
+    pub id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -307,6 +360,43 @@ pub struct AppSummary {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct AppTemplateSummary {
+    #[serde(
+        rename = "canonicalConnectorId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub canonical_connector_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(rename = "logoUrl", default, skip_serializing_if = "Option::is_none")]
+    pub logo_url: Option<String>,
+    #[serde(
+        rename = "logoUrlDark",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub logo_url_dark: Option<String>,
+    #[serde(rename = "materializedAppIds", default)]
+    pub materialized_app_ids: Vec<String>,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<AppTemplateUnavailableReason>,
+    #[serde(rename = "templateId", default)]
+    pub template_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum AppTemplateUnavailableReason {
+    #[serde(rename = "NOT_CONFIGURED_FOR_WORKSPACE")]
+    NOT_CONFIGURED_FOR_WORKSPACE,
+    #[serde(rename = "NO_ACTIVE_WORKSPACE")]
+    NO_ACTIVE_WORKSPACE,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ApplyPatchApprovalParams {
     #[serde(rename = "callId", default)]
     pub call_id: String,
@@ -413,6 +503,16 @@ pub enum AuthMode {
     ChatgptAuthTokens,
     #[serde(rename = "agentIdentity")]
     AgentIdentity,
+    #[serde(rename = "personalAccessToken")]
+    PersonalAccessToken,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum AutoCompactTokenLimitScope {
+    #[serde(rename = "total")]
+    Total,
+    #[serde(rename = "body_after_prefix")]
+    BodyAfterPrefix,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -611,6 +711,15 @@ pub enum CollabAgentToolCallStatus {
     Completed,
     #[serde(rename = "failed")]
     Failed,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollaborationMode {
+    #[serde()]
+    pub mode: ModeKind,
+    #[serde()]
+    pub settings: Settings,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -911,6 +1020,17 @@ pub struct CommandMigration {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ComputerUseRequirements {
+    #[serde(
+        rename = "allowLockedComputerUse",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub allow_locked_computer_use: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Config {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub analytics: Option<AnalyticsConfig>,
@@ -935,6 +1055,8 @@ pub struct Config {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_auto_compact_token_limit: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_auto_compact_token_limit_scope: Option<AutoCompactTokenLimitScope>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_context_window: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_provider: Option<String>,
@@ -944,10 +1066,6 @@ pub struct Config {
     pub model_reasoning_summary: Option<ReasoningSummary>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_verbosity: Option<Verbosity>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub profile: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub profiles: Option<std::collections::BTreeMap<String, ProfileV2>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub review_model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1030,6 +1148,11 @@ pub enum ConfigLayerSource {
     System {
         file: Value,
     },
+    #[serde(rename = "enterpriseManaged")]
+    EnterpriseManaged {
+        id: String,
+        name: String,
+    },
     User {
         file: Value,
         #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1077,6 +1200,12 @@ pub struct ConfigReadResponse {
 #[serde(rename_all = "camelCase")]
 pub struct ConfigRequirements {
     #[serde(
+        rename = "allowAppshots",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub allow_appshots: Option<bool>,
+    #[serde(
         rename = "allowManagedHooksOnly",
         default,
         skip_serializing_if = "Option::is_none"
@@ -1089,6 +1218,12 @@ pub struct ConfigRequirements {
     )]
     pub allowed_approval_policies: Option<Vec<AskForApproval>>,
     #[serde(
+        rename = "allowedPermissionProfiles",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub allowed_permission_profiles: Option<std::collections::BTreeMap<String, bool>>,
+    #[serde(
         rename = "allowedSandboxModes",
         default,
         skip_serializing_if = "Option::is_none"
@@ -1100,6 +1235,24 @@ pub struct ConfigRequirements {
         skip_serializing_if = "Option::is_none"
     )]
     pub allowed_web_search_modes: Option<Vec<WebSearchMode>>,
+    #[serde(
+        rename = "allowedWindowsSandboxImplementations",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub allowed_windows_sandbox_implementations: Option<Vec<WindowsSandboxSetupMode>>,
+    #[serde(
+        rename = "computerUse",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub computer_use: Option<ComputerUseRequirements>,
+    #[serde(
+        rename = "defaultPermissions",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub default_permissions: Option<String>,
     #[serde(
         rename = "enforceResidency",
         default,
@@ -1334,6 +1487,8 @@ pub struct ExperimentalFeatureListParams {
     pub cursor: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
+    #[serde(rename = "threadId", default, skip_serializing_if = "Option::is_none")]
+    pub thread_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1450,8 +1605,12 @@ pub struct FeedbackUploadParams {
         skip_serializing_if = "Option::is_none"
     )]
     pub extra_log_files: Option<Vec<String>>,
-    #[serde(rename = "includeLogs", default)]
-    pub include_logs: bool,
+    #[serde(
+        rename = "includeLogs",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub include_logs: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1551,8 +1710,8 @@ pub enum FileSystemAccessMode {
     Read,
     #[serde(rename = "write")]
     Write,
-    #[serde(rename = "none")]
-    None,
+    #[serde(rename = "deny")]
+    Deny,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1884,6 +2043,19 @@ pub struct GetAccountResponse {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct GetAccountTokenUsageResponse {
+    #[serde(
+        rename = "dailyUsageBuckets",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub daily_usage_buckets: Option<Vec<AccountTokenUsageDailyBucket>>,
+    #[serde()]
+    pub summary: AccountTokenUsageSummary,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GitInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub branch: Option<String>,
@@ -2068,6 +2240,10 @@ pub enum HookEventName {
     SessionStart,
     #[serde(rename = "userPromptSubmit")]
     UserPromptSubmit,
+    #[serde(rename = "subagentStart")]
+    SubagentStart,
+    #[serde(rename = "subagentStop")]
+    SubagentStop,
     #[serde(rename = "stop")]
     Stop,
 }
@@ -2251,6 +2427,8 @@ pub enum HookSource {
     Plugin,
     #[serde(rename = "cloudRequirements")]
     CloudRequirements,
+    #[serde(rename = "cloudManagedConfig")]
+    CloudManagedConfig,
     #[serde(rename = "legacyManagedConfigFile")]
     LegacyManagedConfigFile,
     #[serde(rename = "legacyManagedConfigMdm")]
@@ -2307,6 +2485,18 @@ pub struct HooksListParams {
 pub struct HooksListResponse {
     #[serde(default)]
     pub data: Vec<HooksListEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ImageDetail {
+    #[serde(rename = "auto")]
+    Auto,
+    #[serde(rename = "low")]
+    Low,
+    #[serde(rename = "high")]
+    High,
+    #[serde(rename = "original")]
+    Original,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2456,6 +2646,8 @@ pub struct ListMcpServerStatusParams {
     pub detail: Option<McpServerStatusDetail>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
+    #[serde(rename = "threadId", default, skip_serializing_if = "Option::is_none")]
+    pub thread_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2952,6 +3144,27 @@ pub struct McpServerElicitationRequestResponse {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct McpServerInfo {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icons: Option<Vec<Value>>,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default)]
+    pub version: String,
+    #[serde(
+        rename = "websiteUrl",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub website_url: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct McpServerMigration {
     #[serde(default)]
     pub name: String,
@@ -3020,6 +3233,12 @@ pub struct McpServerStatus {
     pub resource_templates: Vec<ResourceTemplate>,
     #[serde(default)]
     pub resources: Vec<Resource>,
+    #[serde(
+        rename = "serverInfo",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub server_info: Option<McpServerInfo>,
     #[serde(default)]
     pub tools: std::collections::BTreeMap<String, Tool>,
 }
@@ -3179,6 +3398,14 @@ pub struct MigrationDetails {
     pub subagents: Option<Vec<SubagentMigration>>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ModeKind {
+    #[serde(rename = "plan")]
+    Plan,
+    #[serde(rename = "default")]
+    Default,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
@@ -3196,6 +3423,12 @@ pub struct Model {
     pub availability_nux: Option<ModelAvailabilityNux>,
     #[serde(rename = "defaultReasoningEffort")]
     pub default_reasoning_effort: ReasoningEffort,
+    #[serde(
+        rename = "defaultServiceTier",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub default_service_tier: Option<String>,
     #[serde(default)]
     pub description: String,
     #[serde(rename = "displayName", default)]
@@ -3484,9 +3717,48 @@ pub enum PermissionGrantScope {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct PermissionProfileListParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PermissionProfileListResponse {
+    #[serde(default)]
+    pub data: Vec<PermissionProfileSummary>,
+    #[serde(
+        rename = "nextCursor",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PermissionProfileSummary {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PermissionsRequestApprovalParams {
     #[serde()]
     pub cwd: AbsolutePathBuf,
+    #[serde(
+        rename = "environmentId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub environment_id: Option<String>,
     #[serde(rename = "itemId", default)]
     pub item_id: String,
     #[serde()]
@@ -3585,6 +3857,8 @@ pub enum PluginAvailability {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginDetail {
+    #[serde(rename = "appTemplates", default)]
+    pub app_templates: Vec<AppTemplateSummary>,
     #[serde(default)]
     pub apps: Vec<AppSummary>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3652,6 +3926,32 @@ pub struct PluginInstallResponse {
     pub apps_needing_auth: Vec<AppSummary>,
     #[serde(rename = "authPolicy")]
     pub auth_policy: PluginAuthPolicy,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginInstalledParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cwds: Option<Vec<AbsolutePathBuf>>,
+    #[serde(
+        rename = "installSuggestionPluginNames",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub install_suggestion_plugin_names: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginInstalledResponse {
+    #[serde(
+        rename = "marketplaceLoadErrors",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub marketplace_load_errors: Option<Vec<MarketplaceLoadErrorInfo>>,
+    #[serde(default)]
+    pub marketplaces: Vec<PluginMarketplaceEntry>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -3741,6 +4041,8 @@ pub struct PluginInterface {
 pub enum PluginListMarketplaceKind {
     #[serde(rename = "local")]
     Local,
+    #[serde(rename = "vertical")]
+    Vertical,
     #[serde(rename = "workspace-directory")]
     Workspace_directory,
     #[serde(rename = "shared-with-me")]
@@ -4184,33 +4486,6 @@ pub enum ProcessOutputStream {
     Stderr,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProfileV2 {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub approval_policy: Option<AskForApproval>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub approvals_reviewer: Option<ApprovalsReviewer>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub chatgpt_base_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub model: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub model_provider: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub model_reasoning_effort: Option<ReasoningEffort>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub model_reasoning_summary: Option<ReasoningSummary>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub model_verbosity: Option<Verbosity>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub service_tier: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tools: Option<ToolsV2>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub web_search: Option<WebSearchMode>,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum RateLimitReachedType {
     #[serde(rename = "rate_limit_reached")]
@@ -4230,6 +4505,12 @@ pub enum RateLimitReachedType {
 pub struct RateLimitSnapshot {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credits: Option<CreditsSnapshot>,
+    #[serde(
+        rename = "individualLimit",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub individual_limit: Option<SpendControlLimitSnapshot>,
     #[serde(rename = "limitId", default, skip_serializing_if = "Option::is_none")]
     pub limit_id: Option<String>,
     #[serde(rename = "limitName", default, skip_serializing_if = "Option::is_none")]
@@ -4271,21 +4552,10 @@ pub enum RealtimeConversationVersion {
     V2,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum ReasoningEffort {
-    #[serde(rename = "none")]
-    None,
-    #[serde(rename = "minimal")]
-    Minimal,
-    #[serde(rename = "low")]
-    Low,
-    #[serde(rename = "medium")]
-    Medium,
-    #[serde(rename = "high")]
-    High,
-    #[serde(rename = "xhigh")]
-    Xhigh,
-}
+/// A non-empty reasoning effort value advertised by the model.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq, Hash)]
+#[serde(transparent)]
+pub struct ReasoningEffort(pub String);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -4374,6 +4644,8 @@ pub struct RemoteControlStatusChangedNotification {
     pub environment_id: Option<String>,
     #[serde(rename = "installationId", default)]
     pub installation_id: String,
+    #[serde(rename = "serverName", default)]
+    pub server_name: String,
     #[serde()]
     pub status: RemoteControlConnectionStatus,
 }
@@ -4649,6 +4921,17 @@ pub enum SessionSource {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct Settings {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub developer_instructions: Option<String>,
+    #[serde(default)]
+    pub model: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_effort: Option<ReasoningEffort>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SkillDependencies {
     #[serde(default)]
     pub tools: Vec<SkillToolDependency>,
@@ -4798,6 +5081,20 @@ pub struct SkillsConfigWriteResponse {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SkillsExtraRootsSetParams {
+    #[serde(rename = "extraRoots", default)]
+    pub extra_roots: Vec<AbsolutePathBuf>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillsExtraRootsSetResponse {
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SkillsListEntry {
     #[serde(default)]
     pub cwd: String,
@@ -4833,6 +5130,19 @@ pub enum SortDirection {
     Asc,
     #[serde(rename = "desc")]
     Desc,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpendControlLimitSnapshot {
+    #[serde(default)]
+    pub limit: String,
+    #[serde(rename = "remainingPercent", default)]
+    pub remaining_percent: i64,
+    #[serde(rename = "resetsAt", default)]
+    pub resets_at: i64,
+    #[serde(default)]
+    pub used: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -4940,6 +5250,12 @@ pub struct Thread {
     pub model_provider: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(
+        rename = "parentThreadId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub parent_thread_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
     #[serde(default)]
@@ -5151,9 +5467,61 @@ pub struct ThreadGoal {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ThreadGoalClearParams {
+    #[serde(rename = "threadId", default)]
+    pub thread_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadGoalClearResponse {
+    #[serde(default)]
+    pub cleared: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ThreadGoalClearedNotification {
     #[serde(rename = "threadId", default)]
     pub thread_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadGoalGetParams {
+    #[serde(rename = "threadId", default)]
+    pub thread_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadGoalGetResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub goal: Option<ThreadGoal>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadGoalSetParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub objective: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<ThreadGoalStatus>,
+    #[serde(rename = "threadId", default)]
+    pub thread_id: String,
+    #[serde(
+        rename = "tokenBudget",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub token_budget: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadGoalSetResponse {
+    #[serde()]
+    pub goal: ThreadGoal,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -5162,6 +5530,10 @@ pub enum ThreadGoalStatus {
     Active,
     #[serde(rename = "paused")]
     Paused,
+    #[serde(rename = "blocked")]
+    Blocked,
+    #[serde(rename = "usageLimited")]
+    UsageLimited,
     #[serde(rename = "budgetLimited")]
     BudgetLimited,
     #[serde(rename = "complete")]
@@ -5204,6 +5576,8 @@ pub struct ThreadInjectItemsResponse {
 pub enum ThreadItem {
     #[serde(rename = "userMessage")]
     UserMessage {
+        #[serde(rename = "clientId", default, skip_serializing_if = "Option::is_none")]
+        client_id: Option<String>,
         content: Vec<UserInput>,
         id: String,
     },
@@ -5287,6 +5661,8 @@ pub enum ThreadItem {
             skip_serializing_if = "Option::is_none"
         )]
         mcp_app_resource_uri: Option<String>,
+        #[serde(rename = "pluginId", default, skip_serializing_if = "Option::is_none")]
+        plugin_id: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         result: Option<McpToolCallResult>,
         server: String,
@@ -5754,6 +6130,52 @@ pub struct ThreadSetNameParams {
 pub struct ThreadSetNameResponse {
     #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
     pub extra: serde_json::Map<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadSettings {
+    #[serde(
+        rename = "activePermissionProfile",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub active_permission_profile: Option<ActivePermissionProfile>,
+    #[serde(rename = "approvalPolicy")]
+    pub approval_policy: AskForApproval,
+    #[serde(rename = "approvalsReviewer")]
+    pub approvals_reviewer: ApprovalsReviewer,
+    #[serde(rename = "collaborationMode")]
+    pub collaboration_mode: CollaborationMode,
+    #[serde()]
+    pub cwd: AbsolutePathBuf,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effort: Option<ReasoningEffort>,
+    #[serde(default)]
+    pub model: String,
+    #[serde(rename = "modelProvider", default)]
+    pub model_provider: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub personality: Option<Personality>,
+    #[serde(rename = "sandboxPolicy")]
+    pub sandbox_policy: SandboxPolicy,
+    #[serde(
+        rename = "serviceTier",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub service_tier: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<ReasoningSummary>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadSettingsUpdatedNotification {
+    #[serde(rename = "threadId", default)]
+    pub thread_id: String,
+    #[serde(rename = "threadSettings")]
+    pub thread_settings: ThreadSettings,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -6227,6 +6649,17 @@ pub enum TurnItemsView {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct TurnModerationMetadataNotification {
+    #[serde(default)]
+    pub metadata: Value,
+    #[serde(rename = "threadId", default)]
+    pub thread_id: String,
+    #[serde(rename = "turnId", default)]
+    pub turn_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TurnPlanStep {
     #[serde()]
     pub status: TurnPlanStepStatus,
@@ -6272,6 +6705,12 @@ pub struct TurnStartParams {
         skip_serializing_if = "Option::is_none"
     )]
     pub approvals_reviewer: Option<ApprovalsReviewer>,
+    #[serde(
+        rename = "clientUserMessageId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub client_user_message_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cwd: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6337,6 +6776,12 @@ pub enum TurnStatus {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TurnSteerParams {
+    #[serde(
+        rename = "clientUserMessageId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub client_user_message_id: Option<String>,
     #[serde(rename = "expectedTurnId", default)]
     pub expected_turn_id: String,
     #[serde(default)]
@@ -6361,10 +6806,14 @@ pub enum UserInput {
         text_elements: Option<Vec<TextElement>>,
     },
     Image {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        detail: Option<ImageDetail>,
         url: String,
     },
     #[serde(rename = "localImage")]
     LocalImage {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        detail: Option<ImageDetail>,
         path: String,
     },
     Skill {

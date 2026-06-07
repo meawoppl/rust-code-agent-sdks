@@ -460,6 +460,8 @@ mod samples {
             methods::THREAD_REALTIME_TRANSCRIPT_DONE,
             methods::WINDOWS_WORLD_WRITABLE_WARNING,
             methods::WINDOWS_SANDBOX_SETUP_COMPLETED,
+            methods::THREAD_SETTINGS_UPDATED,
+            methods::TURN_MODERATION_METADATA,
         ]
         .into_iter()
         .collect()
@@ -546,6 +548,13 @@ mod samples {
             methods::CONFIGREQUIREMENTS_READ,
             methods::ACCOUNT_READ,
             methods::FUZZYFILESEARCH,
+            methods::ACCOUNT_USAGE_READ,
+            methods::PERMISSION_PROFILE_LIST,
+            methods::PLUGIN_INSTALLED,
+            methods::SKILLS_EXTRA_ROOTS_SET,
+            methods::THREAD_GOAL_GET,
+            methods::THREAD_GOAL_SET,
+            methods::THREAD_GOAL_CLEAR,
         ]
         .into_iter()
         .collect()

@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.137.0] - 2026-06-07
+
+### Changed (breaking)
+
+Re-snapshotted the Codex app-server schema from `openai/codex@main` (Codex
+CLI 0.137.0) and regenerated every wire type. The snapshot is now
+byte-identical to upstream. 31 definitions were added, 4 removed
+(`PermissionProfile`, `PermissionProfileFileSystemPermissions`,
+`PermissionProfileNetworkPermissions`, `ProfileV2`), and 40 definition
+bodies changed.
+
+- `TurnStartParams` gains a `client_user_message_id: Option<String>` field;
+  struct-literal construction must supply it.
+
+### Added
+
+Modeled the new protocol methods so schema coverage stays at 100%:
+
+- Client requests: `account/usage/read`, `permissionProfile/list`,
+  `plugin/installed`, `skills/extraRoots/set`, `thread/goal/get`,
+  `thread/goal/set`, `thread/goal/clear`.
+- Notifications: `thread/settings/updated` (`Notification::ThreadSettingsUpdated`)
+  and `turn/moderationMetadata` (`Notification::TurnModerationMetadata`).
+
 ## [0.129.3] - 2026-05-17
 
 ### Changed (breaking)
