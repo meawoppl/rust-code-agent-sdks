@@ -1109,6 +1109,62 @@ mod tests {
         }
     }
 
+    /// Task system messages survive a `to_value` → `from_value` round-trip
+    /// with their typed accessors still resolving. Mirrors the proxy/relay
+    /// path where output is reparsed from a `serde_json::Value` rather than
+    /// straight from the CLI's stdout, so a silently dropped or renamed field
+    /// surfaces here instead of as a `None` downstream.
+    #[test]
+    fn test_task_messages_roundtrip_through_value() {
+        let cases = [
+            r#"{"type":"system","subtype":"task_started","session_id":"s1",
+                "task_id":"t1","task_type":"local_bash","tool_use_id":"tu1",
+                "description":"Sleep 3s","uuid":"u1"}"#,
+            r#"{"type":"system","subtype":"task_progress","session_id":"s1",
+                "task_id":"t1","tool_use_id":"tu1","description":"Running ls",
+                "last_tool_name":"Bash",
+                "usage":{"duration_ms":100,"tool_uses":1,"total_tokens":500},
+                "uuid":"u2"}"#,
+            r#"{"type":"system","subtype":"task_notification","session_id":"s1",
+                "task_id":"t1","tool_use_id":"tu1","status":"completed",
+                "summary":"done","output_file":"",
+                "usage":{"duration_ms":100,"tool_uses":1,"total_tokens":500},
+                "uuid":"u3"}"#,
+        ];
+
+        for json in cases {
+            let output: ClaudeOutput = serde_json::from_str(json).unwrap();
+            let value = serde_json::to_value(&output).unwrap();
+            let reparsed: ClaudeOutput = serde_json::from_value(value).unwrap();
+
+            let ClaudeOutput::System(sys) = reparsed else {
+                panic!("Expected System variant after round-trip");
+            };
+
+            match sys.subtype {
+                super::SystemSubtype::TaskStarted => {
+                    assert!(
+                        sys.as_task_started().is_some(),
+                        "as_task_started failed after round-trip"
+                    );
+                }
+                super::SystemSubtype::TaskProgress => {
+                    assert!(
+                        sys.as_task_progress().is_some(),
+                        "as_task_progress failed after round-trip"
+                    );
+                }
+                super::SystemSubtype::TaskNotification => {
+                    assert!(
+                        sys.as_task_notification().is_some(),
+                        "as_task_notification failed after round-trip"
+                    );
+                }
+                other => panic!("unexpected subtype after round-trip: {other:?}"),
+            }
+        }
+    }
+
     #[test]
     fn test_system_message_compact_boundary() {
         let json = r#"{

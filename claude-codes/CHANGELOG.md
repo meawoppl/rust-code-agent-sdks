@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.151] - 2026-06-08
+
+### Added
+
+- **Round-trip regression test** — `test_task_messages_roundtrip_through_value`
+  pushes `task_started` / `task_progress` / `task_notification` system
+  messages through `from_str` → `to_value` → `from_value` → typed accessor,
+  covering the proxy/relay path where a dropped or renamed field would
+  otherwise surface only as a `None` downstream.
+
 ## [2.1.150] - 2026-05-29
 
 ### Changed
