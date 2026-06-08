@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.152] - 2026-06-08
+
+### Added
+
+- **`CompactBoundaryMessage`** gains optional per-compaction stats:
+  `summary: Option<String>` (also accepted under the `content` / `text`
+  wire keys), `leaf_message_count: Option<u32>` (also accepted under
+  `message_count`), and `duration_ms: Option<u64>`. Consumers can read
+  these from the typed struct instead of poking `SystemMessage::data`.
+
 ## [2.1.151] - 2026-06-08
 
 ### Added
