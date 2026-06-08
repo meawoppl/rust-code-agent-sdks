@@ -50,6 +50,7 @@ use crate::jsonrpc::{
 use crate::messages::{Notification, ServerMessage, ServerRequest};
 use crate::protocol::{
     ClientInfo, InitializeParams, InitializeResponse, ThreadArchiveParams, ThreadArchiveResponse,
+    ThreadForkParams, ThreadForkResponse, ThreadResumeParams, ThreadResumeResponse,
     ThreadStartParams, ThreadStartResponse, TurnInterruptParams, TurnInterruptResponse,
     TurnStartParams, TurnStartResponse,
 };
@@ -244,6 +245,23 @@ impl AsyncClient {
         params: &ThreadStartParams,
     ) -> Result<ThreadStartResponse> {
         self.request(crate::protocol::methods::THREAD_START, params)
+            .await
+    }
+
+    /// Resume a previously persisted thread by id.
+    ///
+    /// Replays the thread's history so turns can continue where they left off.
+    pub async fn thread_resume(
+        &mut self,
+        params: &ThreadResumeParams,
+    ) -> Result<ThreadResumeResponse> {
+        self.request(crate::protocol::methods::THREAD_RESUME, params)
+            .await
+    }
+
+    /// Fork an existing thread into a new independent thread.
+    pub async fn thread_fork(&mut self, params: &ThreadForkParams) -> Result<ThreadForkResponse> {
+        self.request(crate::protocol::methods::THREAD_FORK, params)
             .await
     }
 
