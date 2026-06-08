@@ -664,6 +664,28 @@ pub struct CompactBoundaryMessage {
     pub session_id: String,
     /// Metadata about the compaction
     pub compact_metadata: CompactMetadata,
+    /// Human-readable summary of what was compacted, when the CLI emits one.
+    ///
+    /// Also accepted under the `content` / `text` wire keys.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "content",
+        alias = "text"
+    )]
+    pub summary: Option<String>,
+    /// Number of messages summarized in this compaction pass, when present.
+    ///
+    /// Also accepted under the `message_count` wire key.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "message_count"
+    )]
+    pub leaf_message_count: Option<u32>,
+    /// Wall-clock duration of the compaction pass in milliseconds, when present.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration_ms: Option<u64>,
     /// Unique identifier for this message
     #[serde(skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
@@ -1193,9 +1215,57 @@ mod tests {
                 compact.compact_metadata.trigger,
                 super::CompactionTrigger::Auto
             );
+            // Per-compaction stats are optional and absent here.
+            assert!(compact.summary.is_none());
+            assert!(compact.leaf_message_count.is_none());
+            assert!(compact.duration_ms.is_none());
         } else {
             panic!("Expected System message");
         }
+    }
+
+    #[test]
+    fn test_compact_boundary_with_summary_stats() {
+        // Canonical keys.
+        let json = r#"{
+            "type": "system",
+            "subtype": "compact_boundary",
+            "session_id": "s1",
+            "compact_metadata": { "pre_tokens": 1000, "trigger": "manual" },
+            "summary": "Summarized the earlier exploration.",
+            "leaf_message_count": 42,
+            "duration_ms": 1234,
+            "uuid": "u1"
+        }"#;
+        let output: ClaudeOutput = serde_json::from_str(json).unwrap();
+        let ClaudeOutput::System(sys) = output else {
+            panic!("Expected System message");
+        };
+        let compact = sys.as_compact_boundary().expect("compact_boundary");
+        assert_eq!(
+            compact.summary.as_deref(),
+            Some("Summarized the earlier exploration.")
+        );
+        assert_eq!(compact.leaf_message_count, Some(42));
+        assert_eq!(compact.duration_ms, Some(1234));
+
+        // Alternate wire keys (`content` for summary, `message_count` for count)
+        // deserialize into the same fields.
+        let json_alt = r#"{
+            "type": "system",
+            "subtype": "compact_boundary",
+            "session_id": "s2",
+            "compact_metadata": { "pre_tokens": 2000, "trigger": "auto" },
+            "content": "alt-key summary",
+            "message_count": 7
+        }"#;
+        let output: ClaudeOutput = serde_json::from_str(json_alt).unwrap();
+        let ClaudeOutput::System(sys) = output else {
+            panic!("Expected System message");
+        };
+        let compact = sys.as_compact_boundary().expect("compact_boundary");
+        assert_eq!(compact.summary.as_deref(), Some("alt-key summary"));
+        assert_eq!(compact.leaf_message_count, Some(7));
     }
 
     #[test]
