@@ -3260,6 +3260,8 @@ pub struct McpServerStatusUpdatedNotification {
     pub name: String,
     #[serde()]
     pub status: McpServerStartupState,
+    #[serde(rename = "threadId", default, skip_serializing_if = "Option::is_none")]
+    pub thread_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
