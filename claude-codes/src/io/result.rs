@@ -49,9 +49,33 @@ pub struct ResultMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fast_mode_state: Option<String>,
 
-    /// Per-model cost breakdown, keyed by model name
+    /// Per-model cost breakdown, keyed by model name (e.g. `"claude-opus-4-8"`).
     #[serde(skip_serializing_if = "Option::is_none", rename = "modelUsage")]
-    pub model_usage: Option<Value>,
+    pub model_usage: Option<std::collections::BTreeMap<String, ModelUsageEntry>>,
+}
+
+/// Usage and cost for a single model within a session, as found in
+/// [`ResultMessage::model_usage`].
+///
+/// The `extra` field captures any keys the CLI adds that aren't modeled here,
+/// so new wire fields deserialize without error.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelUsageEntry {
+    #[serde(default)]
+    pub input_tokens: u64,
+    #[serde(default)]
+    pub output_tokens: u64,
+    #[serde(default)]
+    pub cache_read_input_tokens: u64,
+    #[serde(default)]
+    pub cache_creation_input_tokens: u64,
+    #[serde(default, rename = "costUSD")]
+    pub cost_usd: f64,
+    #[serde(default)]
+    pub web_search_requests: u32,
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
 /// A record of a tool permission that was denied during the session.
@@ -316,7 +340,13 @@ mod tests {
             assert_eq!(res.stop_reason.as_deref(), Some("end_turn"));
             assert_eq!(res.terminal_reason.as_deref(), Some("completed"));
             assert_eq!(res.fast_mode_state.as_deref(), Some("off"));
-            assert!(res.model_usage.is_some());
+            let model_usage = res.model_usage.as_ref().unwrap();
+            let entry = model_usage
+                .get("claude-opus-4-7[1m]")
+                .expect("per-model entry present");
+            assert_eq!(entry.input_tokens, 3817);
+            assert_eq!(entry.output_tokens, 14);
+            assert_eq!(entry.cost_usd, 0.06);
             assert!(res.api_error_status.is_none());
 
             let usage = res.usage.unwrap();
