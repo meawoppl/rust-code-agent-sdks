@@ -50,6 +50,7 @@ use crate::jsonrpc::{
 use crate::messages::{Notification, ServerMessage, ServerRequest};
 use crate::protocol::{
     ClientInfo, InitializeParams, InitializeResponse, ThreadArchiveParams, ThreadArchiveResponse,
+    ThreadForkParams, ThreadForkResponse, ThreadResumeParams, ThreadResumeResponse,
     ThreadStartParams, ThreadStartResponse, TurnInterruptParams, TurnInterruptResponse,
     TurnStartParams, TurnStartResponse,
 };
@@ -234,6 +235,18 @@ impl SyncClient {
     /// [`ThreadStartResponse`] contains the `thread_id` needed for subsequent calls.
     pub fn thread_start(&mut self, params: &ThreadStartParams) -> Result<ThreadStartResponse> {
         self.request(crate::protocol::methods::THREAD_START, params)
+    }
+
+    /// Resume a previously persisted thread by id.
+    ///
+    /// Replays the thread's history so turns can continue where they left off.
+    pub fn thread_resume(&mut self, params: &ThreadResumeParams) -> Result<ThreadResumeResponse> {
+        self.request(crate::protocol::methods::THREAD_RESUME, params)
+    }
+
+    /// Fork an existing thread into a new independent thread.
+    pub fn thread_fork(&mut self, params: &ThreadForkParams) -> Result<ThreadForkResponse> {
+        self.request(crate::protocol::methods::THREAD_FORK, params)
     }
 
     /// Start a new turn within a thread.
