@@ -877,6 +877,76 @@ impl ToolInput {
         }
     }
 
+    /// Parse a tool-use `input` payload using the authoritative tool *name*
+    /// from the surrounding `ToolUse` block, instead of guessing the variant
+    /// from field shape.
+    ///
+    /// The [`Deserialize`] impl for `ToolInput` is `#[serde(untagged)]`, so it
+    /// resolves variants by structural shape in declaration order. Tools whose
+    /// inputs are structurally identical are therefore genuinely ambiguous to
+    /// the untagged impl — most notably [`WebSearch`](ToolInput::WebSearch) and
+    /// [`ToolSearch`](ToolInput::ToolSearch), which both deserialize cleanly
+    /// from a bare `{ "query": String }`, so the first-declared variant wins
+    /// and the other is never produced. The tool name disambiguates them.
+    ///
+    /// Falls back to [`ToolInput::Unknown`] when the named struct doesn't
+    /// deserialize, and defers to the untagged [`Deserialize`] impl for tool
+    /// names this crate doesn't model (e.g. MCP tools).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use claude_codes::ToolInput;
+    ///
+    /// // A bare-query WebSearch input — ambiguous to the untagged impl, which
+    /// // would pick `ToolSearch`. The name resolves it correctly.
+    /// let input = serde_json::json!({ "query": "rust async" });
+    /// let parsed = ToolInput::from_named_input("WebSearch", input);
+    /// assert!(matches!(parsed, ToolInput::WebSearch(_)));
+    /// ```
+    pub fn from_named_input(name: &str, input: Value) -> Self {
+        match name {
+            "Bash" => Self::parse_named(input, ToolInput::Bash),
+            "Read" => Self::parse_named(input, ToolInput::Read),
+            "Write" => Self::parse_named(input, ToolInput::Write),
+            "Edit" => Self::parse_named(input, ToolInput::Edit),
+            "Glob" => Self::parse_named(input, ToolInput::Glob),
+            "Grep" => Self::parse_named(input, ToolInput::Grep),
+            "Task" => Self::parse_named(input, ToolInput::Task),
+            "WebFetch" => Self::parse_named(input, ToolInput::WebFetch),
+            "WebSearch" => Self::parse_named(input, ToolInput::WebSearch),
+            "TodoWrite" => Self::parse_named(input, ToolInput::TodoWrite),
+            "AskUserQuestion" => Self::parse_named(input, ToolInput::AskUserQuestion),
+            "NotebookEdit" => Self::parse_named(input, ToolInput::NotebookEdit),
+            "TaskOutput" => Self::parse_named(input, ToolInput::TaskOutput),
+            "KillShell" => Self::parse_named(input, ToolInput::KillShell),
+            "Skill" => Self::parse_named(input, ToolInput::Skill),
+            "EnterPlanMode" => Self::parse_named(input, ToolInput::EnterPlanMode),
+            "ExitPlanMode" => Self::parse_named(input, ToolInput::ExitPlanMode),
+            "MultiEdit" => Self::parse_named(input, ToolInput::MultiEdit),
+            "ScheduleWakeup" => Self::parse_named(input, ToolInput::ScheduleWakeup),
+            "NotebookRead" => Self::parse_named(input, ToolInput::NotebookRead),
+            "ToolSearch" => Self::parse_named(input, ToolInput::ToolSearch),
+            "LS" => Self::parse_named(input, ToolInput::LS),
+            // Unknown tool name (e.g. an MCP tool): fall back to structural
+            // parsing, preserving the raw payload if even that fails.
+            _ => serde_json::from_value(input.clone()).unwrap_or(ToolInput::Unknown(input)),
+        }
+    }
+
+    /// Deserialize `input` into a specific tool-input struct `T` and wrap it in
+    /// the matching [`ToolInput`] variant, preserving the raw payload as
+    /// [`ToolInput::Unknown`] if it doesn't fit the expected shape.
+    fn parse_named<T>(input: Value, wrap: fn(T) -> ToolInput) -> ToolInput
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        match serde_json::from_value::<T>(input.clone()) {
+            Ok(parsed) => wrap(parsed),
+            Err(_) => ToolInput::Unknown(input),
+        }
+    }
+
     /// Try to get the input as a Bash input.
     pub fn as_bash(&self) -> Option<&BashInput> {
         match self {
@@ -1452,5 +1522,62 @@ mod tests {
 
         let tool_input: ToolInput = serde_json::from_value(json).unwrap();
         assert_eq!(tool_input.tool_name(), Some("ToolSearch"));
+    }
+
+    #[test]
+    fn test_from_named_input_disambiguates_websearch_from_toolsearch() {
+        let bare_query = serde_json::json!({ "query": "rust async" });
+
+        // The untagged impl misclassifies a bare-query WebSearch as ToolSearch,
+        // since ToolSearch is declared first and the shapes are identical.
+        let guessed: ToolInput = serde_json::from_value(bare_query.clone()).unwrap();
+        assert!(matches!(guessed, ToolInput::ToolSearch(_)));
+
+        // The name-aware path resolves it correctly.
+        let named = ToolInput::from_named_input("WebSearch", bare_query.clone());
+        assert!(matches!(named, ToolInput::WebSearch(_)));
+        assert_eq!(named.tool_name(), Some("WebSearch"));
+
+        // And the reverse: a bare-query ToolSearch stays ToolSearch.
+        let named = ToolInput::from_named_input("ToolSearch", bare_query);
+        assert!(matches!(named, ToolInput::ToolSearch(_)));
+        assert_eq!(named.tool_name(), Some("ToolSearch"));
+    }
+
+    #[test]
+    fn test_from_named_input_known_tool() {
+        let json = serde_json::json!({ "command": "ls -la" });
+        let parsed = ToolInput::from_named_input("Bash", json);
+        match parsed {
+            ToolInput::Bash(b) => assert_eq!(b.command, "ls -la"),
+            other => panic!("expected Bash, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_from_named_input_unknown_name_defers_to_structural() {
+        // An unmodeled (e.g. MCP) tool name with a shape we don't recognize
+        // falls through to Unknown without error.
+        let json = serde_json::json!({ "custom_field": 42 });
+        let parsed = ToolInput::from_named_input("mcp__server__custom", json.clone());
+        assert!(matches!(parsed, ToolInput::Unknown(_)));
+
+        // An unmodeled name whose payload happens to match a known shape still
+        // resolves structurally via the untagged impl.
+        let bash_shaped = serde_json::json!({ "command": "echo hi" });
+        let parsed = ToolInput::from_named_input("mcp__server__shell", bash_shaped);
+        assert!(matches!(parsed, ToolInput::Bash(_)));
+    }
+
+    #[test]
+    fn test_from_named_input_malformed_payload_falls_back_to_unknown() {
+        // A known name with a payload that doesn't fit its struct is preserved
+        // as Unknown rather than panicking or dropping data.
+        let bad = serde_json::json!({ "not_a_command": true });
+        let parsed = ToolInput::from_named_input("Bash", bad.clone());
+        match parsed {
+            ToolInput::Unknown(v) => assert_eq!(v, bad),
+            other => panic!("expected Unknown, got {other:?}"),
+        }
     }
 }
