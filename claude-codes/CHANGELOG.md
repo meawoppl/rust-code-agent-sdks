@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.155] - 2026-06-08
+
+### Changed (breaking)
+
+- **`TextBlock::citations`** is now `Vec<Citation>` instead of
+  `Vec<serde_json::Value>`. Consumers read typed fields (`citation_type`,
+  `url`, `title`, `cited_text`, `document_index`, `document_title`) instead of
+  JSON-poking each entry. Unmodeled location fields (start/end indices,
+  `encrypted_index`, …) are preserved verbatim in `Citation::extra`, so the
+  type round-trips losslessly across all citation shapes.
+
+### Added
+
+- **`Citation`** — typed content-block citation struct (re-exported from
+  `claude_codes::io`).
+
 ## [2.1.154] - 2026-06-08
 
 ### Added

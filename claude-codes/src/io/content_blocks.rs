@@ -165,7 +165,41 @@ pub struct TextBlock {
     /// Citations associated with this text block, if any.
     /// Populated when the model references web search results or other sources.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub citations: Vec<Value>,
+    pub citations: Vec<Citation>,
+}
+
+/// A citation attached to a [`TextBlock`], linking generated text back to a
+/// source.
+///
+/// Anthropic emits several citation shapes — `web_search_result_location`,
+/// `char_location`, `page_location`, `content_block_location`, … — that share a
+/// `type` tag and overlapping fields. This models the fields consumers commonly
+/// render as typed optionals and preserves any remaining variant-specific
+/// fields (start/end indices, `encrypted_index`, …) verbatim in
+/// [`Citation::extra`], so unmodeled or future shapes deserialize without loss.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Citation {
+    /// Citation variant tag, e.g. `"web_search_result_location"`.
+    #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+    pub citation_type: Option<String>,
+    /// Source URL (web-search citations).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// Human-readable source title.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// The span of source text being cited.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cited_text: Option<String>,
+    /// Index of the source document (document-location citations).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub document_index: Option<u32>,
+    /// Title of the source document.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub document_title: Option<String>,
+    /// Any additional location fields not modeled above, preserved verbatim.
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, Value>,
 }
 
 /// Image content block (follows Anthropic API structure)
@@ -633,13 +667,47 @@ mod tests {
         if let ContentBlock::Text(t) = &block {
             assert_eq!(t.text, "According to the documentation...");
             assert_eq!(t.citations.len(), 1);
-            assert_eq!(t.citations[0]["url"], "https://example.com");
+            let cite = &t.citations[0];
+            assert_eq!(
+                cite.citation_type.as_deref(),
+                Some("web_search_result_location")
+            );
+            assert_eq!(cite.url.as_deref(), Some("https://example.com"));
+            assert_eq!(cite.title.as_deref(), Some("Example"));
         } else {
             panic!("Expected Text variant");
         }
         // roundtrip preserves citations
         let reserialized = serde_json::to_value(&block).unwrap();
         assert_eq!(json, reserialized);
+    }
+
+    #[test]
+    fn test_citation_preserves_unmodeled_location_fields() {
+        // A char_location citation carries indices we don't model as named
+        // fields; they must survive in `extra` and round-trip intact.
+        let json = json!({
+            "type": "char_location",
+            "cited_text": "the quick brown fox",
+            "document_index": 0,
+            "document_title": "Doc A",
+            "start_char_index": 12,
+            "end_char_index": 31
+        });
+        let cite: Citation = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(cite.citation_type.as_deref(), Some("char_location"));
+        assert_eq!(cite.cited_text.as_deref(), Some("the quick brown fox"));
+        assert_eq!(cite.document_index, Some(0));
+        assert_eq!(
+            cite.extra.get("start_char_index").and_then(|v| v.as_u64()),
+            Some(12)
+        );
+        assert_eq!(
+            cite.extra.get("end_char_index").and_then(|v| v.as_u64()),
+            Some(31)
+        );
+        // Round-trips without losing the unmodeled fields.
+        assert_eq!(serde_json::to_value(&cite).unwrap(), json);
     }
 
     #[test]
