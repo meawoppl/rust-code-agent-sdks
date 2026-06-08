@@ -150,7 +150,7 @@ fn main() {
 
     // Sort failure signatures by descending count.
     let mut ranked: Vec<_> = failures.iter().collect();
-    ranked.sort_by(|a, b| b.1 .0.cmp(&a.1 .0));
+    ranked.sort_by_key(|b| std::cmp::Reverse(b.1 .0));
 
     println!(
         "\nDistinct failure signatures ({}), most frequent first:",
