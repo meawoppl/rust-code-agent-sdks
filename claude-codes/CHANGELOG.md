@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.153] - 2026-06-08
+
+### Changed (breaking)
+
+- **`ResultMessage::model_usage`** is now
+  `Option<BTreeMap<String, ModelUsageEntry>>` instead of
+  `Option<serde_json::Value>`. Consumers read typed per-model usage
+  (`input_tokens`, `output_tokens`, `cache_read_input_tokens`,
+  `cache_creation_input_tokens`, `cost_usd`, `web_search_requests`)
+  keyed by model name, instead of poking the `Value`. Unmodeled wire
+  keys are preserved in `ModelUsageEntry::extra`.
+
+### Added
+
+- **`ModelUsageEntry`** — typed per-model usage/cost record (re-exported
+  from `claude_codes::io`).
+
 ## [2.1.152] - 2026-06-08
 
 ### Added
