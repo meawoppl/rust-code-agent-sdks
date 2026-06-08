@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.154] - 2026-06-08
+
+### Added
+
+- **`ToolInput::from_named_input(name, input)`** — parses a tool-use `input`
+  using the authoritative tool *name* from the `ToolUse` block instead of
+  guessing the variant from field shape. Resolves the inherent ambiguity of
+  the untagged `Deserialize` impl for structurally-identical inputs — most
+  notably `WebSearch` vs `ToolSearch`, both bare `{ "query": String }`, where
+  the untagged impl always picked `ToolSearch` and dropped the `WebSearch`
+  query. Falls back to `Unknown` on shape mismatch and defers to the untagged
+  impl for unmodeled (e.g. MCP) tool names.
+
 ## [2.1.153] - 2026-06-08
 
 ### Changed (breaking)
