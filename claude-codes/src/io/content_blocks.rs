@@ -45,6 +45,9 @@ pub enum ContentBlock {
     McpToolResult(McpToolResultBlock),
     /// Container file upload content block.
     ContainerUpload(ContainerUploadBlock),
+    /// Model fallback event, emitted when a request falls back from one
+    /// model to another (e.g. on overload).
+    Fallback(FallbackBlock),
     /// A content block type not yet known to this version of the crate.
     /// Contains the raw JSON value for caller inspection.
     Unknown(Value),
@@ -65,6 +68,7 @@ impl ContentBlock {
             Self::McpToolUse(_) => "mcp_tool_use",
             Self::McpToolResult(_) => "mcp_tool_result",
             Self::ContainerUpload(_) => "container_upload",
+            Self::Fallback(_) => "fallback",
             Self::Unknown(v) => v.get("type").and_then(|t| t.as_str()).unwrap_or("unknown"),
         }
     }
@@ -93,6 +97,7 @@ impl Serialize for ContentBlock {
             Self::McpToolUse(v) => serialize_tagged("mcp_tool_use", v, serializer),
             Self::McpToolResult(v) => serialize_tagged("mcp_tool_result", v, serializer),
             Self::ContainerUpload(v) => serialize_tagged("container_upload", v, serializer),
+            Self::Fallback(v) => serialize_tagged("fallback", v, serializer),
             Self::Unknown(v) => v.serialize(serializer),
         }
     }
@@ -139,6 +144,9 @@ impl<'de> Deserialize<'de> for ContentBlock {
                 .map_err(serde::de::Error::custom),
             "container_upload" => serde_json::from_value(value)
                 .map(ContentBlock::ContainerUpload)
+                .map_err(serde::de::Error::custom),
+            "fallback" => serde_json::from_value(value)
+                .map(ContentBlock::Fallback)
                 .map_err(serde::de::Error::custom),
             _ => Ok(ContentBlock::Unknown(value)),
         }
@@ -445,6 +453,25 @@ pub struct ContainerUploadBlock {
     pub data: Value,
 }
 
+/// Model fallback content block.
+///
+/// Marks the point in `content` where the response switched from one model
+/// to another (e.g. when the primary model is overloaded). Blocks after this
+/// marker were produced by the `to` model.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FallbackBlock {
+    /// The model the response is switching away from.
+    pub from: FallbackModel,
+    /// The model now serving the response.
+    pub to: FallbackModel,
+}
+
+/// A model reference inside a [`FallbackBlock`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FallbackModel {
+    pub model: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -585,6 +612,29 @@ mod tests {
         let block: ContentBlock = serde_json::from_value(json).unwrap();
         assert_eq!(block.block_type(), "container_upload");
         assert!(matches!(block, ContentBlock::ContainerUpload(_)));
+    }
+
+    #[test]
+    fn test_fallback_block_deserializes() {
+        // Exact shape emitted by the CLI (verified against claude 2.1.172).
+        let json = json!({
+            "from": { "model": "claude-fable-5" },
+            "to": { "model": "claude-opus-4-8" },
+            "type": "fallback"
+        });
+
+        let block: ContentBlock = serde_json::from_value(json.clone()).unwrap();
+        assert!(!block.is_unknown());
+        assert_eq!(block.block_type(), "fallback");
+        if let ContentBlock::Fallback(b) = &block {
+            assert_eq!(b.from.model, "claude-fable-5");
+            assert_eq!(b.to.model, "claude-opus-4-8");
+        } else {
+            panic!("Expected Fallback variant");
+        }
+        // roundtrip
+        let reserialized = serde_json::to_value(&block).unwrap();
+        assert_eq!(json, reserialized);
     }
 
     #[test]

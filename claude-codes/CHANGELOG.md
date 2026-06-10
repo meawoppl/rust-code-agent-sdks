@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.156] - 2026-06-10
+
+### Added
+
+- **`ContentBlock::Fallback`** — typed variant for model-fallback content
+  blocks (`{"type": "fallback", "from": {"model": ...}, "to": {"model": ...}}`),
+  emitted when the CLI switches the response to a fallback model mid-turn.
+  Previously these deserialized as `ContentBlock::Unknown`. The wire shape was
+  verified against the claude CLI 2.1.172 binary and real session transcripts;
+  it carries no fields beyond the from/to models (no reason field exists).
+  New types `FallbackBlock` and `FallbackModel` are exported from the crate
+  root and `claude_codes::io`. (#160)
+
 ## [2.1.155] - 2026-06-08
 
 ### Changed (breaking)

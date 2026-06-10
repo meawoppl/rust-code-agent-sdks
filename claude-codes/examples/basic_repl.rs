@@ -221,6 +221,12 @@ fn handle_output(output: ClaudeOutput) {
                     claude_codes::io::ContentBlock::ContainerUpload(_) => {
                         println!("\n[Container Upload]");
                     }
+                    claude_codes::io::ContentBlock::Fallback(fallback) => {
+                        println!(
+                            "\n[Model fallback: {} -> {}]",
+                            fallback.from.model, fallback.to.model
+                        );
+                    }
                     claude_codes::io::ContentBlock::Unknown(value) => {
                         println!(
                             "\n[Unknown block: {}]",
