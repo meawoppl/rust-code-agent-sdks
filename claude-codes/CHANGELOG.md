@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.157] - 2026-06-11
+
+### Changed
+
+- **Tested Claude CLI version** bumped from 2.1.150 to 2.1.170. The full
+  integration suite passes against CLI 2.1.172; the pin sits two patch
+  versions behind. The newer-than-tested CLI warning now triggers only
+  above 2.1.170.
+
 ## [2.1.156] - 2026-06-10
 
 ### Added
