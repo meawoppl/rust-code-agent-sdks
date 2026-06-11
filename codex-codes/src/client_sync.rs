@@ -50,9 +50,9 @@ use crate::jsonrpc::{
 use crate::messages::{Notification, ServerMessage, ServerRequest};
 use crate::protocol::{
     ClientInfo, InitializeParams, InitializeResponse, ThreadArchiveParams, ThreadArchiveResponse,
-    ThreadForkParams, ThreadForkResponse, ThreadResumeParams, ThreadResumeResponse,
-    ThreadStartParams, ThreadStartResponse, TurnInterruptParams, TurnInterruptResponse,
-    TurnStartParams, TurnStartResponse,
+    ThreadDeleteParams, ThreadDeleteResponse, ThreadForkParams, ThreadForkResponse,
+    ThreadResumeParams, ThreadResumeResponse, ThreadStartParams, ThreadStartResponse,
+    TurnInterruptParams, TurnInterruptResponse, TurnStartParams, TurnStartResponse,
 };
 use log::{debug, warn};
 use serde::de::DeserializeOwned;
@@ -271,6 +271,11 @@ impl SyncClient {
         params: &ThreadArchiveParams,
     ) -> Result<ThreadArchiveResponse> {
         self.request(crate::protocol::methods::THREAD_ARCHIVE, params)
+    }
+
+    /// Delete a thread.
+    pub fn thread_delete(&mut self, params: &ThreadDeleteParams) -> Result<ThreadDeleteResponse> {
+        self.request(crate::protocol::methods::THREAD_DELETE, params)
     }
 
     /// Perform the `initialize` handshake with the app-server.

@@ -42,13 +42,13 @@ use crate::protocol::{
     ReasoningSummaryPartAddedNotification, ReasoningSummaryTextDeltaNotification,
     ReasoningTextDeltaNotification, RemoteControlStatusChangedNotification,
     ServerRequestResolvedNotification, SkillsChangedNotification, TerminalInteractionNotification,
-    ThreadArchivedNotification, ThreadClosedNotification, ThreadGoalClearedNotification,
-    ThreadGoalUpdatedNotification, ThreadNameUpdatedNotification, ThreadRealtimeClosedNotification,
-    ThreadRealtimeErrorNotification, ThreadRealtimeItemAddedNotification,
-    ThreadRealtimeOutputAudioDeltaNotification, ThreadRealtimeSdpNotification,
-    ThreadRealtimeStartedNotification, ThreadRealtimeTranscriptDeltaNotification,
-    ThreadRealtimeTranscriptDoneNotification, ThreadSettingsUpdatedNotification,
-    ThreadStartedNotification, ThreadStatusChangedNotification,
+    ThreadArchivedNotification, ThreadClosedNotification, ThreadDeletedNotification,
+    ThreadGoalClearedNotification, ThreadGoalUpdatedNotification, ThreadNameUpdatedNotification,
+    ThreadRealtimeClosedNotification, ThreadRealtimeErrorNotification,
+    ThreadRealtimeItemAddedNotification, ThreadRealtimeOutputAudioDeltaNotification,
+    ThreadRealtimeSdpNotification, ThreadRealtimeStartedNotification,
+    ThreadRealtimeTranscriptDeltaNotification, ThreadRealtimeTranscriptDoneNotification,
+    ThreadSettingsUpdatedNotification, ThreadStartedNotification, ThreadStatusChangedNotification,
     ThreadTokenUsageUpdatedNotification, ThreadUnarchivedNotification, TurnCompletedNotification,
     TurnDiffUpdatedNotification, TurnModerationMetadataNotification, TurnPlanUpdatedNotification,
     TurnStartedNotification, WarningNotification, WindowsSandboxSetupCompletedNotification,
@@ -120,6 +120,8 @@ pub enum Notification {
     ThreadArchived(ThreadArchivedNotification),
     /// `thread/closed`
     ThreadClosed(ThreadClosedNotification),
+    /// `thread/deleted`
+    ThreadDeleted(ThreadDeletedNotification),
     /// `thread/unarchived`
     ThreadUnarchived(ThreadUnarchivedNotification),
     /// `thread/goal/cleared`
@@ -235,6 +237,7 @@ impl Notification {
             Self::Warning(_) => methods::WARNING,
             Self::ThreadArchived(_) => methods::THREAD_ARCHIVED,
             Self::ThreadClosed(_) => methods::THREAD_CLOSED,
+            Self::ThreadDeleted(_) => methods::THREAD_DELETED,
             Self::ThreadUnarchived(_) => methods::THREAD_UNARCHIVED,
             Self::ThreadGoalCleared(_) => methods::THREAD_GOAL_CLEARED,
             Self::ThreadNameUpdated(_) => methods::THREAD_NAME_UPDATED,
@@ -369,6 +372,9 @@ impl Notification {
                 serde_json::from_value(params_value).map(Self::ThreadArchived)
             }
             methods::THREAD_CLOSED => serde_json::from_value(params_value).map(Self::ThreadClosed),
+            methods::THREAD_DELETED => {
+                serde_json::from_value(params_value).map(Self::ThreadDeleted)
+            }
             methods::THREAD_UNARCHIVED => {
                 serde_json::from_value(params_value).map(Self::ThreadUnarchived)
             }
@@ -524,6 +530,7 @@ impl Notification {
             Self::Warning(v) => pack(methods::WARNING, v),
             Self::ThreadArchived(v) => pack(methods::THREAD_ARCHIVED, v),
             Self::ThreadClosed(v) => pack(methods::THREAD_CLOSED, v),
+            Self::ThreadDeleted(v) => pack(methods::THREAD_DELETED, v),
             Self::ThreadUnarchived(v) => pack(methods::THREAD_UNARCHIVED, v),
             Self::ThreadGoalCleared(v) => pack(methods::THREAD_GOAL_CLEARED, v),
             Self::ThreadNameUpdated(v) => pack(methods::THREAD_NAME_UPDATED, v),

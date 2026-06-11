@@ -528,6 +528,7 @@ async fn test_typed_message_audit_strict() {
                     }
                     Notification::ThreadRealtimeSdp(_) => "ThreadRealtimeSdp",
                     Notification::ThreadRealtimeStarted(_) => "ThreadRealtimeStarted",
+                    Notification::ThreadDeleted(_) => "ThreadDeleted",
                     Notification::ThreadSettingsUpdated(_) => "ThreadSettingsUpdated",
                     Notification::TurnModerationMetadata(_) => "TurnModerationMetadata",
                     Notification::ThreadRealtimeTranscriptDelta(_) => {

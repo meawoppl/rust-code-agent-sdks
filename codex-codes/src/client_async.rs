@@ -50,9 +50,9 @@ use crate::jsonrpc::{
 use crate::messages::{Notification, ServerMessage, ServerRequest};
 use crate::protocol::{
     ClientInfo, InitializeParams, InitializeResponse, ThreadArchiveParams, ThreadArchiveResponse,
-    ThreadForkParams, ThreadForkResponse, ThreadResumeParams, ThreadResumeResponse,
-    ThreadStartParams, ThreadStartResponse, TurnInterruptParams, TurnInterruptResponse,
-    TurnStartParams, TurnStartResponse,
+    ThreadDeleteParams, ThreadDeleteResponse, ThreadForkParams, ThreadForkResponse,
+    ThreadResumeParams, ThreadResumeResponse, ThreadStartParams, ThreadStartResponse,
+    TurnInterruptParams, TurnInterruptResponse, TurnStartParams, TurnStartResponse,
 };
 use log::{debug, error, warn};
 use serde::de::DeserializeOwned;
@@ -289,6 +289,15 @@ impl AsyncClient {
         params: &ThreadArchiveParams,
     ) -> Result<ThreadArchiveResponse> {
         self.request(crate::protocol::methods::THREAD_ARCHIVE, params)
+            .await
+    }
+
+    /// Delete a thread.
+    pub async fn thread_delete(
+        &mut self,
+        params: &ThreadDeleteParams,
+    ) -> Result<ThreadDeleteResponse> {
+        self.request(crate::protocol::methods::THREAD_DELETE, params)
             .await
     }
 

@@ -354,8 +354,6 @@ pub struct AppSummary {
     pub install_url: Option<String>,
     #[serde(default)]
     pub name: String,
-    #[serde(rename = "needsAuth", default)]
-    pub needs_auth: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -505,6 +503,8 @@ pub enum AuthMode {
     AgentIdentity,
     #[serde(rename = "personalAccessToken")]
     PersonalAccessToken,
+    #[serde(rename = "bedrockApiKey")]
+    BedrockApiKey,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -5147,6 +5147,16 @@ pub struct SpendControlLimitSnapshot {
     pub used: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum SubAgentActivityKind {
+    #[serde(rename = "started")]
+    Started,
+    #[serde(rename = "interacted")]
+    Interacted,
+    #[serde(rename = "interrupted")]
+    Interrupted,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum SubAgentSource {
     #[serde(rename = "review")]
@@ -5344,6 +5354,27 @@ pub struct ThreadCompactStartParams {
 pub struct ThreadCompactStartResponse {
     #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
     pub extra: serde_json::Map<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadDeleteParams {
+    #[serde(rename = "threadId", default)]
+    pub thread_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadDeleteResponse {
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadDeletedNotification {
+    #[serde(rename = "threadId", default)]
+    pub thread_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -5715,6 +5746,15 @@ pub enum ThreadItem {
         sender_thread_id: String,
         status: Value,
         tool: Value,
+    },
+    #[serde(rename = "subAgentActivity")]
+    SubAgentActivity {
+        #[serde(rename = "agentPath")]
+        agent_path: String,
+        #[serde(rename = "agentThreadId")]
+        agent_thread_id: String,
+        id: String,
+        kind: SubAgentActivityKind,
     },
     #[serde(rename = "webSearch")]
     WebSearch {
@@ -6204,15 +6244,9 @@ pub enum ThreadSortKey {
     Updated_at,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum ThreadSource {
-    #[serde(rename = "user")]
-    User,
-    #[serde(rename = "subagent")]
-    Subagent,
-    #[serde(rename = "memory_consolidation")]
-    Memory_consolidation,
-}
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq, Hash)]
+#[serde(transparent)]
+pub struct ThreadSource(pub String);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ThreadSourceKind {
