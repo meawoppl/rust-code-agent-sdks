@@ -392,10 +392,8 @@ async fn test_file_edit_tool_use() {
                         println!("Tool use: name={}, input={:?}", tool.name, tool.input);
                         tool_uses.push(tool.name.clone());
                     }
-                    claude_codes::io::ContentBlock::Text(text) => {
-                        if text.text.len() < 200 {
-                            println!("Text: {}", text.text);
-                        }
+                    claude_codes::io::ContentBlock::Text(text) if text.text.len() < 200 => {
+                        println!("Text: {}", text.text);
                     }
                     _ => {}
                 }
