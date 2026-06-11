@@ -462,6 +462,7 @@ mod samples {
             methods::WINDOWS_SANDBOX_SETUP_COMPLETED,
             methods::THREAD_SETTINGS_UPDATED,
             methods::TURN_MODERATION_METADATA,
+            methods::THREAD_DELETED,
         ]
         .into_iter()
         .collect()
@@ -475,6 +476,7 @@ mod samples {
             methods::INITIALIZED,
             methods::THREAD_START,
             methods::THREAD_ARCHIVE,
+            methods::THREAD_DELETE,
             methods::TURN_START,
             methods::TURN_INTERRUPT,
             methods::TURN_STEER,

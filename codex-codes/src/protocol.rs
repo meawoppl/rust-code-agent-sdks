@@ -31,6 +31,7 @@ pub mod methods {
     pub const INITIALIZED: &str = "initialized";
     pub const THREAD_START: &str = "thread/start";
     pub const THREAD_ARCHIVE: &str = "thread/archive";
+    pub const THREAD_DELETE: &str = "thread/delete";
     pub const TURN_START: &str = "turn/start";
     pub const TURN_INTERRUPT: &str = "turn/interrupt";
     pub const TURN_STEER: &str = "turn/steer";
@@ -141,6 +142,7 @@ pub mod methods {
     pub const WARNING: &str = "warning";
     pub const THREAD_ARCHIVED: &str = "thread/archived";
     pub const THREAD_CLOSED: &str = "thread/closed";
+    pub const THREAD_DELETED: &str = "thread/deleted";
     pub const THREAD_UNARCHIVED: &str = "thread/unarchived";
     pub const THREAD_GOAL_CLEARED: &str = "thread/goal/cleared";
     pub const THREAD_NAME_UPDATED: &str = "thread/name/updated";
