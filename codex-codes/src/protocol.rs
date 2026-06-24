@@ -112,6 +112,10 @@ pub mod methods {
     pub const THREAD_GOAL_GET: &str = "thread/goal/get";
     pub const THREAD_GOAL_SET: &str = "thread/goal/set";
     pub const THREAD_GOAL_CLEAR: &str = "thread/goal/clear";
+    pub const ACCOUNT_RATELIMITRESETCREDIT_CONSUME: &str = "account/rateLimitResetCredit/consume";
+    pub const ACCOUNT_WORKSPACEMESSAGES_READ: &str = "account/workspaceMessages/read";
+    pub const EXTERNALAGENTCONFIG_IMPORT_READHISTORIES: &str =
+        "externalAgentConfig/import/readHistories";
 
     // Server → client notifications
     pub const THREAD_STARTED: &str = "thread/started";
@@ -181,6 +185,8 @@ pub mod methods {
     pub const WINDOWS_SANDBOX_SETUP_COMPLETED: &str = "windowsSandbox/setupCompleted";
     pub const THREAD_SETTINGS_UPDATED: &str = "thread/settings/updated";
     pub const TURN_MODERATION_METADATA: &str = "turn/moderationMetadata";
+    pub const EXTERNAL_AGENT_CONFIG_IMPORT_PROGRESS: &str = "externalAgentConfig/import/progress";
+    pub const MODEL_SAFETY_BUFFERING_UPDATED: &str = "model/safetyBuffering/updated";
 
     // Server → client requests (approval flow, v2 envelope)
     pub const CMD_EXEC_APPROVAL: &str = "item/commandExecution/requestApproval";

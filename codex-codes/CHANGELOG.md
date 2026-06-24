@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.142.0] - 2026-06-24
+
+### Added
+
+- **`Notification::ExternalAgentConfigImportProgress`** — typed variant for the
+  new `externalAgentConfig/import/progress` server notification, reporting
+  per-item-type successes and failures while an external-agent config import
+  runs.
+- **`Notification::ModelSafetyBufferingUpdated`** — typed variant for the new
+  `model/safetyBuffering/updated` server notification (transient, not persisted
+  to rollout history; carries `showBufferingUi` and an optional `fasterModel`).
+- **`account/rateLimitResetCredit/consume` request** — `ConsumeAccountRateLimitResetCreditParams`
+  / `ConsumeAccountRateLimitResetCreditResponse` for redeeming an earned
+  rate-limit reset credit (idempotency-key based; refetch `account/rateLimits/read`
+  afterward).
+- **`account/workspaceMessages/read` request** — `GetWorkspaceMessagesResponse`
+  / `WorkspaceMessage` for fetching active ChatGPT workspace messages.
+- **`externalAgentConfig/import/readHistories` request** —
+  `ExternalAgentConfigImportHistoriesReadResponse` for reading prior
+  external-agent config import histories.
+
+### Changed
+
+- Re-snapshotted `codex_app_server_protocol{,.v2}.schemas.json` from
+  `openai/codex@main` (commit `134646ef`, 2026-06-24), regenerating the typed
+  structs (resolves the codex-schema-drift report, issue #166). This pulls in
+  25 new definitions and 36 changed ones across the v2 bundle, including richer
+  external-agent config import progress/history reporting (per-type
+  success/failure), workspace messages, transient model safety-buffering
+  notifications, remote-control and multi-agent type additions, and expanded
+  rate-limit reset-credit support. Schema coverage is back to 165/165 (100%).
+- Bumped tested Codex CLI version to `0.142.0`.
+
 ## [0.137.4] - 2026-06-11
 
 ### Added

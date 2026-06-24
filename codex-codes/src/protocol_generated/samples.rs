@@ -19,7 +19,14 @@ pub fn server_notification_samples() -> Vec<(&'static str, Value)> {
             "error",
             json!({"error": {"message": "x"}, "threadId": "x", "turnId": "x", "willRetry": false}),
         ),
-        ("externalAgentConfig/import/completed", json!({})),
+        (
+            "externalAgentConfig/import/completed",
+            json!({"importId": "x", "itemTypeResults": []}),
+        ),
+        (
+            "externalAgentConfig/import/progress",
+            json!({"importId": "x", "itemTypeResults": []}),
+        ),
         ("fs/changed", json!({"changedPaths": [], "watchId": "x"})),
         (
             "fuzzyFileSearch/sessionCompleted",
@@ -105,6 +112,10 @@ pub fn server_notification_samples() -> Vec<(&'static str, Value)> {
         (
             "model/rerouted",
             json!({"fromModel": "x", "reason": "highRiskCyberActivity", "threadId": "x", "toModel": "x", "turnId": "x"}),
+        ),
+        (
+            "model/safetyBuffering/updated",
+            json!({"model": "x", "reasons": [], "showBufferingUi": false, "threadId": "x", "turnId": "x", "useCases": []}),
         ),
         (
             "model/verification",
@@ -221,6 +232,10 @@ pub fn client_request_samples() -> Vec<(&'static str, Value)> {
             json!({"apiKey": "x", "type": "apiKey"}),
         ),
         ("account/logout", json!({})),
+        (
+            "account/rateLimitResetCredit/consume",
+            json!({"idempotencyKey": "x"}),
+        ),
         ("account/rateLimits/read", json!({})),
         ("account/read", json!({})),
         (
@@ -228,6 +243,7 @@ pub fn client_request_samples() -> Vec<(&'static str, Value)> {
             json!({"creditType": "credits"}),
         ),
         ("account/usage/read", json!({})),
+        ("account/workspaceMessages/read", json!({})),
         ("app/list", json!({})),
         ("command/exec", json!({"command": []})),
         (
@@ -251,6 +267,7 @@ pub fn client_request_samples() -> Vec<(&'static str, Value)> {
         ("experimentalFeature/list", json!({})),
         ("externalAgentConfig/detect", json!({})),
         ("externalAgentConfig/import", json!({"migrationItems": []})),
+        ("externalAgentConfig/import/readHistories", json!({})),
         ("feedback/upload", json!({"classification": "x"})),
         (
             "fs/copy",
