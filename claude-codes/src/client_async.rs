@@ -211,56 +211,83 @@ impl AsyncClient {
     /// - `Err(Error::ConnectionClosed)` - Claude process has exited
     /// - `Err(Error::Deserialization)` - Failed to parse the message
     pub async fn receive(&mut self) -> Result<ClaudeOutput> {
-        let mut line = String::new();
+        let trimmed = self.read_frame_line().await?;
+        debug!("[INCOMING] Received JSON from Claude: {}", trimmed);
 
+        // Use the parse_json_tolerant method which handles ANSI escape codes
+        match ClaudeOutput::parse_json_tolerant(&trimmed) {
+            Ok(output) => {
+                debug!("[INCOMING] Parsed output type: {}", output.message_type());
+
+                // Capture UUID from first response if not already set
+                if self.session_uuid.is_none() {
+                    if let ClaudeOutput::Assistant(ref msg) = output {
+                        if let Some(ref uuid_str) = msg.uuid {
+                            if let Ok(uuid) = Uuid::parse_str(uuid_str) {
+                                debug!("[INCOMING] Captured session UUID: {}", uuid);
+                                self.session_uuid = Some(uuid);
+                            }
+                        }
+                    } else if let ClaudeOutput::Result(ref msg) = output {
+                        if let Some(ref uuid_str) = msg.uuid {
+                            if let Ok(uuid) = Uuid::parse_str(uuid_str) {
+                                debug!("[INCOMING] Captured session UUID: {}", uuid);
+                                self.session_uuid = Some(uuid);
+                            }
+                        }
+                    }
+                }
+
+                Ok(output)
+            }
+            Err(parse_error) => {
+                warn!("[INCOMING] Failed to deserialize message from Claude CLI. Please report this at https://github.com/meawoppl/rust-claude-codes/issues with the raw message below.");
+                warn!("[INCOMING] Parse error: {}", parse_error.error_message);
+                warn!("[INCOMING] Raw message: {}", trimmed);
+                Err(parse_error.into())
+            }
+        }
+    }
+
+    /// Read the next non-empty line from Claude's stdout, trimmed.
+    ///
+    /// Returns `Err(Error::ConnectionClosed)` at EOF. Shared by [`receive`] and
+    /// [`receive_raw`].
+    ///
+    /// [`receive`]: Self::receive
+    /// [`receive_raw`]: Self::receive_raw
+    async fn read_frame_line(&mut self) -> Result<String> {
+        let mut line = String::new();
         loop {
             line.clear();
             let bytes_read = self.stdout.read_line(&mut line).await.map_err(Error::Io)?;
-
             if bytes_read == 0 {
                 return Err(Error::ConnectionClosed);
             }
-
             let trimmed = line.trim();
             if trimmed.is_empty() {
                 continue;
             }
+            return Ok(trimmed.to_string());
+        }
+    }
 
-            debug!("[INCOMING] Received JSON from Claude: {}", trimmed);
-
-            // Use the parse_json_tolerant method which handles ANSI escape codes
-            match ClaudeOutput::parse_json_tolerant(trimmed) {
-                Ok(output) => {
-                    debug!("[INCOMING] Parsed output type: {}", output.message_type());
-
-                    // Capture UUID from first response if not already set
-                    if self.session_uuid.is_none() {
-                        if let ClaudeOutput::Assistant(ref msg) = output {
-                            if let Some(ref uuid_str) = msg.uuid {
-                                if let Ok(uuid) = Uuid::parse_str(uuid_str) {
-                                    debug!("[INCOMING] Captured session UUID: {}", uuid);
-                                    self.session_uuid = Some(uuid);
-                                }
-                            }
-                        } else if let ClaudeOutput::Result(ref msg) = output {
-                            if let Some(ref uuid_str) = msg.uuid {
-                                if let Ok(uuid) = Uuid::parse_str(uuid_str) {
-                                    debug!("[INCOMING] Captured session UUID: {}", uuid);
-                                    self.session_uuid = Some(uuid);
-                                }
-                            }
-                        }
-                    }
-
-                    return Ok(output);
-                }
-                Err(parse_error) => {
-                    warn!("[INCOMING] Failed to deserialize message from Claude CLI. Please report this at https://github.com/meawoppl/rust-claude-codes/issues with the raw message below.");
-                    warn!("[INCOMING] Parse error: {}", parse_error.error_message);
-                    warn!("[INCOMING] Raw message: {}", trimmed);
-                    return Err(parse_error.into());
-                }
-            }
+    /// Receive the next frame as a raw `serde_json::Value`, before it is mapped
+    /// into a typed [`ClaudeOutput`].
+    ///
+    /// Useful for auditing wire fidelity: pair it with
+    /// [`audit_frame`](crate::io::audit_frame) to confirm the typed model
+    /// captures every field the CLI emitted. Applies the same leading-prefix
+    /// tolerance as [`receive`](Self::receive).
+    pub async fn receive_raw(&mut self) -> Result<serde_json::Value> {
+        let trimmed = self.read_frame_line().await?;
+        match serde_json::from_str::<serde_json::Value>(&trimmed) {
+            Ok(value) => Ok(value),
+            Err(e) => match trimmed.find('{') {
+                Some(start) => Ok(serde_json::from_str::<serde_json::Value>(&trimmed[start..])
+                    .map_err(|_| Error::Json(e))?),
+                None => Err(Error::Json(e)),
+            },
         }
     }
 
