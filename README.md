@@ -53,7 +53,7 @@ All features are enabled by default. For WASM or type-sharing use cases:
 
 ```toml
 [dependencies]
-codex-codes = { version = "0.137", default-features = false, features = ["types"] }
+codex-codes = { version = "0.142", default-features = false, features = ["types"] }
 ```
 
 ## Testing Approach
