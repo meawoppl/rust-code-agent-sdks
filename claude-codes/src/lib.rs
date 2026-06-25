@@ -142,17 +142,21 @@ pub use io::{
     ControlResponse, ControlResponseMessage, ControlResponsePayload, HookCallbackRequest,
     InitializeRequest, McpMessageRequest, Permission, PermissionBehavior, PermissionDenial,
     PermissionDestination, PermissionModeName, PermissionResult, PermissionRule,
-    PermissionSuggestion, PermissionType, SDKControlInterruptRequest, ToolPermissionRequest,
-    ToolUseBlock,
+    PermissionSuggestion, PermissionType, SDKControlInterruptRequest, ToolCaller,
+    ToolPermissionRequest, ToolUseBlock,
 };
 
 // System message and assistant message types
 pub use io::{
     ApiKeySource, CompactBoundaryMessage, CompactMetadata, CompactionTrigger, InitMessage,
     InitPermissionMode, MessageRole, OutputStyle, PluginInfo, StatusMessage, StatusMessageStatus,
-    StopReason, SystemMessage, SystemSubtype, TaskNotificationMessage, TaskProgressMessage,
-    TaskStartedMessage, TaskStatus, TaskType, TaskUsage,
+    StopReason, SystemMessage, SystemSubtype, TaskNotificationMessage, TaskPatch,
+    TaskProgressMessage, TaskStartedMessage, TaskStatus, TaskType, TaskUpdatedMessage, TaskUsage,
+    ThinkingTokensMessage,
 };
+
+// Wire-fidelity audit for verifying frames are fully typed
+pub use io::{assert_fully_wrapped, audit_frame, FrameAudit};
 
 // Rate limit types
 pub use io::{

@@ -8,6 +8,19 @@ pub struct ResultMessage {
     pub is_error: bool,
     pub duration_ms: u64,
     pub duration_api_ms: u64,
+
+    /// Time to first token, in milliseconds.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ttft_ms: Option<u64>,
+
+    /// Time to first streamed token, in milliseconds.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ttft_stream_ms: Option<u64>,
+
+    /// Time from session start until the first request was issued, in milliseconds.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub time_to_request_ms: Option<u64>,
+
     pub num_turns: i32,
 
     #[serde(skip_serializing_if = "Option::is_none")]

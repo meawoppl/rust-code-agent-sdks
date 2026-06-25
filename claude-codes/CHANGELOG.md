@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.158] - 2026-06-25
+
+### Added
+
+- **Subagent message coverage.** Typed every field a `Task`-tool /
+  `local_agent` subagent session emits, verified against real captures:
+  - New `system` subtypes `task_updated` (with `TaskUpdatedMessage` /
+    `TaskPatch`) and `thinking_tokens` (with `ThinkingTokensMessage`), plus
+    `SystemMessage::as_task_updated` / `as_thinking_tokens` accessors.
+  - `TaskStartedMessage` and `TaskProgressMessage` gain `subagent_type`;
+    `TaskStartedMessage` also gains `prompt`.
+  - `AssistantMessage` gains `request_id`, `subagent_type`, `task_description`;
+    `AssistantMessageContent` gains `message_type` (the API `type` field);
+    `UserMessage` gains `subagent_type` and `task_description`.
+  - `ToolUseBlock` gains a typed `caller` (`ToolCaller`).
+  - `InitMessage` gains `analytics_disabled` and `product_feedback_disabled`.
+  - `ResultMessage` gains `ttft_ms`, `ttft_stream_ms`, and `time_to_request_ms`.
+- **Wire-fidelity audit** — `audit_frame` / `assert_fully_wrapped` / `FrameAudit`
+  (exported from the crate root and `claude_codes::io`) check that a raw frame
+  deserializes, round-trips losslessly, and — for `system` frames — resolves to
+  a modeled subtype whose typed view captures every field.
+- **`AsyncClient::receive_raw`** — read the next frame as a raw
+  `serde_json::Value` before typed parsing, for auditing wire fidelity.
+- New `test_cases/subagent_sessions/` captures and a `subagent_wrapping_tests`
+  suite that audits every frame (fixtures always; a live subagent run under
+  `integration-tests`).
+
+### Changed
+
+- **Tested Claude CLI version** bumped to 2.1.178 — the full integration suite,
+  including the new live subagent run, passes against the installed binary.
+
 ## [2.1.157] - 2026-06-11
 
 ### Changed

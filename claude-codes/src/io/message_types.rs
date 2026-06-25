@@ -15,8 +15,10 @@ pub enum SystemSubtype {
     Init,
     Status,
     CompactBoundary,
+    ThinkingTokens,
     TaskStarted,
     TaskProgress,
+    TaskUpdated,
     TaskNotification,
     /// A subtype not yet known to this version of the crate.
     Unknown(String),
@@ -28,8 +30,10 @@ impl SystemSubtype {
             Self::Init => "init",
             Self::Status => "status",
             Self::CompactBoundary => "compact_boundary",
+            Self::ThinkingTokens => "thinking_tokens",
             Self::TaskStarted => "task_started",
             Self::TaskProgress => "task_progress",
+            Self::TaskUpdated => "task_updated",
             Self::TaskNotification => "task_notification",
             Self::Unknown(s) => s.as_str(),
         }
@@ -48,8 +52,10 @@ impl From<&str> for SystemSubtype {
             "init" => Self::Init,
             "status" => Self::Status,
             "compact_boundary" => Self::CompactBoundary,
+            "thinking_tokens" => Self::ThinkingTokens,
             "task_started" => Self::TaskStarted,
             "task_progress" => Self::TaskProgress,
+            "task_updated" => Self::TaskUpdated,
             "task_notification" => Self::TaskNotification,
             other => Self::Unknown(other.to_string()),
         }
@@ -463,6 +469,13 @@ pub struct UserMessage {
     /// typed shape when you know which tool was invoked.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_use_result: Option<serde_json::Value>,
+    /// Subagent type, when this user message is the prompt echoed into a
+    /// `local_agent` subagent (e.g. `general-purpose`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subagent_type: Option<String>,
+    /// Short description of the subagent task, present alongside `subagent_type`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub task_description: Option<String>,
 }
 
 impl UserMessage {
@@ -576,6 +589,57 @@ impl SystemMessage {
         }
         serde_json::from_value(self.data.clone()).ok()
     }
+
+    /// Check if this is a task_updated message
+    pub fn is_task_updated(&self) -> bool {
+        self.subtype == SystemSubtype::TaskUpdated
+    }
+
+    /// Try to parse as a task_updated message
+    pub fn as_task_updated(&self) -> Option<TaskUpdatedMessage> {
+        if self.subtype != SystemSubtype::TaskUpdated {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
+    /// Check if this is a thinking_tokens message
+    pub fn is_thinking_tokens(&self) -> bool {
+        self.subtype == SystemSubtype::ThinkingTokens
+    }
+
+    /// Try to parse as a thinking_tokens message
+    pub fn as_thinking_tokens(&self) -> Option<ThinkingTokensMessage> {
+        if self.subtype != SystemSubtype::ThinkingTokens {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
+    /// Re-serialize this system message's payload through the typed view that
+    /// matches its `subtype`, returning the result as JSON.
+    ///
+    /// Used by the wrapping audit ([`crate::io::audit_frame`]) to verify that a
+    /// subtype's dedicated struct captures every wire field: the audit compares
+    /// this against the raw [`SystemMessage::data`]. Returns `None` for subtypes
+    /// this crate version has no dedicated struct for (including
+    /// [`SystemSubtype::Unknown`]) — those are reported as not fully wrapped.
+    pub fn typed_value(&self) -> Option<Value> {
+        fn reserialize<T: Serialize>(parsed: Option<T>) -> Option<Value> {
+            parsed.and_then(|v| serde_json::to_value(v).ok())
+        }
+        match self.subtype {
+            SystemSubtype::Init => reserialize(self.as_init()),
+            SystemSubtype::Status => reserialize(self.as_status()),
+            SystemSubtype::CompactBoundary => reserialize(self.as_compact_boundary()),
+            SystemSubtype::ThinkingTokens => reserialize(self.as_thinking_tokens()),
+            SystemSubtype::TaskStarted => reserialize(self.as_task_started()),
+            SystemSubtype::TaskProgress => reserialize(self.as_task_progress()),
+            SystemSubtype::TaskUpdated => reserialize(self.as_task_updated()),
+            SystemSubtype::TaskNotification => reserialize(self.as_task_notification()),
+            SystemSubtype::Unknown(_) => None,
+        }
+    }
 }
 
 /// Plugin info from the init message
@@ -643,6 +707,14 @@ pub struct InitMessage {
     /// Fast mode toggle state (e.g., "off")
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fast_mode_state: Option<String>,
+
+    /// Whether analytics collection is disabled for this session.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub analytics_disabled: Option<bool>,
+
+    /// Whether product-feedback prompts are disabled for this session.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub product_feedback_disabled: Option<bool>,
 }
 
 /// Status system message - sent during operations like context compaction
@@ -741,6 +813,48 @@ pub struct TaskStartedMessage {
     pub task_type: TaskType,
     pub tool_use_id: String,
     pub description: String,
+    /// The subagent type for `local_agent` tasks (e.g. `general-purpose`,
+    /// `Explore`). Absent for `local_bash` tasks.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subagent_type: Option<String>,
+    /// The prompt handed to the subagent. Present for `local_agent` tasks.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<String>,
+    pub uuid: String,
+}
+
+/// `task_updated` system message — emitted when a background task's state
+/// changes (e.g. transitions to `completed`). Carries a partial `patch` of the
+/// fields that changed rather than the full task record.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskUpdatedMessage {
+    pub session_id: String,
+    pub task_id: String,
+    pub patch: TaskPatch,
+    pub uuid: String,
+}
+
+/// The partial update carried by a [`TaskUpdatedMessage`]. Every field is
+/// optional because the CLI only sends the keys that changed.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct TaskPatch {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<TaskStatus>,
+    /// Wall-clock epoch milliseconds when the task finished, when the patch
+    /// reports completion.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_time: Option<u64>,
+}
+
+/// `thinking_tokens` system message — emitted as the model streams extended
+/// thinking, reporting the running estimate of thinking tokens consumed.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThinkingTokensMessage {
+    pub session_id: String,
+    /// Running estimate of total thinking tokens for the current turn.
+    pub estimated_tokens: u64,
+    /// Increase in the estimate since the previous `thinking_tokens` event.
+    pub estimated_tokens_delta: u64,
     pub uuid: String,
 }
 
@@ -754,6 +868,9 @@ pub struct TaskProgressMessage {
     pub description: String,
     pub last_tool_name: String,
     pub usage: TaskUsage,
+    /// Subagent type for `local_agent` tasks (e.g. `Explore`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subagent_type: Option<String>,
     pub uuid: String,
 }
 
@@ -783,12 +900,25 @@ pub struct AssistantMessage {
     pub uuid: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_tool_use_id: Option<String>,
+    /// Anthropic API request id that produced this message (e.g. `req_...`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request_id: Option<String>,
+    /// Subagent type, when this assistant message was produced inside a
+    /// `local_agent` subagent (e.g. `general-purpose`, `Explore`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subagent_type: Option<String>,
+    /// Short description of the subagent task, present alongside `subagent_type`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub task_description: Option<String>,
 }
 
 /// Nested message content for assistant messages
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssistantMessageContent {
     pub id: String,
+    /// The Anthropic API message type — always `"message"`.
+    #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+    pub message_type: Option<String>,
     pub role: MessageRole,
     pub model: String,
     pub content: Vec<ContentBlock>,

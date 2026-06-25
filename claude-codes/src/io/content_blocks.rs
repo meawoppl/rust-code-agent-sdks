@@ -342,6 +342,22 @@ pub struct ToolUseBlock {
     pub id: String,
     pub name: String,
     pub input: Value,
+    /// Who issued the tool call. `{ "type": "direct" }` for the top-level
+    /// agent; subagent calls carry their own caller provenance. Absent on
+    /// older CLI versions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub caller: Option<ToolCaller>,
+}
+
+/// Provenance of a [`ToolUseBlock`] — identifies who issued the tool call.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolCaller {
+    /// Caller kind (e.g. `direct` for the top-level agent).
+    #[serde(rename = "type")]
+    pub caller_type: String,
+    /// Any additional caller provenance the CLI attaches, preserved verbatim.
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
 }
 
 impl ToolUseBlock {
@@ -360,6 +376,7 @@ impl ToolUseBlock {
     ///     id: "toolu_123".to_string(),
     ///     name: "Bash".to_string(),
     ///     input: json!({"command": "ls -la"}),
+    ///     caller: None,
     /// };
     ///
     /// if let Some(ToolInput::Bash(bash)) = block.typed_input() {
