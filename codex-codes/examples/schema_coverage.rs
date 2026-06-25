@@ -463,6 +463,8 @@ mod samples {
             methods::THREAD_SETTINGS_UPDATED,
             methods::TURN_MODERATION_METADATA,
             methods::THREAD_DELETED,
+            methods::EXTERNAL_AGENT_CONFIG_IMPORT_PROGRESS,
+            methods::MODEL_SAFETY_BUFFERING_UPDATED,
         ]
         .into_iter()
         .collect()
@@ -557,6 +559,9 @@ mod samples {
             methods::THREAD_GOAL_GET,
             methods::THREAD_GOAL_SET,
             methods::THREAD_GOAL_CLEAR,
+            methods::ACCOUNT_RATELIMITRESETCREDIT_CONSUME,
+            methods::ACCOUNT_WORKSPACEMESSAGES_READ,
+            methods::EXTERNALAGENTCONFIG_IMPORT_READHISTORIES,
         ]
         .into_iter()
         .collect()

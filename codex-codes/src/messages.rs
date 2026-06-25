@@ -30,15 +30,17 @@ use crate::protocol::{
     CommandExecOutputDeltaNotification, CommandExecutionOutputDeltaNotification,
     CommandExecutionRequestApprovalParams, ConfigWarningNotification, ContextCompactedNotification,
     DeprecationNoticeNotification, ErrorNotification,
-    ExternalAgentConfigImportCompletedNotification, FileChangeOutputDeltaNotification,
-    FileChangePatchUpdatedNotification, FileChangeRequestApprovalParams, FsChangedNotification,
+    ExternalAgentConfigImportCompletedNotification, ExternalAgentConfigImportProgressNotification,
+    FileChangeOutputDeltaNotification, FileChangePatchUpdatedNotification,
+    FileChangeRequestApprovalParams, FsChangedNotification,
     FuzzyFileSearchSessionCompletedNotification, FuzzyFileSearchSessionUpdatedNotification,
     GuardianWarningNotification, HookCompletedNotification, HookStartedNotification,
     ItemCompletedNotification, ItemGuardianApprovalReviewCompletedNotification,
     ItemGuardianApprovalReviewStartedNotification, ItemStartedNotification,
     McpServerOauthLoginCompletedNotification, McpServerStatusUpdatedNotification,
-    McpToolCallProgressNotification, ModelReroutedNotification, ModelVerificationNotification,
-    PlanDeltaNotification, ProcessExitedNotification, ProcessOutputDeltaNotification,
+    McpToolCallProgressNotification, ModelReroutedNotification,
+    ModelSafetyBufferingUpdatedNotification, ModelVerificationNotification, PlanDeltaNotification,
+    ProcessExitedNotification, ProcessOutputDeltaNotification,
     ReasoningSummaryPartAddedNotification, ReasoningSummaryTextDeltaNotification,
     ReasoningTextDeltaNotification, RemoteControlStatusChangedNotification,
     ServerRequestResolvedNotification, SkillsChangedNotification, TerminalInteractionNotification,
@@ -196,6 +198,10 @@ pub enum Notification {
     ThreadSettingsUpdated(ThreadSettingsUpdatedNotification),
     /// `turn/moderationMetadata`
     TurnModerationMetadata(TurnModerationMetadataNotification),
+    /// `externalAgentConfig/import/progress`
+    ExternalAgentConfigImportProgress(ExternalAgentConfigImportProgressNotification),
+    /// `model/safetyBuffering/updated`
+    ModelSafetyBufferingUpdated(ModelSafetyBufferingUpdatedNotification),
     /// A method this crate version does not yet model. The raw params are
     /// preserved for caller inspection. Encountering this typically means
     /// the installed codex CLI is newer than the bindings.
@@ -283,6 +289,10 @@ impl Notification {
             Self::WindowsSandboxSetupCompleted(_) => methods::WINDOWS_SANDBOX_SETUP_COMPLETED,
             Self::ThreadSettingsUpdated(_) => methods::THREAD_SETTINGS_UPDATED,
             Self::TurnModerationMetadata(_) => methods::TURN_MODERATION_METADATA,
+            Self::ExternalAgentConfigImportProgress(_) => {
+                methods::EXTERNAL_AGENT_CONFIG_IMPORT_PROGRESS
+            }
+            Self::ModelSafetyBufferingUpdated(_) => methods::MODEL_SAFETY_BUFFERING_UPDATED,
             Self::Unknown { method, .. } => method,
         }
     }
@@ -482,6 +492,12 @@ impl Notification {
             methods::TURN_MODERATION_METADATA => {
                 serde_json::from_value(params_value).map(Self::TurnModerationMetadata)
             }
+            methods::EXTERNAL_AGENT_CONFIG_IMPORT_PROGRESS => {
+                serde_json::from_value(params_value).map(Self::ExternalAgentConfigImportProgress)
+            }
+            methods::MODEL_SAFETY_BUFFERING_UPDATED => {
+                serde_json::from_value(params_value).map(Self::ModelSafetyBufferingUpdated)
+            }
             _ => Ok(Self::Unknown {
                 method: method.to_string(),
                 params,
@@ -590,6 +606,12 @@ impl Notification {
             }
             Self::ThreadSettingsUpdated(v) => pack(methods::THREAD_SETTINGS_UPDATED, v),
             Self::TurnModerationMetadata(v) => pack(methods::TURN_MODERATION_METADATA, v),
+            Self::ExternalAgentConfigImportProgress(v) => {
+                pack(methods::EXTERNAL_AGENT_CONFIG_IMPORT_PROGRESS, v)
+            }
+            Self::ModelSafetyBufferingUpdated(v) => {
+                pack(methods::MODEL_SAFETY_BUFFERING_UPDATED, v)
+            }
             Self::Unknown { method, params } => Ok((method.clone(), params.clone())),
         }
     }
