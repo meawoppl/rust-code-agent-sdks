@@ -464,6 +464,7 @@ fn test_tool_use_block_typed_input() {
             "command": "cargo build",
             "description": "Build the project"
         }),
+        caller: None,
     };
 
     let typed = block.typed_input().expect("Should parse");
@@ -482,6 +483,7 @@ fn test_tool_use_block_try_typed_input_error() {
         input: json!({
             "weird_field": [1, 2, 3]
         }),
+        caller: None,
     };
 
     // Should succeed but return Unknown variant

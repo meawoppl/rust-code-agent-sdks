@@ -40,6 +40,8 @@ impl ClaudeInput {
             uuid: None,
             timestamp: None,
             tool_use_result: None,
+            subagent_type: None,
+            task_description: None,
         })
     }
 
@@ -55,6 +57,8 @@ impl ClaudeInput {
             uuid: None,
             timestamp: None,
             tool_use_result: None,
+            subagent_type: None,
+            task_description: None,
         })
     }
 

@@ -38,6 +38,7 @@ mod mcp;
 mod message_types;
 mod rate_limit;
 mod result;
+mod wrap_audit;
 
 pub use claude_input::*;
 pub use claude_output::*;
@@ -48,3 +49,4 @@ pub use mcp::*;
 pub use message_types::*;
 pub use rate_limit::*;
 pub use result::*;
+pub use wrap_audit::*;
