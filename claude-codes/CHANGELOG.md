@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.159] - 2026-06-27
+
+### Added
+
+- **Typed subagent token accounting.** `Task`-tool result messages now expose
+  the subagent's token / timing / tool-use rollup through typed fields instead
+  of raw-JSON poking (resolves #168, #169):
+  - New `SubagentResult` struct modeling the `Task` `tool_use_result` —
+    `status`, `prompt`, `agent_id`, `agent_type`, `content`, `resolved_model`,
+    `total_duration_ms`, `total_tokens`, `total_tool_use_count`, the nested
+    per-model `usage` (`UsageInfo`), and an optional `SubagentToolStats`.
+  - `UserMessage::subagent_result()` accessor parses the result leniently,
+    returning `None` only when `tool_use_result` is absent.
+  - `total_tokens` is the per-run `subagent_tokens` line item; summing it across
+    a session's `Task` results yields the subagent token rollup the CLI renders
+    in its terminal `<usage>` block. (The `stream-json` `result` frame's own
+    `usage` does not carry the subagent rollup — the `Task` result is the source
+    of truth.)
+  - Re-exported `UsageInfo`, `ServerToolUse`, `SubagentResult`, and
+    `SubagentToolStats` at the crate root.
+
+### Changed
+
+- Enriched the crate description, `keywords`, and `categories` for crates.io
+  discoverability (agent / Claude Code / Anthropic / async terms).
+
 ## [2.1.158] - 2026-06-25
 
 ### Added
