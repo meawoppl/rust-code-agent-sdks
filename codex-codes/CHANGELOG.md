@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.143.0] - 2026-06-27
+
+### Added
+
+- **`McpServerStartupFailureReason`** enum (`reauthenticationRequired`) and a new
+  `failure_reason` field on `McpServerStatusUpdatedNotification`, distinguishing
+  why an MCP server failed to start.
+- **`ModelsRequirements`** / **`NewThreadModelDefaults`** types and a `models`
+  field on `ConfigRequirements`, carrying default model / reasoning-effort /
+  service-tier for new threads.
+- **`PluginSource::Npm`** variant (`package`, optional `registry` / `version`)
+  for npm-sourced plugins.
+- New optional fields on existing types: `thread_id` on
+  `McpServerOauthLoginCompletedNotification` and `McpServerOauthLoginParams`;
+  `action_name`, `app_name`, and `template_id` on `McpToolCallAppContext`;
+  `last_turn_id` on `ThreadForkParams`.
+
+### Changed
+
+- Re-snapshotted `codex_app_server_protocol{,.v2}.schemas.json` from
+  `openai/codex@main` (commit `6509f314`, 2026-06-26), regenerating the typed
+  structs (resolves the codex-schema-drift report, issue #172). Schema coverage
+  remains 165/165 (100%).
+- Bumped tested Codex CLI version to `0.143.0`.
+- Enriched the crate description, `keywords`, and `categories` for crates.io
+  discoverability (agent / Codex / OpenAI / async terms).
+
 ## [0.142.0] - 2026-06-24
 
 ### Added
