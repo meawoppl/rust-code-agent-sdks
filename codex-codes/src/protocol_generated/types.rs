@@ -1309,6 +1309,8 @@ pub struct ConfigRequirements {
         skip_serializing_if = "Option::is_none"
     )]
     pub feature_requirements: Option<std::collections::BTreeMap<String, bool>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub models: Option<ModelsRequirements>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -3356,6 +3358,8 @@ pub struct McpServerOauthLoginCompletedNotification {
     pub name: String,
     #[serde(default)]
     pub success: bool,
+    #[serde(rename = "threadId", default, skip_serializing_if = "Option::is_none")]
+    pub thread_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -3365,6 +3369,8 @@ pub struct McpServerOauthLoginParams {
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scopes: Option<Vec<String>>,
+    #[serde(rename = "threadId", default, skip_serializing_if = "Option::is_none")]
+    pub thread_id: Option<String>,
     #[serde(
         rename = "timeoutSecs",
         default,
@@ -3385,6 +3391,12 @@ pub struct McpServerOauthLoginResponse {
 pub struct McpServerRefreshResponse {
     #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
     pub extra: serde_json::Map<String, Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum McpServerStartupFailureReason {
+    #[serde(rename = "reauthenticationRequired")]
+    ReauthenticationRequired,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -3433,6 +3445,12 @@ pub enum McpServerStatusDetail {
 pub struct McpServerStatusUpdatedNotification {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    #[serde(
+        rename = "failureReason",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub failure_reason: Option<McpServerStartupFailureReason>,
     #[serde(default)]
     pub name: String,
     #[serde()]
@@ -3476,6 +3494,14 @@ pub struct McpServerToolCallResponse {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct McpToolCallAppContext {
+    #[serde(
+        rename = "actionName",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub action_name: Option<String>,
+    #[serde(rename = "appName", default, skip_serializing_if = "Option::is_none")]
+    pub app_name: Option<String>,
     #[serde(rename = "connectorId", default)]
     pub connector_id: String,
     #[serde(rename = "linkId", default, skip_serializing_if = "Option::is_none")]
@@ -3486,6 +3512,12 @@ pub struct McpToolCallAppContext {
         skip_serializing_if = "Option::is_none"
     )]
     pub resource_uri: Option<String>,
+    #[serde(
+        rename = "templateId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub template_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -3813,6 +3845,13 @@ pub struct ModelVerificationNotification {
     pub verifications: Vec<ModelVerification>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelsRequirements {
+    #[serde(rename = "newThread", default, skip_serializing_if = "Option::is_none")]
+    pub new_thread: Option<NewThreadModelDefaults>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum NetworkAccess {
     #[serde(rename = "restricted")]
@@ -3857,6 +3896,25 @@ pub enum NetworkPolicyRuleAction {
     Allow,
     #[serde(rename = "deny")]
     Deny,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewThreadModelDefaults {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(
+        rename = "modelReasoningEffort",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub model_reasoning_effort: Option<ReasoningEffort>,
+    #[serde(
+        rename = "serviceTier",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub service_tier: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -4611,6 +4669,13 @@ pub enum PluginSource {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         sha: Option<String>,
         url: String,
+    },
+    Npm {
+        package: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        registry: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        version: Option<String>,
     },
     Remote,
 }
@@ -5657,6 +5722,12 @@ pub struct ThreadForkParams {
     pub developer_instructions: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ephemeral: Option<bool>,
+    #[serde(
+        rename = "lastTurnId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub last_turn_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     #[serde(
