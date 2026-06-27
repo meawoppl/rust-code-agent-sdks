@@ -165,7 +165,10 @@ pub use io::{
 };
 
 // Usage types
-pub use io::{AssistantUsage, CacheCreationDetails};
+pub use io::{
+    AssistantUsage, CacheCreationDetails, ServerToolUse, SubagentResult, SubagentToolStats,
+    UsageInfo,
+};
 
 // Typed tool input types
 pub use tool_inputs::{

@@ -493,6 +493,98 @@ impl UserMessage {
             .as_ref()
             .map(|v| serde_json::from_value(v.clone()))
     }
+
+    /// Parse the `tool_use_result` as a subagent (`Task`) run result.
+    ///
+    /// When this user message echoes the result of a `Task` tool call, the CLI
+    /// attaches a structured `tool_use_result` carrying the subagent's token,
+    /// timing, and tool-use accounting. Returns `None` when the field is absent
+    /// or does not parse as a [`SubagentResult`].
+    ///
+    /// Summing [`SubagentResult::total_tokens`] across every `Task` result in a
+    /// session yields the subagent token rollup the CLI renders as
+    /// `subagent_tokens` in its terminal `<usage>` block.
+    pub fn subagent_result(&self) -> Option<SubagentResult> {
+        self.tool_use_result
+            .as_ref()
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+    }
+}
+
+/// Token, timing, and tool-use accounting for a completed subagent (`Task`) run.
+///
+/// The Claude CLI echoes this object in the `tool_use_result` of a `Task` tool's
+/// result message. It is the typed source of truth for subagent token
+/// attribution: the per-run [`total_tokens`](Self::total_tokens),
+/// [`total_duration_ms`](Self::total_duration_ms), and
+/// [`total_tool_use_count`](Self::total_tool_use_count) correspond to the
+/// `subagent_tokens` / `duration_ms` / `tool_uses` line items the CLI renders in
+/// its human-readable `<usage>` block, and [`usage`](Self::usage) carries the
+/// full per-model token breakdown for the run.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubagentResult {
+    /// Completion status of the subagent run (e.g. `"completed"`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    /// The prompt the subagent was launched with.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<String>,
+    /// Stable identifier of the spawned subagent.
+    #[serde(rename = "agentId", skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
+    /// Subagent type that ran (e.g. `general-purpose`, `Explore`).
+    #[serde(rename = "agentType", skip_serializing_if = "Option::is_none")]
+    pub agent_type: Option<String>,
+    /// Final content blocks the subagent returned.
+    #[serde(
+        default,
+        deserialize_with = "deserialize_content_blocks",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub content: Vec<ContentBlock>,
+    /// Model the subagent actually resolved to (e.g. `claude-sonnet-4-6`).
+    #[serde(rename = "resolvedModel", skip_serializing_if = "Option::is_none")]
+    pub resolved_model: Option<String>,
+    /// Wall-clock duration of the subagent run, in milliseconds.
+    #[serde(rename = "totalDurationMs", skip_serializing_if = "Option::is_none")]
+    pub total_duration_ms: Option<u64>,
+    /// Total tokens consumed by the subagent — the `subagent_tokens` rollup line.
+    #[serde(rename = "totalTokens", skip_serializing_if = "Option::is_none")]
+    pub total_tokens: Option<u64>,
+    /// Number of tool invocations the subagent made.
+    #[serde(rename = "totalToolUseCount", skip_serializing_if = "Option::is_none")]
+    pub total_tool_use_count: Option<u64>,
+    /// Detailed token / cache usage for the subagent run.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub usage: Option<super::result::UsageInfo>,
+    /// Per-category tool-use counts, present for some agent types (e.g. `Explore`).
+    #[serde(rename = "toolStats", skip_serializing_if = "Option::is_none")]
+    pub tool_stats: Option<SubagentToolStats>,
+}
+
+/// Per-category tool-use counts for a subagent run, from `tool_use_result.toolStats`.
+///
+/// The `extra` field captures any counters the CLI adds that aren't modeled here,
+/// so new wire fields deserialize without error.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubagentToolStats {
+    #[serde(default)]
+    pub read_count: u64,
+    #[serde(default)]
+    pub search_count: u64,
+    #[serde(default)]
+    pub bash_count: u64,
+    #[serde(default)]
+    pub edit_file_count: u64,
+    #[serde(default)]
+    pub lines_added: u64,
+    #[serde(default)]
+    pub lines_removed: u64,
+    #[serde(default)]
+    pub other_tool_count: u64,
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, Value>,
 }
 
 /// Message content with role
@@ -1567,5 +1659,76 @@ mod tests {
         let reser = serde_json::to_value(&user).unwrap();
         assert!(reser.get("tool_use_result").is_none());
         assert!(reser.get("timestamp").is_none());
+    }
+
+    /// A `Task` tool result must expose subagent token / timing / tool-use
+    /// accounting through the typed [`UserMessage::subagent_result`] accessor,
+    /// including the nested per-model `usage` breakdown and `toolStats`.
+    #[test]
+    fn test_subagent_result_exposes_token_accounting() {
+        let json = r#"{
+            "type":"user",
+            "message":{"role":"user","content":[{"tool_use_id":"toolu_01","type":"tool_result","content":[{"type":"text","text":"21"}]}]},
+            "session_id":"d3fc5942-75e5-4aa1-a87d-b9484a176541",
+            "tool_use_result":{
+                "status":"completed",
+                "prompt":"Count the .rs files.",
+                "agentId":"ac4f0276e9d4b6232",
+                "agentType":"Explore",
+                "content":[{"type":"text","text":"21"}],
+                "resolvedModel":"claude-haiku-4-5-20251001",
+                "totalDurationMs":6869,
+                "totalTokens":7834,
+                "totalToolUseCount":1,
+                "usage":{"input_tokens":6,"cache_creation_input_tokens":125,"cache_read_input_tokens":7699,"output_tokens":4,"service_tier":"standard"},
+                "toolStats":{"readCount":0,"searchCount":0,"bashCount":1,"editFileCount":0,"linesAdded":0,"linesRemoved":0,"otherToolCount":0}
+            }
+        }"#;
+
+        let output: ClaudeOutput = serde_json::from_str(json).unwrap();
+        let user = match output {
+            ClaudeOutput::User(u) => u,
+            _ => panic!("Expected User message"),
+        };
+
+        let result = user.subagent_result().expect("subagent result parses");
+        assert_eq!(result.agent_type.as_deref(), Some("Explore"));
+        assert_eq!(
+            result.resolved_model.as_deref(),
+            Some("claude-haiku-4-5-20251001")
+        );
+        assert_eq!(result.total_tokens, Some(7834));
+        assert_eq!(result.total_duration_ms, Some(6869));
+        assert_eq!(result.total_tool_use_count, Some(1));
+
+        let usage = result.usage.expect("nested usage present");
+        assert_eq!(usage.input_tokens, 6);
+        assert_eq!(usage.cache_read_input_tokens, 7699);
+
+        let stats = result.tool_stats.expect("toolStats present");
+        assert_eq!(stats.bash_count, 1);
+    }
+
+    /// `tool_use_result` shapes that aren't subagent runs (e.g. AskUserQuestion)
+    /// parse leniently into the all-`Option` [`SubagentResult`] with empty
+    /// accounting rather than failing, so callers can probe without panicking.
+    #[test]
+    fn test_subagent_result_absent_for_non_task_result() {
+        let json = r#"{
+            "type":"user",
+            "message":{"role":"user","content":[{"type":"text","text":"hi"}]},
+            "session_id":"622ae0c3-3d50-4fa7-9ee0-69d691238c6d",
+            "tool_use_result":{"questions":[],"answers":{"Color":"Blue"}}
+        }"#;
+
+        let output: ClaudeOutput = serde_json::from_str(json).unwrap();
+        let user = match output {
+            ClaudeOutput::User(u) => u,
+            _ => panic!("Expected User message"),
+        };
+
+        let result = user.subagent_result().expect("lenient parse");
+        assert_eq!(result.total_tokens, None);
+        assert_eq!(result.agent_type, None);
     }
 }

@@ -1,17 +1,17 @@
 [package]
 name = "claude-codes"
-version = "2.1.158"
+version = "2.1.159"
 edition = "2021"
 rust-version = "1.85"
 authors = ["Matthew Goodman <d3a6d0cec0c16f3e@inboxnegative.com>"]
-description = "A tightly typed Rust interface for the Claude Code JSON protocol"
+description = "Typed Rust SDK for the Claude Code agent CLI: serde models of its JSON-Lines (stream-json) protocol with streaming parsing, plus sync and async (Tokio) clients for driving Claude Code sessions, tools, and subagents."
 documentation = "https://docs.rs/claude-codes"
 homepage = "https://github.com/meawoppl/rust-code-agent-sdks"
 repository = "https://github.com/meawoppl/rust-code-agent-sdks"
 license = "Apache-2.0"
 readme = "README.md"
-keywords = ["claude", "ai", "json", "protocol", "api"]
-categories = ["api-bindings", "encoding", "parsing"]
+keywords = ["claude-code", "claude", "anthropic", "agent", "llm"]
+categories = ["api-bindings", "asynchronous", "encoding", "parsing"]
 exclude = [
     "test_cases/",
     "*.sh",
