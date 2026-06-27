@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   structs (resolves the codex-schema-drift report, issue #172). Schema coverage
   remains 165/165 (100%).
 - Bumped tested Codex CLI version to `0.143.0`.
+- Enriched the crate description, `keywords`, and `categories` for crates.io
+  discoverability (agent / Codex / OpenAI / async terms).
 
 ## [0.142.0] - 2026-06-24
 

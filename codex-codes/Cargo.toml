@@ -4,14 +4,14 @@ version = "0.143.0"
 edition = "2021"
 rust-version = "1.85"
 authors = ["Matthew Goodman <d3a6d0cec0c16f3e@inboxnegative.com>"]
-description = "A tightly typed Rust interface for the OpenAI Codex CLI JSON protocol"
+description = "Typed Rust SDK for the OpenAI Codex agent CLI: serde models of the codex app-server JSON-RPC protocol, plus sync and async (Tokio) clients for multi-turn Codex agent sessions, tool calls, and approvals."
 documentation = "https://docs.rs/codex-codes"
 homepage = "https://github.com/meawoppl/rust-code-agent-sdks"
 repository = "https://github.com/meawoppl/rust-code-agent-sdks"
 license = "Apache-2.0"
 readme = "README.md"
-keywords = ["codex", "openai", "ai", "json", "protocol"]
-categories = ["api-bindings", "encoding", "parsing"]
+keywords = ["codex", "openai", "agent", "llm", "cli"]
+categories = ["api-bindings", "asynchronous", "encoding", "parsing"]
 exclude = [
     "test_cases/",
     ".claude/",
