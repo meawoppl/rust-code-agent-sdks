@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Shared dependencies and lint policy moved to the workspace root: this crate now
+  references `serde`, `serde_json`, `thiserror`, `tokio`, `log`, `which`, and dev
+  `env_logger` via `{ workspace = true }`, and opts into `[workspace.lints]`
+  (`unsafe_code = "forbid"`) via `[lints] workspace = true`. No dependency version
+  or runtime behavior change. Not yet released.
+
 ## [2.1.159] - 2026-06-27
 
 ### Added
