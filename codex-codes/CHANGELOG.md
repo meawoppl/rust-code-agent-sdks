@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.154.0] - 2026-09-10
+
+### Changed
+
+- Re-pin to Codex CLI **0.154.0**. The schema `codex app-server
+  generate-json-schema` emits from 0.154.0 matches the committed snapshot
+  except `FeedbackUploadResponse.promptHash`, which the snapshot carries
+  from `openai/codex@main` but the 0.154.0 release does not emit yet; the
+  field is already optional, so nothing moves. The live integration suite
+  passes unchanged. Pin-only release.
+
 ## [0.153.5] - 2026-09-10
 
 Resnapshots vs `openai/codex@main` (b348fc2, 2026-09-10).
