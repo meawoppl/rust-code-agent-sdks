@@ -2,8 +2,8 @@ use codex_codes::io::items::{
     CommandExecutionStatus, FileChangeItem, PatchApplyStatus, PatchChangeKind, ThreadItem,
 };
 use codex_codes::protocol::{
-    ConfigReadResponse, GetAccountRateLimitsParams, GetAccountRateLimitsResponse, McpServerStatus,
-    Thread, ThreadListParams,
+    ConfigReadResponse, FeedbackUploadResponse, GetAccountRateLimitsParams,
+    GetAccountRateLimitsResponse, McpServerStatus, Thread, ThreadListParams,
 };
 use codex_codes::{
     JsonRpcMessage, JsonRpcNotification, McpServerElicitationRequestParams, Notification,
@@ -179,6 +179,28 @@ fn mcp_server_status_decodes_tools_error() {
     assert!(serde_json::to_value(healthy)
         .unwrap()
         .get("toolsError")
+        .is_none());
+}
+
+/// FeedbackUploadResponse.promptHash decodes the base-instructions hash and is omitted when the rollout has no prompt metadata.
+#[test]
+fn feedback_upload_response_decodes_prompt_hash() {
+    let response: FeedbackUploadResponse = serde_json::from_value(serde_json::json!({
+        "threadId": "thr_123",
+        "promptHash": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+    }))
+    .unwrap();
+    assert_eq!(
+        response.prompt_hash.as_deref(),
+        Some("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08")
+    );
+
+    let bare: FeedbackUploadResponse =
+        serde_json::from_value(serde_json::json!({"threadId": "thr_123"})).unwrap();
+    assert_eq!(bare.prompt_hash, None);
+    assert!(serde_json::to_value(bare)
+        .unwrap()
+        .get("promptHash")
         .is_none());
 }
 
