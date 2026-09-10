@@ -5,7 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [0.153.5] - 2026-09-10
+
+Resnapshots vs `openai/codex@main` (b348fc2, 2026-09-10).
+
+### Added
+
+- `FeedbackUploadResponse.prompt_hash`, the whitespace-normalized SHA-256 of
+  the session base instructions that `feedback/upload` now returns alongside
+  the thread id (upstream #44325). `None` when the reported rollout has no
+  prompt metadata; omitted from the wire when `None`.
 
 ### Fixed
 
@@ -13,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `next_message()` or cancelling `request()` during a partial inbound frame now
   preserves the partial JSON line for the next read, without losing or
   duplicating frames.
+
 ## [0.153.4] - 2026-09-06
 
 ### Changed

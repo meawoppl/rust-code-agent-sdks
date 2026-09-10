@@ -2264,6 +2264,15 @@ pub struct FeedbackUploadParams {
 pub struct FeedbackUploadResponse {
     #[serde(rename = "threadId", default)]
     pub thread_id: String,
+    /// Whitespace-normalized SHA-256 of the session base instructions, matching
+    /// the uploaded `prompt_hash` tag. Does not include later developer
+    /// messages. `None` when the reported rollout has no prompt metadata.
+    #[serde(
+        rename = "promptHash",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub prompt_hash: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
