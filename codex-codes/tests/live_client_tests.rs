@@ -594,6 +594,7 @@ async fn test_typed_message_audit_strict() {
                     Notification::ThreadUnarchived(_) => "ThreadUnarchived",
                     Notification::ThreadGoalCleared(_) => "ThreadGoalCleared",
                     Notification::ThreadNameUpdated(_) => "ThreadNameUpdated",
+                    Notification::ThreadAttachmentUpdated(_) => "ThreadAttachmentUpdated",
                     Notification::SkillsChanged(_) => "SkillsChanged",
                     Notification::FsChanged(_) => "FsChanged",
                     Notification::ConfigWarning(_) => "ConfigWarning",

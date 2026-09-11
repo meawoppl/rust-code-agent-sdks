@@ -46,20 +46,20 @@ use crate::protocol::{
     ReasoningSummaryPartAddedNotification, ReasoningSummaryTextDeltaNotification,
     ReasoningTextDeltaNotification, RemoteControlStatusChangedNotification,
     ServerRequestResolvedNotification, SkillsChangedNotification, StrictReviewRequiredNotification,
-    TerminalInteractionNotification, ThreadArchivedNotification, ThreadClosedNotification,
-    ThreadDeletedNotification, ThreadGoalClearedNotification, ThreadGoalUpdatedNotification,
-    ThreadNameUpdatedNotification, ThreadProjectUpdatedNotification,
-    ThreadQueueChangedNotification, ThreadRealtimeClosedNotification,
-    ThreadRealtimeErrorNotification, ThreadRealtimeItemAddedNotification,
-    ThreadRealtimeItemCompletedNotification, ThreadRealtimeItemStartedNotification,
-    ThreadRealtimeItemTranscriptDeltaNotification, ThreadRealtimeOutputAudioDeltaNotification,
-    ThreadRealtimeSdpNotification, ThreadRealtimeStartedNotification,
-    ThreadRealtimeTranscriptDeltaNotification, ThreadRealtimeTranscriptDoneNotification,
-    ThreadRevertedNotification, ThreadSettingsUpdatedNotification, ThreadStartedNotification,
-    ThreadStatusChangedNotification, ThreadTokenUsageUpdatedNotification,
-    ThreadUnarchivedNotification, TurnCompletedNotification, TurnDiffUpdatedNotification,
-    TurnModerationMetadataNotification, TurnPlanUpdatedNotification, TurnStartedNotification,
-    WarningNotification, WindowsSandboxSetupCompletedNotification,
+    TerminalInteractionNotification, ThreadArchivedNotification,
+    ThreadAttachmentUpdatedNotification, ThreadClosedNotification, ThreadDeletedNotification,
+    ThreadGoalClearedNotification, ThreadGoalUpdatedNotification, ThreadNameUpdatedNotification,
+    ThreadProjectUpdatedNotification, ThreadQueueChangedNotification,
+    ThreadRealtimeClosedNotification, ThreadRealtimeErrorNotification,
+    ThreadRealtimeItemAddedNotification, ThreadRealtimeItemCompletedNotification,
+    ThreadRealtimeItemStartedNotification, ThreadRealtimeItemTranscriptDeltaNotification,
+    ThreadRealtimeOutputAudioDeltaNotification, ThreadRealtimeSdpNotification,
+    ThreadRealtimeStartedNotification, ThreadRealtimeTranscriptDeltaNotification,
+    ThreadRealtimeTranscriptDoneNotification, ThreadRevertedNotification,
+    ThreadSettingsUpdatedNotification, ThreadStartedNotification, ThreadStatusChangedNotification,
+    ThreadTokenUsageUpdatedNotification, ThreadUnarchivedNotification, TurnCompletedNotification,
+    TurnDiffUpdatedNotification, TurnModerationMetadataNotification, TurnPlanUpdatedNotification,
+    TurnStartedNotification, WarningNotification, WindowsSandboxSetupCompletedNotification,
     WindowsWorldWritableWarningNotification,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -137,6 +137,8 @@ pub enum Notification {
     ThreadGoalCleared(ThreadGoalClearedNotification),
     /// `thread/name/updated`
     ThreadNameUpdated(ThreadNameUpdatedNotification),
+    /// `thread/attachment/updated`
+    ThreadAttachmentUpdated(ThreadAttachmentUpdatedNotification),
     /// `skills/changed`
     SkillsChanged(SkillsChangedNotification),
     /// `fs/changed`
@@ -297,6 +299,7 @@ impl Notification {
             Self::ThreadUnarchived(_) => methods::THREAD_UNARCHIVED,
             Self::ThreadGoalCleared(_) => methods::THREAD_GOAL_CLEARED,
             Self::ThreadNameUpdated(_) => methods::THREAD_NAME_UPDATED,
+            Self::ThreadAttachmentUpdated(_) => methods::THREAD_ATTACHMENT_UPDATED,
             Self::SkillsChanged(_) => methods::SKILLS_CHANGED,
             Self::FsChanged(_) => methods::FS_CHANGED,
             Self::ConfigWarning(_) => methods::CONFIG_WARNING,
@@ -535,6 +538,9 @@ impl Notification {
             methods::THREAD_NAME_UPDATED => {
                 serde_json::from_value(params_value).map(Self::ThreadNameUpdated)
             }
+            methods::THREAD_ATTACHMENT_UPDATED => {
+                serde_json::from_value(params_value).map(Self::ThreadAttachmentUpdated)
+            }
             methods::SKILLS_CHANGED => {
                 serde_json::from_value(params_value).map(Self::SkillsChanged)
             }
@@ -716,6 +722,7 @@ impl Notification {
             Self::ThreadUnarchived(v) => pack(methods::THREAD_UNARCHIVED, v),
             Self::ThreadGoalCleared(v) => pack(methods::THREAD_GOAL_CLEARED, v),
             Self::ThreadNameUpdated(v) => pack(methods::THREAD_NAME_UPDATED, v),
+            Self::ThreadAttachmentUpdated(v) => pack(methods::THREAD_ATTACHMENT_UPDATED, v),
             Self::SkillsChanged(v) => pack(methods::SKILLS_CHANGED, v),
             Self::FsChanged(v) => pack(methods::FS_CHANGED, v),
             Self::ConfigWarning(v) => pack(methods::CONFIG_WARNING, v),

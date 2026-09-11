@@ -467,6 +467,18 @@ mod samples {
             methods::MODEL_SAFETY_BUFFERING_UPDATED,
             methods::THREAD_ENVIRONMENT_CONNECTED,
             methods::THREAD_ENVIRONMENT_DISCONNECTED,
+            methods::THREAD_ATTACHMENT_UPDATED,
+            methods::STRICT_REVIEW_REQUIRED,
+            methods::MCP_SERVER_EVENT_STREAM,
+            methods::MODEL_PROVIDER_AUTH_RECOVERY_STARTED,
+            methods::MODEL_PROVIDER_AUTH_RECOVERY_COMPLETED,
+            methods::PROJECT_CHANGED,
+            methods::THREAD_PROJECT_UPDATED,
+            methods::THREAD_QUEUE_CHANGED,
+            methods::THREAD_REALTIME_ITEM_COMPLETED,
+            methods::THREAD_REALTIME_ITEM_STARTED,
+            methods::THREAD_REALTIME_ITEM_TRANSCRIPT_DELTA,
+            methods::THREAD_REVERTED,
         ]
         .into_iter()
         .collect()
@@ -489,6 +501,9 @@ mod samples {
             methods::THREAD_UNSUBSCRIBE,
             methods::THREAD_NAME_SET,
             methods::THREAD_METADATA_UPDATE,
+            methods::THREAD_ATTACHMENT_ADD,
+            methods::THREAD_ATTACHMENT_LIST,
+            methods::THREAD_ATTACHMENT_REMOVE,
             methods::THREAD_UNARCHIVE,
             methods::THREAD_COMPACT_START,
             methods::THREAD_SHELLCOMMAND,
