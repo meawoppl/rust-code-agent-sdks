@@ -1589,6 +1589,20 @@ pub struct ConfigRequirements {
         skip_serializing_if = "Option::is_none"
     )]
     pub model_catalog_json: Option<String>,
+    /// Exact provider selection required by managed policy.
+    #[serde(
+        rename = "modelProvider",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub model_provider: Option<String>,
+    /// Complete required provider definitions, using `config.toml` field names.
+    #[serde(
+        rename = "modelProviders",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub model_providers: Option<serde_json::Map<String, Value>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub models: Option<ModelsRequirements>,
     #[serde(
@@ -7158,6 +7172,123 @@ pub struct ThreadArchiveResponse {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreadArchivedNotification {
+    #[serde(rename = "threadId", default)]
+    pub thread_id: String,
+}
+
+/// An independently persisted attachment associated with a thread.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadAttachment {
+    #[serde(rename = "attachmentType", default)]
+    pub attachment_type: String,
+    #[serde(rename = "createdAt", default)]
+    pub created_at: i64,
+    #[serde(default)]
+    pub id: String,
+    #[serde(rename = "identityKey", default)]
+    pub identity_key: String,
+    #[serde(default)]
+    pub payload: Value,
+}
+
+/// Result of attempting to associate an attachment with a thread.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ThreadAttachmentAddOutcome {
+    #[serde(rename = "created")]
+    Created,
+    #[serde(rename = "existing")]
+    Existing,
+}
+
+/// Parameters for creating or locating an attachment on its owning thread.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadAttachmentAddParams {
+    #[serde(rename = "attachmentType", default)]
+    pub attachment_type: String,
+    #[serde(rename = "identityKey", default)]
+    pub identity_key: String,
+    #[serde(default)]
+    pub payload: Value,
+    #[serde(rename = "threadId", default)]
+    pub thread_id: String,
+}
+
+/// The created or existing attachment.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadAttachmentAddResponse {
+    pub attachment: ThreadAttachment,
+    pub outcome: ThreadAttachmentAddOutcome,
+}
+
+/// Parameters for listing attachments from one thread.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadAttachmentListParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<i64>,
+    #[serde(rename = "threadId", default)]
+    pub thread_id: String,
+}
+
+/// One page of attachments associated with the requested thread.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadAttachmentListResponse {
+    #[serde(default)]
+    pub data: Vec<ThreadAttachment>,
+    #[serde(
+        rename = "nextCursor",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub next_cursor: Option<String>,
+}
+
+/// The persisted attachment change represented by a notification.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ThreadAttachmentOperation {
+    #[serde(rename = "created")]
+    Created,
+    #[serde(rename = "deleted")]
+    Deleted,
+}
+
+/// Parameters for deleting an attachment by its stable thread-local identity.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadAttachmentRemoveParams {
+    #[serde(rename = "attachmentType", default)]
+    pub attachment_type: String,
+    #[serde(rename = "identityKey", default)]
+    pub identity_key: String,
+    #[serde(rename = "threadId", default)]
+    pub thread_id: String,
+}
+
+/// Successful deletion does not return additional attachment data.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadAttachmentRemoveResponse {
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
+}
+
+/// Notification published after a thread attachment is created or deleted.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadAttachmentUpdatedNotification {
+    #[serde(rename = "attachmentId", default)]
+    pub attachment_id: String,
+    #[serde(rename = "attachmentType", default)]
+    pub attachment_type: String,
+    #[serde(rename = "identityKey", default)]
+    pub identity_key: String,
+    pub operation: ThreadAttachmentOperation,
     #[serde(rename = "threadId", default)]
     pub thread_id: String,
 }

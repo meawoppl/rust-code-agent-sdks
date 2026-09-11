@@ -40,6 +40,9 @@ pub mod methods {
     pub const THREAD_UNSUBSCRIBE: &str = "thread/unsubscribe";
     pub const THREAD_NAME_SET: &str = "thread/name/set";
     pub const THREAD_METADATA_UPDATE: &str = "thread/metadata/update";
+    pub const THREAD_ATTACHMENT_ADD: &str = "thread/attachment/add";
+    pub const THREAD_ATTACHMENT_LIST: &str = "thread/attachment/list";
+    pub const THREAD_ATTACHMENT_REMOVE: &str = "thread/attachment/remove";
     pub const THREAD_UNARCHIVE: &str = "thread/unarchive";
     pub const THREAD_COMPACT_START: &str = "thread/compact/start";
     pub const THREAD_SHELLCOMMAND: &str = "thread/shellCommand";
@@ -169,6 +172,7 @@ pub mod methods {
     pub const THREAD_UNARCHIVED: &str = "thread/unarchived";
     pub const THREAD_GOAL_CLEARED: &str = "thread/goal/cleared";
     pub const THREAD_NAME_UPDATED: &str = "thread/name/updated";
+    pub const THREAD_ATTACHMENT_UPDATED: &str = "thread/attachment/updated";
     pub const SKILLS_CHANGED: &str = "skills/changed";
     pub const FS_CHANGED: &str = "fs/changed";
     pub const CONFIG_WARNING: &str = "configWarning";

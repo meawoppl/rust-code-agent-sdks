@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.154.1] - 2026-09-11
+
+### Added
+
+- Thread attachments, from `openai/codex@main`: the
+  `thread/attachment/updated` notification is modeled as
+  `Notification::ThreadAttachmentUpdated(ThreadAttachmentUpdatedNotification)`,
+  and the `thread/attachment/add`, `thread/attachment/list`, and
+  `thread/attachment/remove` client requests get `methods` constants plus
+  the `ThreadAttachment`, `ThreadAttachmentAddParams`/`Response`/`Outcome`,
+  `ThreadAttachmentListParams`/`Response`,
+  `ThreadAttachmentRemoveParams`/`Response`, and `ThreadAttachmentOperation`
+  types. The 0.154.0 release does not emit any of these yet; they arrive
+  with the next Codex CLI.
+- `ConfigRequirements.model_provider` and `ConfigRequirements.model_providers`
+  (managed-policy provider pinning). Both optional, so existing payloads
+  round-trip unchanged.
+
+### Changed
+
+- Re-snapshot `tests/schemas/*.json` from `openai/codex@main`
+  (`02a8f038b`).
+- `examples/schema_coverage` now registers eleven notifications that were
+  already modeled in `Notification` but missing from its scorecard
+  (`autoApprovalReview/strictReviewRequired`, `mcpServer/event/stream/notification`,
+  `modelProvider/authRecovery{Started,Completed}`, `project/changed`,
+  `thread/project/updated`, `thread/queue/changed`, `thread/realtime/item/*`,
+  `thread/reverted`), with matching sample payloads. The scorecard reads
+  194/194 modeled and 194/194 with samples.
+
 ## [0.154.0] - 2026-09-10
 
 ### Changed
