@@ -5,7 +5,7 @@
 # see the header of check_claude_schema_drift.py for the comparison contract.
 # union_members: 45
 
-assistant: aborted, advisor_model, api_error, api_error_status, attribution_agent, attribution_mcp_server, attribution_mcp_tool, attribution_plugin, attribution_skill, batch_tool_uses, context_usage, error, error_details, historical, is_api_error_message, is_meta, is_virtual, local_command_source, message, narration_block_indexes, parent_tool_use_id, request_id, resumed_from_incomplete_thinking, session_id, subagent_type, supersedes, task_description, timestamp, tool_use_meta, type, user_message_uuid, user_message_uuids, uuid, wire_ingest_context, wire_tool_inputs
+assistant: aborted, advisor_model, api_error, api_error_status, attribution_agent, attribution_mcp_server, attribution_mcp_tool, attribution_plugin, attribution_skill, batch_tool_uses, context_usage, error, error_details, historical, is_api_error_message, is_meta, is_virtual, local_command_source, message, narration_block_indexes, parent_tool_use_id, request_id, resume_reason, resumed_from_incomplete_thinking, session_id, subagent_type, supersedes, task_description, timestamp, tool_use_meta, type, user_message_uuid, user_message_uuids, uuid, wire_ingest_context, wire_tool_inputs
 auth_status: error, isAuthenticating, output, session_id, type, uuid
 command_lifecycle: command_uuid, session_id, state, type, uuid
 content: content, type
@@ -17,10 +17,10 @@ message: container, content, context_management, id, model, role, stop_details, 
 prompt_suggestion: session_id, suggestion, type, uuid
 rate_limit_event: rate_limit_info, session_id, type, uuid
 redacted_thinking: data, type
-result: duration_api_ms, duration_ms, errors, fast_mode_disabled_reason, fast_mode_state, is_error, modelUsage, num_turns, origin, permission_denials, queued_turn_count, runner_exit, session_id, stop_reason, subagent_stats, subtype, terminal_reason, total_cost_usd, type, usage, user_message_uuid, user_message_uuids, uuid
-result/success: api_error_status, deferred_tool_use, duration_api_ms, duration_ms, fast_mode_disabled_reason, fast_mode_state, first_content_frame_ms, first_stream_post_ack_ms, first_stream_post_ms, first_stream_post_wall_ms, is_error, modelUsage, num_turns, origin, permission_denials, queued_turn_count, request_sent_wall_ms, result, session_id, stop_reason, structured_output, subagent_stats, subtype, terminal_reason, time_origin_ms, time_to_request_from_spawn_ms, time_to_request_ms, total_cost_usd, ttft_ms, ttft_stream_ms, type, usage, user_message_uuid, user_message_uuids, uuid, warm_spare_claimed
+result: duration_api_ms, duration_ms, errors, fast_mode_disabled_reason, fast_mode_state, is_error, modelUsage, num_turns, origin, permission_denials, queued_turn_count, result_index, resume_reason, runner_exit, session_id, stop_reason, subagent_stats, subtype, terminal_reason, total_cost_usd, type, usage, user_message_uuid, user_message_uuids, uuid
+result/success: api_error_status, deferred_tool_use, duration_api_ms, duration_ms, fast_mode_disabled_reason, fast_mode_state, first_content_frame_ms, first_stream_post_ack_ms, first_stream_post_ms, first_stream_post_wall_ms, is_error, local_command, modelUsage, num_turns, origin, permission_denials, queued_turn_count, request_sent_wall_ms, result, result_index, resume_reason, session_id, stop_reason, structured_output, subagent_stats, subtype, terminal_reason, time_origin_ms, time_to_request_from_spawn_ms, time_to_request_ms, total_cost_usd, ttft_ms, ttft_stream_ms, type, usage, user_message_uuid, user_message_uuids, uuid, warm_spare_claimed
 search_result: cache_control, citations, content, source, title, type
-stream_event: event, parent_tool_use_id, session_id, ttft_ms, type, user_message_uuid, user_message_uuids, uuid
+stream_event: event, parent_tool_use_id, resume_reason, session_id, ttft_ms, type, user_message_uuid, user_message_uuids, uuid
 system/api_retry: attempt, error, error_status, max_retries, no_response, retry_delay_ms, session_id, subtype, type, uuid
 system/background_tasks_changed: session_id, subtype, tasks, type, uuid
 system/cloud_session_delta: changed, cloud_session, seq, session_id, subtype, type, uuid

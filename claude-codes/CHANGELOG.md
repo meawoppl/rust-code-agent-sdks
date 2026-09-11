@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.268] - 2026-09-11
+
+Re-baseline against Claude CLI **2.1.268**. Models the 2.1.267 → 2.1.268
+stream-json drift, all additive (no removals or required/optional flips).
+
+### Added
+
+- `resume_reason` on `AssistantMessage`, `StreamEventMessage`, and
+  `ResultMessage` — why the turn is the automatic re-run of a turn a worker
+  restart interrupted (`CLAUDE_CODE_RESUME_INTERRUPTED_TURN`): the host's
+  `CLAUDE_CODE_RESUME_REASON` when it set one (`host_draining`,
+  `checkpoint_restore`, `container_recreated`, ...), else `interrupted_turn`.
+  Stamped on the same reply frames as `user_message_uuid`, and on the
+  re-run's result whether success or error.
+- `ResultMessage.result_index` — delivery sequence of the result within the
+  run, numbered by the hosting process in write order starting at 0. A
+  result whose write fails still consumes its number, so a gap means a
+  result was lost.
+- `ResultMessage.local_command` — the local slash command that produced a
+  success result when the query loop was bypassed.
+
+### Changed
+
+- Re-pin to Claude CLI **2.1.268**; snapshot refreshed. The live
+  integration suite passes unchanged.
+
 ## [2.1.267] - 2026-09-10
 
 ### Changed

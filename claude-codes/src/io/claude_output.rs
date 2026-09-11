@@ -121,6 +121,14 @@ pub struct StreamEventMessage {
     /// from CLIs before 2.1.259 (fall back to `user_message_uuid`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub user_message_uuids: Vec<String>,
+    /// Why this frame's turn is the automatic re-run of a turn a worker
+    /// restart interrupted: the host's `CLAUDE_CODE_RESUME_REASON` when it set
+    /// one, else `interrupted_turn`. Stamped on the same reply frames as
+    /// `user_message_uuid`, so a consumer can tell the re-run's first reply
+    /// from the interrupted attempt's. Absent on every other turn, on
+    /// `thinking_tokens` frames, and from CLIs before 2.1.268.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resume_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

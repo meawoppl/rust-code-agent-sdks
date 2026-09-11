@@ -2737,6 +2737,15 @@ pub struct AssistantMessage {
     /// also stamps it on deliveries it replays (CLI 2.1.266+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub historical: Option<bool>,
+    /// Why this frame's turn is the automatic re-run of a turn a worker
+    /// restart interrupted: the host's `CLAUDE_CODE_RESUME_REASON` when it set
+    /// one (`host_draining`, `checkpoint_restore`, `container_recreated`,
+    /// ...), else `interrupted_turn`. Stamped on the same reply frames as
+    /// `user_message_uuid`, which on such a re-run names the interrupted
+    /// turn's own last user prompt. Absent on every other turn and from CLIs
+    /// before 2.1.268.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resume_reason: Option<String>,
     /// The originating `system/local_command` row's wire-form content,
     /// carried on the loop-synthesized local-command twin so a bridge/SDK
     /// history replay rebuilds the internal system row instead of dropping

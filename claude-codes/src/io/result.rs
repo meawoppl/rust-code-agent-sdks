@@ -72,6 +72,22 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub user_message_uuids: Vec<String>,
 
+    /// Why this turn was the automatic re-run of a turn a worker restart
+    /// interrupted (`CLAUDE_CODE_RESUME_INTERRUPTED_TURN`): the host's
+    /// `CLAUDE_CODE_RESUME_REASON` when it set one (`host_draining`,
+    /// `checkpoint_restore`, `container_recreated`, ...), else
+    /// `interrupted_turn`. Present on a headless re-run's result, success or
+    /// error; absent on every other turn, on the Remote Control bridge's
+    /// per-turn synthetic results, and from CLIs before 2.1.268.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resume_reason: Option<String>,
+
+    /// The local slash command that produced this result when the query loop
+    /// was bypassed (success results only). Absent when the turn went to the
+    /// model and from CLIs before 2.1.268.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_command: Option<String>,
+
     /// User-initiated sends still waiting in the command queue when this
     /// result was produced. Greater than 0 means at least one more user turn
     /// follows without further input, barring cancellation. Absent on fatal
@@ -117,6 +133,16 @@ pub struct ResultMessage {
     /// Why the session ended (e.g., "completed")
     #[serde(skip_serializing_if = "Option::is_none")]
     pub terminal_reason: Option<String>,
+
+    /// Delivery sequence of this result within the run: how many results the
+    /// run numbered before this one, starting at 0, in the order the process
+    /// writes them. A result whose write fails still consumes its number, so
+    /// a gap means a result was lost. Distinct from `num_turns`. Numbered by
+    /// the process hosting the run (`claude -p`); a local client relaying a
+    /// cloud session passes the cloud numbering through and its own locally
+    /// built error results carry none. Absent from CLIs before 2.1.268.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_index: Option<u64>,
 
     /// Fast mode toggle state (e.g., "off")
     #[serde(skip_serializing_if = "Option::is_none")]
