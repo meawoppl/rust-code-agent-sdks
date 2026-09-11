@@ -10,6 +10,10 @@ pub fn server_notification_samples() -> Vec<(&'static str, Value)> {
         ("account/updated", json!({})),
         ("app/list/updated", json!({"data": []})),
         (
+            "autoApprovalReview/strictReviewRequired",
+            json!({"startedAtMs": 0, "threadId": "x", "turnId": "x"}),
+        ),
+        (
             "command/exec/outputDelta",
             json!({"capReached": false, "deltaBase64": "x", "processId": "x", "stream": null}),
         ),
@@ -102,6 +106,10 @@ pub fn server_notification_samples() -> Vec<(&'static str, Value)> {
             json!({"item": {"content": [], "id": "x", "type": "userMessage"}, "startedAtMs": 0, "threadId": "x", "turnId": "x"}),
         ),
         (
+            "mcpServer/event/stream/notification",
+            json!({"notification": {"method": "x", "params": null}, "subscriptionId": "x"}),
+        ),
+        (
             "mcpServer/oauthLogin/completed",
             json!({"name": "x", "success": false}),
         ),
@@ -122,12 +130,24 @@ pub fn server_notification_samples() -> Vec<(&'static str, Value)> {
             json!({"threadId": "x", "turnId": "x", "verifications": []}),
         ),
         (
+            "modelProvider/authRecoveryCompleted",
+            json!({"message": "x", "provider": "x", "threadId": "x", "turnId": "x"}),
+        ),
+        (
+            "modelProvider/authRecoveryStarted",
+            json!({"message": "x", "provider": "x", "threadId": "x", "turnId": "x"}),
+        ),
+        (
             "process/exited",
             json!({"exitCode": 0, "processHandle": "x", "stderr": "x", "stderrCapReached": false, "stdout": "x", "stdoutCapReached": false}),
         ),
         (
             "process/outputDelta",
             json!({"capReached": false, "deltaBase64": "x", "processHandle": "x", "stream": null}),
+        ),
+        (
+            "project/changed",
+            json!({"changeType": "created", "projectId": "x"}),
         ),
         (
             "remoteControl/status/changed",
@@ -139,6 +159,10 @@ pub fn server_notification_samples() -> Vec<(&'static str, Value)> {
         ),
         ("skills/changed", json!({})),
         ("thread/archived", json!({"threadId": "x"})),
+        (
+            "thread/attachment/updated",
+            json!({"attachmentId": "x", "attachmentType": "x", "identityKey": "x", "operation": "created", "threadId": "x"}),
+        ),
         ("thread/closed", json!({"threadId": "x"})),
         ("thread/compacted", json!({"threadId": "x", "turnId": "x"})),
         ("thread/deleted", json!({"threadId": "x"})),
@@ -156,10 +180,27 @@ pub fn server_notification_samples() -> Vec<(&'static str, Value)> {
             json!({"goal": {"createdAt": 0, "objective": "x", "status": "active", "threadId": "x", "timeUsedSeconds": 0, "tokensUsed": 0, "updatedAt": 0}, "threadId": "x"}),
         ),
         ("thread/name/updated", json!({"threadId": "x"})),
+        (
+            "thread/project/updated",
+            json!({"projectId": "x", "threadId": "x"}),
+        ),
+        ("thread/queue/changed", json!({"threadId": "x"})),
         ("thread/realtime/closed", json!({"threadId": "x"})),
         (
             "thread/realtime/error",
             json!({"message": "x", "threadId": "x"}),
+        ),
+        (
+            "thread/realtime/item/completed",
+            json!({"item": {"type": "realtimeSessionStarted"}, "threadId": "x"}),
+        ),
+        (
+            "thread/realtime/item/started",
+            json!({"item": {"type": "realtimeSessionStarted"}, "threadId": "x"}),
+        ),
+        (
+            "thread/realtime/item/transcript/delta",
+            json!({"delta": "x", "itemId": "x", "threadId": "x"}),
         ),
         (
             "thread/realtime/itemAdded",
@@ -182,6 +223,7 @@ pub fn server_notification_samples() -> Vec<(&'static str, Value)> {
             "thread/realtime/transcript/done",
             json!({"role": "x", "text": "x", "threadId": "x"}),
         ),
+        ("thread/reverted", json!({"threadId": "x"})),
         (
             "thread/settings/updated",
             json!({"threadId": "x", "threadSettings": {"approvalPolicy": "untrusted", "approvalsReviewer": "user", "collaborationMode": {"mode": "plan", "settings": {"model": "x"}}, "cwd": "x", "model": "x", "modelProvider": "x", "sandboxPolicy": {"type": "dangerFullAccess"}}}),
@@ -347,6 +389,15 @@ pub fn client_request_samples() -> Vec<(&'static str, Value)> {
             json!({"event": null, "threadId": "x"}),
         ),
         ("thread/archive", json!({"threadId": "x"})),
+        (
+            "thread/attachment/add",
+            json!({"attachmentType": "x", "identityKey": "x", "payload": null, "threadId": "x"}),
+        ),
+        ("thread/attachment/list", json!({"threadId": "x"})),
+        (
+            "thread/attachment/remove",
+            json!({"attachmentType": "x", "identityKey": "x", "threadId": "x"}),
+        ),
         ("thread/compact/start", json!({"threadId": "x"})),
         ("thread/delete", json!({"threadId": "x"})),
         ("thread/fork", json!({"threadId": "x"})),
