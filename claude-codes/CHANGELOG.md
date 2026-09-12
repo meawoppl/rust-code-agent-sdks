@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.269] - 2026-09-12
+
+### Changed
+
+- Re-pin to Claude CLI **2.1.269**. No stream-json wire drift from
+  2.1.268: the fingerprint check is clean against the committed snapshot,
+  and a field-level diff of the extracted zod schemas shows only minified
+  alias churn and doc-string edits. The one substantive doc change is that
+  `user_message_uuid` is now stamped on both the turn's first non-ping
+  stream event and its first complete assistant message, independently, so
+  the same uuid may appear on both frames. The live integration suite
+  passes unchanged. Pin-only release.
+
 ## [2.1.268] - 2026-09-11
 
 Re-baseline against Claude CLI **2.1.268**. Models the 2.1.267 → 2.1.268
