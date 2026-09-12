@@ -110,9 +110,11 @@ pub struct StreamEventMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ttft_ms: Option<u64>,
     /// Client uuid of the user message that triggered this turn, stamped on
-    /// the turn's first non-ping stream event only so a consumer can bind the
-    /// reply stream to the send it answers. Absent on later stream events, on
-    /// synthetic/scheduled turns, and from CLIs before 2.1.259.
+    /// the turn's first non-ping stream event so a consumer can bind the
+    /// reply stream to the send it answers. Since CLI 2.1.269 the turn's
+    /// first complete assistant message is stamped too, independently, so
+    /// the same uuid may appear on both frames. Absent on later stream
+    /// events, on synthetic/scheduled turns, and from CLIs before 2.1.259.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub user_message_uuid: Option<String>,
     /// Client uuids of every user message whose prompt this turn has consumed
