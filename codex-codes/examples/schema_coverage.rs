@@ -508,7 +508,6 @@ mod samples {
             methods::THREAD_COMPACT_START,
             methods::THREAD_SHELLCOMMAND,
             methods::THREAD_APPROVEGUARDIANDENIEDACTION,
-            methods::THREAD_ROLLBACK,
             methods::THREAD_LIST,
             methods::THREAD_LOADED_LIST,
             methods::THREAD_READ,

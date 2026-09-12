@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.154.2] - 2026-09-12
+
+### Added
+
+- `ModelAccessPrograms` and `Model.available_access_programs` — the
+  caller-specific explicit access programs (currently the `cyber` list of
+  `CyberAccessProgram`) that model discovery advertises; `None` when the
+  catalog carries no access-program metadata.
+- `McpServerStatus.server_capabilities` — the capabilities the initialized
+  MCP server advertised, kept as raw `Value`; `None` when unavailable.
+- `disabled_plugin_ids` on `ThreadSettings`, `ThreadStartResponse`,
+  `ThreadResumeResponse`, and `ThreadForkResponse` (saved list, defaults to
+  empty; upstream says it does not yet filter plugin capabilities), and
+  `TurnStartParams.disabled_plugin_ids` to replace the list on a turn
+  (omitted preserves it, `[]` clears it).
+
+  The 0.154.0 release emits none of these fields yet; every addition is
+  optional or defaulted, so existing payloads round-trip unchanged.
+
+### Removed
+
+- `methods::THREAD_ROLLBACK`, `ThreadRollbackParams`, and
+  `ThreadRollbackResponse`: upstream removed the deprecated `thread/rollback`
+  request (`openai/codex#44915`) in favour of `thread/revert`. The
+  `CodexErrorInfo::ThreadRollbackFailed` variant stays, matching upstream.
+
+### Changed
+
+- Re-snapshot `tests/schemas/*.json` from `openai/codex@main`
+  (`c4017a87a`).
+
 ## [0.154.1] - 2026-09-11
 
 ### Added
