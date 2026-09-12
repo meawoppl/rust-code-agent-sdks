@@ -2673,10 +2673,13 @@ pub struct AssistantMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub request_id: Option<String>,
     /// Client uuid of the user message that triggered this turn, stamped on
-    /// the turn's first reply frame only so a consumer can bind the reply to
-    /// the send it answers without waiting for the result. Absent on every
-    /// later frame of the turn, on subagent frames, on synthetic/scheduled
-    /// (meta) turns, and from CLIs before 2.1.259.
+    /// the turn's first top-level assistant message so a consumer can bind
+    /// the reply to the send it answers without waiting for the result. With
+    /// `--include-partial-messages` the first non-ping stream event is
+    /// stamped too, independently (CLI 2.1.269+), so the same uuid may
+    /// appear on both frames. Absent on every later assistant message of the
+    /// turn, on subagent frames, on synthetic/scheduled (meta) turns, and
+    /// from CLIs before 2.1.259.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub user_message_uuid: Option<String>,
     /// Client uuids of every user message whose prompt this turn has consumed
