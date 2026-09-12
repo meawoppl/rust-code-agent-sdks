@@ -411,7 +411,6 @@ pub fn client_request_samples() -> Vec<(&'static str, Value)> {
         ("thread/name/set", json!({"name": "x", "threadId": "x"})),
         ("thread/read", json!({"threadId": "x"})),
         ("thread/resume", json!({"threadId": "x"})),
-        ("thread/rollback", json!({"numTurns": 0, "threadId": "x"})),
         (
             "thread/section/move",
             json!({"sectionId": "x", "threadId": "x"}),

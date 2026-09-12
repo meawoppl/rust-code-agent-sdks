@@ -47,7 +47,6 @@ pub mod methods {
     pub const THREAD_COMPACT_START: &str = "thread/compact/start";
     pub const THREAD_SHELLCOMMAND: &str = "thread/shellCommand";
     pub const THREAD_APPROVEGUARDIANDENIEDACTION: &str = "thread/approveGuardianDeniedAction";
-    pub const THREAD_ROLLBACK: &str = "thread/rollback";
     pub const THREAD_LIST: &str = "thread/list";
     pub const THREAD_LOADED_LIST: &str = "thread/loaded/list";
     pub const THREAD_READ: &str = "thread/read";

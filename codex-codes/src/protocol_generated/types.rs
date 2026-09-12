@@ -4248,6 +4248,14 @@ pub struct McpServerStatus {
     pub resource_templates: Vec<ResourceTemplate>,
     #[serde(default)]
     pub resources: Vec<Resource>,
+    /// Capabilities advertised by the initialized MCP server; `None` when
+    /// unavailable.
+    #[serde(
+        rename = "serverCapabilities",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub server_capabilities: Option<Value>,
     #[serde(
         rename = "serverInfo",
         default,
@@ -4507,6 +4515,13 @@ pub struct Model {
         skip_serializing_if = "Option::is_none"
     )]
     pub availability_nux: Option<ModelAvailabilityNux>,
+    /// `None` when the catalog does not provide access-program metadata.
+    #[serde(
+        rename = "availableAccessPrograms",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub available_access_programs: Option<ModelAccessPrograms>,
     #[serde(rename = "defaultReasoningEffort")]
     pub default_reasoning_effort: ReasoningEffort,
     #[serde(
@@ -4567,6 +4582,15 @@ pub struct Model {
         skip_serializing_if = "Option::is_none"
     )]
     pub upgrade_info: Option<ModelUpgradeInfo>,
+}
+
+/// Caller-specific explicit access programs advertised by model discovery.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelAccessPrograms {
+    /// Accepted explicit selections.
+    #[serde(default)]
+    pub cyber: Vec<CyberAccessProgram>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -7415,6 +7439,10 @@ pub struct ThreadForkResponse {
     pub approvals_reviewer: Value,
     #[serde()]
     pub cwd: AbsolutePathBuf,
+    /// Saved list of disabled plugin IDs. Does not yet filter plugin
+    /// capabilities.
+    #[serde(rename = "disabledPluginIds", default)]
+    pub disabled_plugin_ids: Vec<String>,
     #[serde(
         rename = "instructionSources",
         default,
@@ -8144,6 +8172,10 @@ pub struct ThreadResumeResponse {
     pub approvals_reviewer: Value,
     #[serde()]
     pub cwd: AbsolutePathBuf,
+    /// Saved list of disabled plugin IDs. Does not yet filter plugin
+    /// capabilities.
+    #[serde(rename = "disabledPluginIds", default)]
+    pub disabled_plugin_ids: Vec<String>,
     #[serde(
         rename = "instructionSources",
         default,
@@ -8385,22 +8417,6 @@ pub struct ThreadRevertResponse {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct ThreadRollbackParams {
-    #[serde(rename = "numTurns", default)]
-    pub num_turns: i64,
-    #[serde(rename = "threadId", default)]
-    pub thread_id: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ThreadRollbackResponse {
-    #[serde(default)]
-    pub thread: Value,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
 pub struct ThreadSection {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub appearance: Option<ThreadSectionAppearance>,
@@ -8544,6 +8560,10 @@ pub struct ThreadSettings {
     pub collaboration_mode: CollaborationMode,
     #[serde()]
     pub cwd: AbsolutePathBuf,
+    /// Saved list of disabled plugin IDs. Does not yet filter plugin
+    /// capabilities.
+    #[serde(rename = "disabledPluginIds", default)]
+    pub disabled_plugin_ids: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub effort: Option<ReasoningEffort>,
     #[serde(default)]
@@ -8713,6 +8733,10 @@ pub struct ThreadStartResponse {
     pub approvals_reviewer: Value,
     #[serde()]
     pub cwd: AbsolutePathBuf,
+    /// Saved list of disabled plugin IDs. Does not yet filter plugin
+    /// capabilities.
+    #[serde(rename = "disabledPluginIds", default)]
+    pub disabled_plugin_ids: Vec<String>,
     #[serde(
         rename = "instructionSources",
         default,
@@ -9208,6 +9232,14 @@ pub struct TurnStartParams {
     pub client_user_message_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cwd: Option<String>,
+    /// Replace this thread's disabled plugin IDs. Omitted/null preserves the
+    /// list; `[]` clears it.
+    #[serde(
+        rename = "disabledPluginIds",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub disabled_plugin_ids: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub effort: Option<ReasoningEffort>,
     #[serde(default)]
