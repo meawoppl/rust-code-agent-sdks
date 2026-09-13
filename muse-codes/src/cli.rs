@@ -213,7 +213,8 @@ impl MuseExecBuilder {
         self
     }
 
-    /// Meta reasoning effort (`none|minimal|low|medium|high|xhigh|ultra`).
+    /// Meta reasoning effort (`none|minimal|low|medium|high|xhigh|max|ultra`;
+    /// `max` is advertised by the CLI since 1.2.1).
     /// Not supported with [`Provider::Echo`].
     pub fn reasoning_effort(mut self, effort: impl Into<String>) -> Self {
         self.reasoning_effort = Some(effort.into());

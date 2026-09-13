@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-09-13
+
+### Changed
+
+- Re-baseline the tested pin to Muse Code **1.2.1 (1.2.1-R2847.1)**
+  (`muse-stable` channel rolled from 1.1.1): echo fingerprint identical to
+  the snapshot, the on-disk model catalog unchanged (same four `MuseModel`
+  ids, same default, same context/output limits), and the full cargo tier
+  (14 unit + 4 corpus + 8 live echo integration) passes unchanged.
+  Pin-only release.
+- `MuseCommand::reasoning_effort` docs now list `max`, which the 1.2.1 CLI
+  advertises for `--reasoning-effort` and the catalog exposes on
+  `muse-spark-1.3`. The value was always passed through verbatim.
+
 ## [1.1.1] - 2026-09-10
 
 ### Changed
