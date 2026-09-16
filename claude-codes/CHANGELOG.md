@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.273] - 2026-09-16
+
+Re-baseline against Claude CLI **2.1.273**. Models the 2.1.270 → 2.1.273
+stream-json drift, all additive (no removals or required/optional flips).
+
+### Added
+
+- Three `system` subtypes, each with a `SystemSubtype` variant, a typed
+  struct, `is_*`/`as_*` accessors on `SystemMessage`, a `KnownSystemEvent`
+  variant, and wrap-audit coverage:
+  - `turn_handoff_available` → `TurnHandoffAvailableMessage`: a cloud
+    worker that accepts the `turn_handoff` control request announces the
+    contract version, the tools it would accept, its `worker_epoch`, and
+    `relay_marker`.
+  - `turn_preempted` → `TurnPreemptedMessage`: the CLI stopped the running
+    turn so a rapid follow-up (`reason: rapid_followup`) is answered at once;
+    carries `preempted_by_uuid` and `preempted_message_uuids`. Precedes the
+    stopped turn's `result` frame. Only sent to consumers that declared
+    `rapidFollowupPreempt` on initialize.
+  - `peer_message_hold` → `PeerMessageHoldMessage`: a cross-session message
+    the receive-side policy held rather than queued, and how the hold
+    resolved. Open-set enums `PeerMessageHoldState` (`held`/`released`/
+    `dropped`), `PeerMessageLane` (`bridge`/`stdin`/`socket`),
+    `PeerMessageHoldCause`, and `PeerMessageHoldOutcome`.
+- `AssistantMessage.usage_report` (`Option<Box<UsageReport>>`) — structured
+  twin of the `/usage` report carried on the synthetic assistant message
+  that delivers its text: the session totals (reusing `UsageSession`), the
+  server's usage rows (`UsageReportRateLimits` / `UsageReportLimit` /
+  `UsageReportScope`), and extra-usage spend (`UsageReportExtraUsage`).
+  Boxed to keep `ClaudeOutput` within clippy's variant-size budget.
+- `AssistantMessage.local_command_run` (`LocalCommandRun { command, args }`)
+  — on the local-command twin, the run that printed the row.
+- `TaskNotificationMessage.reason` (`TaskEndReason`, currently only
+  `worker_restart`) — set when a task did not end through an ordinary
+  completion, failure, or stop.
+- `DevIntentMessage.trigger` (`DevIntentTrigger`, open set of eleven
+  values incl. `project_scan`) — the evidence a `dev_intent` detection fired
+  on, and `DevIntentKind::AndroidApp`. The CLI now also scans the session's
+  git repository in print mode and reports project evidence at startup,
+  after each `conversation_reset`, and at the first message of a
+  conversation whose earlier scan did not find every kind.
+
+### Changed
+
+- `audit_frame` compares JSON numbers numerically: a whole-valued float the
+  CLI serialized as an integer (`40`) no longer counts as changed when an
+  `f64` field re-serializes it as `40.0`. This was a false positive, not a
+  data loss, and `/usage` frames trip it routinely.
+- `CodeChangePublishedMessage.branch` is now also sent with `created` on any
+  provider (the branch the create was opened from). Doc-only.
+- Re-pin to Claude CLI **2.1.273**; snapshot refreshed. The live
+  integration suite passes unchanged.
+
 ## [2.1.270] - 2026-09-13
 
 ### Changed

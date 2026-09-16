@@ -56,7 +56,7 @@ fn system_dev_intent_unknown_kind() {
     let frame = json!({
         "type": "system",
         "subtype": "dev_intent",
-        "kind": "android_app",
+        "kind": "web_app",
         "uuid": "u1",
         "session_id": "s1"
     });
@@ -66,11 +66,8 @@ fn system_dev_intent_unknown_kind() {
         panic!("expected System");
     };
     let direct = sys.as_dev_intent().unwrap();
-    assert_eq!(
-        direct.kind,
-        DevIntentKind::Unknown("android_app".to_string())
-    );
-    assert_eq!(direct.kind.as_str(), "android_app");
+    assert_eq!(direct.kind, DevIntentKind::Unknown("web_app".to_string()));
+    assert_eq!(direct.kind.as_str(), "web_app");
 }
 
 /// An `assistant` frame carrying the 2.1.266 `historical` and
