@@ -46,6 +46,9 @@ pub enum SystemSubtype {
     FeedbackDraftQueued,
     CloudSessionDelta,
     DevIntent,
+    TurnHandoffAvailable,
+    TurnPreempted,
+    PeerMessageHold,
     /// A subtype not yet known to this version of the crate.
     Unknown(String),
 }
@@ -86,6 +89,9 @@ impl SystemSubtype {
             Self::FeedbackDraftQueued => "feedback_draft_queued",
             Self::CloudSessionDelta => "cloud_session_delta",
             Self::DevIntent => "dev_intent",
+            Self::TurnHandoffAvailable => "turn_handoff_available",
+            Self::TurnPreempted => "turn_preempted",
+            Self::PeerMessageHold => "peer_message_hold",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -133,6 +139,9 @@ impl From<&str> for SystemSubtype {
             "feedback_draft_queued" => Self::FeedbackDraftQueued,
             "cloud_session_delta" => Self::CloudSessionDelta,
             "dev_intent" => Self::DevIntent,
+            "turn_handoff_available" => Self::TurnHandoffAvailable,
+            "turn_preempted" => Self::TurnPreempted,
+            "peer_message_hold" => Self::PeerMessageHold,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -1081,6 +1090,45 @@ impl SystemMessage {
         serde_json::from_value(self.data.clone()).ok()
     }
 
+    /// Check if this is a turn_handoff_available message.
+    pub fn is_turn_handoff_available(&self) -> bool {
+        self.subtype == SystemSubtype::TurnHandoffAvailable
+    }
+
+    /// Try to parse as a turn_handoff_available message.
+    pub fn as_turn_handoff_available(&self) -> Option<TurnHandoffAvailableMessage> {
+        if self.subtype != SystemSubtype::TurnHandoffAvailable {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
+    /// Check if this is a turn_preempted message.
+    pub fn is_turn_preempted(&self) -> bool {
+        self.subtype == SystemSubtype::TurnPreempted
+    }
+
+    /// Try to parse as a turn_preempted message.
+    pub fn as_turn_preempted(&self) -> Option<TurnPreemptedMessage> {
+        if self.subtype != SystemSubtype::TurnPreempted {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
+    /// Check if this is a peer_message_hold message.
+    pub fn is_peer_message_hold(&self) -> bool {
+        self.subtype == SystemSubtype::PeerMessageHold
+    }
+
+    /// Try to parse as a peer_message_hold message.
+    pub fn as_peer_message_hold(&self) -> Option<PeerMessageHoldMessage> {
+        if self.subtype != SystemSubtype::PeerMessageHold {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
     /// Parse any typed system subtype known to this crate version.
     pub fn as_known_system_event(&self) -> Option<KnownSystemEvent> {
         macro_rules! parse {
@@ -1147,6 +1195,11 @@ impl SystemMessage {
                 parse!(CloudSessionDelta, CloudSessionDeltaMessage)
             }
             SystemSubtype::DevIntent => parse!(DevIntent, DevIntentMessage),
+            SystemSubtype::TurnHandoffAvailable => {
+                parse!(TurnHandoffAvailable, TurnHandoffAvailableMessage)
+            }
+            SystemSubtype::TurnPreempted => parse!(TurnPreempted, TurnPreemptedMessage),
+            SystemSubtype::PeerMessageHold => parse!(PeerMessageHold, PeerMessageHoldMessage),
             SystemSubtype::Unknown(_) => None,
         }
     }
@@ -1227,6 +1280,13 @@ impl SystemMessage {
                 reserialize(parse_system::<CloudSessionDeltaMessage>(self))
             }
             SystemSubtype::DevIntent => reserialize(parse_system::<DevIntentMessage>(self)),
+            SystemSubtype::TurnHandoffAvailable => {
+                reserialize(parse_system::<TurnHandoffAvailableMessage>(self))
+            }
+            SystemSubtype::TurnPreempted => reserialize(parse_system::<TurnPreemptedMessage>(self)),
+            SystemSubtype::PeerMessageHold => {
+                reserialize(parse_system::<PeerMessageHoldMessage>(self))
+            }
             SystemSubtype::Unknown(_) => None,
         }
     }
@@ -1277,6 +1337,9 @@ pub enum KnownSystemEvent {
     FeedbackDraftQueued(FeedbackDraftQueuedMessage),
     CloudSessionDelta(CloudSessionDeltaMessage),
     DevIntent(DevIntentMessage),
+    TurnHandoffAvailable(TurnHandoffAvailableMessage),
+    TurnPreempted(TurnPreemptedMessage),
+    PeerMessageHold(PeerMessageHoldMessage),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2220,6 +2283,10 @@ pub struct TaskNotificationMessage {
     pub session_id: String,
     pub task_id: String,
     pub status: TaskStatus,
+    /// Machine-readable cause, set only when the task did not end through an
+    /// ordinary completion, failure, or stop (CLI 2.1.273+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<TaskEndReason>,
     pub summary: String,
     pub output_file: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -2346,10 +2413,13 @@ pub struct CodeChangePublishedMessage {
     /// absent only from older ones. Open set — treat unknown values as valid.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub action: Option<String>,
-    /// The session's working branch when it produced the change. Sent only
-    /// for providers whose changes have no head branch of their own
-    /// (`gerrit`), so a host can place the change on that checkout; absent
-    /// for every other provider (CLI 2.1.259+).
+    /// The session's working branch when it produced the change. Sent for
+    /// providers whose changes have no head branch of their own (`gerrit`),
+    /// so a host can place the change on that checkout, and with `created`
+    /// on any provider: the branch the create was opened from (its `--head`
+    /// / `--source-branch` flag, else the working branch), so a host can show
+    /// the new change before its own forge lookup answers (CLI 2.1.273+).
+    /// Absent otherwise (CLI 2.1.259+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub branch: Option<String>,
     pub uuid: String,
@@ -2474,19 +2544,32 @@ pub struct CloudSessionDeltaMessage {
     pub extra: serde_json::Map<String, Value>,
 }
 
-/// `system/dev_intent` — the conversation shows a known kind of development
-/// work, for hosts that key tooling on it (Claude Code Desktop opens its iOS
-/// Simulator entry point on `ios_app`). Sent with no other payload at most
-/// once per kind per conversation per process: when the evidence for that
-/// kind first completes, or at startup when a resumed conversation already
-/// has it (possibly before `system/init`). A rewind or compaction never
-/// retracts it and only a `conversation_reset` starts over, so treat each
-/// kind as a sticky fact about the conversation and ignore repeats
-/// (CLI 2.1.266+).
+/// `system/dev_intent` — the conversation, or the git repository it runs in,
+/// shows a known kind of development work, for hosts that key tooling on it
+/// (Claude Code Desktop opens its iOS Simulator entry point on `ios_app`).
+/// Sent with `trigger` as its only other payload. Per conversation per
+/// process, each kind is sent at most once from conversation evidence and at
+/// most once from the project scan: conversation evidence when it first
+/// completes, or at startup when a resumed conversation already has it;
+/// project evidence (print-mode CLIs only, which is how the Agent SDK starts
+/// it) at startup, after each `conversation_reset`, and at the first message
+/// of a conversation whose earlier scan did not find every kind. Either can
+/// arrive before `system/init`. A rewind or compaction never retracts it and
+/// only a `conversation_reset` starts over, so treat each kind as a sticky
+/// fact about the conversation: a client that needs only the kind can ignore
+/// repeats, and one that needs to know what set it off reads `trigger`
+/// (CLI 2.1.266+; `trigger` and the project scan from 2.1.273).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DevIntentMessage {
-    /// What kind of development the conversation turned out to be doing.
+    /// What kind of development the evidence shows.
     pub kind: DevIntentKind,
+    /// The evidence the detection fired on, for a host's own analytics. From
+    /// the conversation it is the first platform-specific evidence seen;
+    /// [`DevIntentTrigger::ProjectScan`] marks a scan of the session's git
+    /// repository. Absent from CLIs before 2.1.273, which send only
+    /// conversation evidence.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger: Option<DevIntentTrigger>,
     pub uuid: String,
     pub session_id: String,
     #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
@@ -2498,10 +2581,19 @@ pub struct DevIntentMessage {
 /// unrecognized values deserialize to [`DevIntentKind::Unknown`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DevIntentKind {
-    /// Claude wrote or edited a `.swift` file and something it wrote, read, or
-    /// ran is iPhone-specific (a macOS-only app or server-side Swift package
-    /// never qualifies).
+    /// From the conversation: Claude wrote or edited a `.swift` file and
+    /// something it wrote, read, or ran is iOS-specific (a macOS-only app or
+    /// server-side Swift package never qualifies). From the project scan: the
+    /// session's git repository has an Xcode project whose build settings
+    /// name an iOS SDK or target iPhone or iPad.
     IosApp,
+    /// From the conversation: Claude wrote or edited a `.kt`, `.kts` or
+    /// `.java` file and something it wrote, read, or ran is Android-specific
+    /// (a Kotlin server or a multiplatform module with no Android target
+    /// never qualifies). From the project scan: the repository has an
+    /// `AndroidManifest.xml` or the Android Gradle plugin in a build script
+    /// or version catalog (CLI 2.1.273+).
+    AndroidApp,
     /// A kind not yet known to this version of the crate.
     Unknown(String),
 }
@@ -2510,6 +2602,7 @@ impl DevIntentKind {
     pub fn as_str(&self) -> &str {
         match self {
             Self::IosApp => "ios_app",
+            Self::AndroidApp => "android_app",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -2525,6 +2618,7 @@ impl From<&str> for DevIntentKind {
     fn from(s: &str) -> Self {
         match s {
             "ios_app" => Self::IosApp,
+            "android_app" => Self::AndroidApp,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -2541,6 +2635,601 @@ impl<'de> Deserialize<'de> for DevIntentKind {
         let s = String::deserialize(deserializer)?;
         Ok(Self::from(s.as_str()))
     }
+}
+
+/// The evidence a [`DevIntentMessage`] detection fired on. Open set: the CLI
+/// says "more values will be added; ignore one you do not recognize", so
+/// unrecognized values deserialize to [`DevIntentTrigger::Unknown`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum DevIntentTrigger {
+    /// Reserved for rules that need no other evidence; no rule sends it yet.
+    SwiftEdit,
+    /// `import UIKit` or `.iOS(` in text Claude wrote.
+    UikitImport,
+    /// iOS build settings written, or seen in a tool result such as a
+    /// pbxproj read.
+    XcodeProject,
+    /// `simctl`, an iOS SDK or a Simulator destination in a command Claude
+    /// ran.
+    IosCommand,
+    /// Reserved for rules that need no other evidence; no rule sends it yet.
+    KotlinEdit,
+    /// Reserved for rules that need no other evidence; no rule sends it yet.
+    JavaEdit,
+    /// `import android.` in text Claude wrote.
+    AndroidImport,
+    /// A manifest path or body written, or seen in a tool result.
+    AndroidManifest,
+    /// The Android Gradle plugin written, or seen in a tool result.
+    GradlePlugin,
+    /// `adb`, the emulator, `sdkmanager`, `avdmanager`,
+    /// `react-native run-android` or a Gradle variant task.
+    AndroidCommand,
+    /// For any kind: a scan of the session's git repository rather than
+    /// conversation evidence.
+    ProjectScan,
+    /// A trigger not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl DevIntentTrigger {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::SwiftEdit => "swift_edit",
+            Self::UikitImport => "uikit_import",
+            Self::XcodeProject => "xcode_project",
+            Self::IosCommand => "ios_command",
+            Self::KotlinEdit => "kotlin_edit",
+            Self::JavaEdit => "java_edit",
+            Self::AndroidImport => "android_import",
+            Self::AndroidManifest => "android_manifest",
+            Self::GradlePlugin => "gradle_plugin",
+            Self::AndroidCommand => "android_command",
+            Self::ProjectScan => "project_scan",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for DevIntentTrigger {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for DevIntentTrigger {
+    fn from(s: &str) -> Self {
+        match s {
+            "swift_edit" => Self::SwiftEdit,
+            "uikit_import" => Self::UikitImport,
+            "xcode_project" => Self::XcodeProject,
+            "ios_command" => Self::IosCommand,
+            "kotlin_edit" => Self::KotlinEdit,
+            "java_edit" => Self::JavaEdit,
+            "android_import" => Self::AndroidImport,
+            "android_manifest" => Self::AndroidManifest,
+            "gradle_plugin" => Self::GradlePlugin,
+            "android_command" => Self::AndroidCommand,
+            "project_scan" => Self::ProjectScan,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for DevIntentTrigger {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for DevIntentTrigger {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// Why a [`TaskNotificationMessage`] ended other than through an ordinary
+/// completion, failure, or stop. Open set: unrecognized values deserialize
+/// to [`TaskEndReason::Unknown`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TaskEndReason {
+    /// The worker process restarted and the resumed process found the task
+    /// orphaned (always with status `stopped`).
+    WorkerRestart,
+    /// A reason not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl TaskEndReason {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::WorkerRestart => "worker_restart",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for TaskEndReason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for TaskEndReason {
+    fn from(s: &str) -> Self {
+        match s {
+            "worker_restart" => Self::WorkerRestart,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for TaskEndReason {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for TaskEndReason {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// `system/turn_handoff_available` — emitted once by a cloud worker that
+/// accepts the `turn_handoff` control request, right after it registers,
+/// carrying what its registration wrote to `external_metadata.turn_handoff`.
+/// Lets a session client learn the capability from the event stream instead
+/// of reading worker state. Durable in the stream: a reader keeps the entry
+/// with the newest `worker_epoch` it has seen and ignores older ones; a
+/// worker life that does not accept `turn_handoff` emits nothing
+/// (CLI 2.1.273+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TurnHandoffAvailableMessage {
+    /// Contract version of the handoff registration (currently `1`).
+    pub v: u64,
+    /// The tools whose calls this worker would accept.
+    pub tools: Vec<String>,
+    /// The worker life announcing it.
+    pub worker_epoch: u64,
+    /// Present, and true, only when this worker uses the `relay_marker`
+    /// member of a `turn_handoff` request; a client sends that member to no
+    /// other worker.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relay_marker: Option<bool>,
+    pub uuid: String,
+    pub session_id: String,
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
+}
+
+/// `system/turn_preempted` — the CLI itself stopped the running turn so a
+/// user's rapid follow-up message is answered at once, exactly as a priority
+/// `now` message would have (running shell commands are backgrounded, not
+/// killed). Sent at the moment of the stop, so it precedes the stopped turn's
+/// `result` frame (`terminal_reason` `aborted_streaming` or `aborted_tools`)
+/// and its members' `cancelled` `command_lifecycle` frames: a host renders
+/// that turn as superseded by the follow-up rather than as interrupted, does
+/// not resend its messages, and treats only `preempted_by_uuid` as picked
+/// up. At most one per burst. Emitted in `-p`/SDK sessions only, and only to
+/// a consumer that declared `rapidFollowupPreempt` on its initialize request
+/// while the feature's rollout flag is on (CLI 2.1.273+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TurnPreemptedMessage {
+    /// Why the turn was stopped. `rapid_followup`: the user's next message
+    /// arrived before the running turn showed any output. More reasons may
+    /// be added; treat an unknown one the same way.
+    pub reason: String,
+    /// The client-supplied uuid of the queued user message the turn was
+    /// stopped for. It runs next, together with any messages queued behind
+    /// it.
+    pub preempted_by_uuid: String,
+    /// The client-supplied uuids of the user messages the stopped turn was
+    /// running (uuid-less members omitted; may be empty).
+    #[serde(default)]
+    pub preempted_message_uuids: Vec<String>,
+    pub uuid: String,
+    pub session_id: String,
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
+}
+
+/// `system/peer_message_hold` — a cross-session (peer) message this
+/// session's receive-side policy held rather than queued, and how that hold
+/// resolved. Lets a host show the human that a message arrived but has not
+/// reached the model (and may never) instead of nothing at all; the sending
+/// session is told separately over its own transport where one exists.
+/// Informational only — there is no host-side approval through this frame.
+/// Emitted in `-p`/SDK sessions (CLI 2.1.273+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PeerMessageHoldMessage {
+    /// `held` once per message per hold cause (a re-announcement under a
+    /// different cause emits again); then at most one of `released` (it
+    /// enters the queue — its `command_lifecycle` `queued` and user replay
+    /// echo follow under `message_uuid`) or `dropped` (it will never reach
+    /// the model in this session; see `outcome`).
+    pub state: PeerMessageHoldState,
+    /// The parked command's uuid — the value its later `command_lifecycle`
+    /// frames and user replay echo carry. For lane `bridge`/`stdin` it is
+    /// the id the host supplied on the inbound message; for lane `socket` it
+    /// was chosen by the sending session, so correlate it only within
+    /// `peer_message_hold` / peer replay frames, never against the host's
+    /// own prompts' lifecycle.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message_uuid: Option<String>,
+    /// Which ingress delivered it.
+    pub lane: PeerMessageLane,
+    /// The sender's address as the envelope will show it — an address-shaped
+    /// token with control and invisible code points scrubbed; empty when the
+    /// sender supplied none or an unshaped one. Sender-asserted on the
+    /// socket lane: a label, not an identity proof.
+    pub from: String,
+    /// The sender's display name when it supplied one, normalized and
+    /// scrubbed the same way. A claim, like `from`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from_name: Option<String>,
+    /// State `held` only: why the policy parked it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cause: Option<PeerMessageHoldCause>,
+    /// State `dropped` only: how the hold ended.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outcome: Option<PeerMessageHoldOutcome>,
+    pub uuid: String,
+    pub session_id: String,
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
+}
+
+/// Lifecycle state carried by a [`PeerMessageHoldMessage`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PeerMessageHoldState {
+    /// The receive-side policy parked the message instead of queueing it.
+    Held,
+    /// The policy now accepts it: it enters the queue.
+    Released,
+    /// It will never reach the model in this session.
+    Dropped,
+    /// A state not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl PeerMessageHoldState {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Held => "held",
+            Self::Released => "released",
+            Self::Dropped => "dropped",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for PeerMessageHoldState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for PeerMessageHoldState {
+    fn from(s: &str) -> Self {
+        match s {
+            "held" => Self::Held,
+            "released" => Self::Released,
+            "dropped" => Self::Dropped,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for PeerMessageHoldState {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PeerMessageHoldState {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// Which ingress delivered the message a [`PeerMessageHoldMessage`] reports.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PeerMessageLane {
+    /// The Remote Control bridge.
+    Bridge,
+    /// The host's own stdin stream.
+    Stdin,
+    /// The local cross-session socket.
+    Socket,
+    /// A lane not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl PeerMessageLane {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Bridge => "bridge",
+            Self::Stdin => "stdin",
+            Self::Socket => "socket",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for PeerMessageLane {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for PeerMessageLane {
+    fn from(s: &str) -> Self {
+        match s {
+            "bridge" => Self::Bridge,
+            "stdin" => Self::Stdin,
+            "socket" => Self::Socket,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for PeerMessageLane {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PeerMessageLane {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// Why the receive-side policy parked a peer message
+/// ([`PeerMessageHoldMessage::cause`], state `held` only). The `*Setting`
+/// causes are a standing `crossSessionInbound: "hold"`; `ModeMismatch` and
+/// `NoModeAsserted` are the permission-mode parity holds (the sender runs in
+/// a different permission class, or asserted none while this session
+/// bypasses permissions).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PeerMessageHoldCause {
+    ExplicitSetting,
+    ManagedSetting,
+    RepoSetting,
+    InvalidSetting,
+    BypassDefault,
+    ModeUnknown,
+    ModeMismatch,
+    NoModeAsserted,
+    /// A cause not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl PeerMessageHoldCause {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::ExplicitSetting => "explicit-setting",
+            Self::ManagedSetting => "managed-setting",
+            Self::RepoSetting => "repo-setting",
+            Self::InvalidSetting => "invalid-setting",
+            Self::BypassDefault => "bypass-default",
+            Self::ModeUnknown => "mode-unknown",
+            Self::ModeMismatch => "mode-mismatch",
+            Self::NoModeAsserted => "no-mode-asserted",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for PeerMessageHoldCause {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for PeerMessageHoldCause {
+    fn from(s: &str) -> Self {
+        match s {
+            "explicit-setting" => Self::ExplicitSetting,
+            "managed-setting" => Self::ManagedSetting,
+            "repo-setting" => Self::RepoSetting,
+            "invalid-setting" => Self::InvalidSetting,
+            "bypass-default" => Self::BypassDefault,
+            "mode-unknown" => Self::ModeUnknown,
+            "mode-mismatch" => Self::ModeMismatch,
+            "no-mode-asserted" => Self::NoModeAsserted,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for PeerMessageHoldCause {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PeerMessageHoldCause {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// How a peer-message hold ended ([`PeerMessageHoldMessage::outcome`],
+/// state `dropped` only).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PeerMessageHoldOutcome {
+    /// No one approved it before the approval deadline (a headless host has
+    /// no approval surface, so every parity hold ends this way unless the
+    /// mode changes first).
+    Expired,
+    /// The policy turned to refuse while it waited.
+    Refused,
+    /// Released or approved, but the ingress guard (rate limit, duplicate,
+    /// queue cap) discarded it.
+    Dropped,
+    /// The session ended with it still parked.
+    Discarded,
+    /// An outcome not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl PeerMessageHoldOutcome {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Expired => "expired",
+            Self::Refused => "refused",
+            Self::Dropped => "dropped",
+            Self::Discarded => "discarded",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for PeerMessageHoldOutcome {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for PeerMessageHoldOutcome {
+    fn from(s: &str) -> Self {
+        match s {
+            "expired" => Self::Expired,
+            "refused" => Self::Refused,
+            "dropped" => Self::Dropped,
+            "discarded" => Self::Discarded,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for PeerMessageHoldOutcome {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PeerMessageHoldOutcome {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// The run that printed a local-command row, carried as
+/// [`AssistantMessage::local_command_run`].
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LocalCommandRun {
+    /// The command's name as `command.run` carried it (no slash).
+    pub command: String,
+    /// Its arguments as the echo shows them (`***` when the command marks
+    /// them sensitive).
+    pub args: String,
+}
+
+/// Structured twin of a `/usage` result, carried as
+/// [`AssistantMessage::usage_report`]: the session's totals, the plan's
+/// usage rows as the server sent them and the extra-usage spend, and nothing
+/// else from the usage body (the `get_usage` control reply carries the
+/// rest). Experimental — the shape may change.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UsageReport {
+    /// Cost and usage accumulated by the current session.
+    pub session: super::control::UsageSession,
+    /// The plan's usage rows and extra-usage spend from the claude.ai usage
+    /// endpoint; `None` when the CLI could not fetch them (no plan on this
+    /// lane, or a token without the profile scope).
+    pub rate_limits: Option<UsageReportRateLimits>,
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
+}
+
+/// The plan's usage rows and extra-usage spend in a [`UsageReport`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UsageReportRateLimits {
+    /// The server's usage rows (the usage endpoint's `limits[]`), as sent:
+    /// which meters apply, their scope, labels, severity and order are the
+    /// server's, so a client renders them verbatim. Empty when the server
+    /// reported no meters; `None` when the body carried no rows at all (a
+    /// server that predates them). When the usage fetch failed and the CLI
+    /// fell back to rate-limit response headers, this holds at most the one
+    /// row it synthesizes from them.
+    pub limits: Option<Vec<UsageReportLimit>>,
+    /// Extra-usage (overage) spend for the billing period, when the plan
+    /// has it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extra_usage: Option<UsageReportExtraUsage>,
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
+}
+
+/// One server usage row in [`UsageReportRateLimits::limits`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UsageReportLimit {
+    /// The server's meter kind, e.g. `session`, `weekly_all` or
+    /// `weekly_scoped`. Classify a row on this, never on a label.
+    pub kind: String,
+    /// The server's row group, e.g. `session` or `weekly`; rows render
+    /// grouped under it, in the server's order.
+    pub group: String,
+    /// Share of the window used, 0–100.
+    pub percent: f64,
+    /// ISO 8601 timestamp when the window resets.
+    pub resets_at: Option<String>,
+    /// What a scoped row is for, a model or a surface, with the server's
+    /// display label.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope: Option<UsageReportScope>,
+    /// The server's reading of the row for a meter's colour, e.g. `normal`,
+    /// `warning` or `critical`; a client falls back to its own thresholds
+    /// without it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub severity: Option<String>,
+    /// The server's headline pick: the row a single-value indicator shows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_active: Option<bool>,
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
+}
+
+/// What a scoped [`UsageReportLimit`] row is for.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UsageReportScope {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<UsageReportScopeLabel>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub surface: Option<UsageReportScopeLabel>,
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
+}
+
+/// The server's display label for a [`UsageReportScope`] member.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct UsageReportScopeLabel {
+    pub display_name: String,
+}
+
+/// Extra-usage (overage) spend for the billing period in a
+/// [`UsageReportRateLimits`]. Amounts are in minor units of `currency`
+/// (cents for USD).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UsageReportExtraUsage {
+    /// `false` while extra usage cannot cover sends.
+    pub is_enabled: bool,
+    pub monthly_limit: Option<f64>,
+    pub used_credits: Option<f64>,
+    pub utilization: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub currency: Option<String>,
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
 }
 
 /// `{id, name}` of an original `Batch*` tool_use block, carried in
@@ -2771,6 +3460,23 @@ pub struct AssistantMessage {
     /// `/context` results from CLIs new enough to attach it (2.1.239+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context_usage: Option<ContextUsage>,
+    /// Structured twin of the `/usage` report, carried on the synthetic
+    /// assistant message that delivers its text: the session totals, the
+    /// plan's usage rows and extra-usage spend, for remote clients that
+    /// render a card from data. Present only on `/usage` results from CLIs
+    /// new enough to attach it (2.1.273+) and from claude.ai-subscriber
+    /// sessions; the text in `message.content` remains the canonical
+    /// fallback. Wrapper-level sibling — never inside `message.content`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub usage_report: Option<Box<UsageReport>>,
+    /// On the local-command twin, the run that printed the row: the
+    /// command's name (no slash) and its arguments as the echo shows them
+    /// (`***` when the command marks them sensitive). Present when a `local`
+    /// command's dispatch printed the row or a `command.run` hook answered
+    /// it, absent on a never-ran notice. Wrapper-level sibling — never inside
+    /// `message.content` (CLI 2.1.273+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_command_run: Option<LocalCommandRun>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub is_meta: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

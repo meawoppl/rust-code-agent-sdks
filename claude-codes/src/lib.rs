@@ -78,7 +78,7 @@
 //! ⚠️ **Important**: The Claude CLI protocol is unstable and evolving. This crate
 //! automatically checks your Claude CLI version and warns if it's newer than tested.
 //!
-//! Current tested version: **2.1.270**
+//! Current tested version: **2.1.273**
 //!
 //! Report compatibility issues at: <https://github.com/meawoppl/rust-claude-codes/pulls>
 //!
@@ -168,17 +168,21 @@ pub use io::{
     CodeChangePublishedMessage, CommandInfo, CommandsChangedMessage, CompactBoundaryMessage,
     CompactMetadata, CompactionTrigger, ContextAgent, ContextCategory, ContextMcpTool,
     ContextMemoryFile, ContextOverLimit, ContextSkill, ContextUsage, ControlRequestProgressMessage,
-    DevIntentKind, DevIntentMessage, ElicitationCompleteMessage, FailedPersistedFile,
-    FeedbackDraftQueuedMessage, FilesPersistedMessage, HookProgressMessage, HookResponseMessage,
-    HookStartedMessage, InformationalMessage, InitMessage, InitPermissionMode, KnownSystemEvent,
-    LocalCommandOutputMessage, McpMeta, McpServerError, MemoryPaths, MemoryRecallItem,
-    MemoryRecallMessage, MessageOrigin, MessageRole, MirrorErrorKey, MirrorErrorMessage,
-    ModelRefusalFallbackMessage, ModelRefusalNoFallbackMessage, NotificationMessage, OutputStyle,
-    PermissionDeniedMessage, PersistedFile, PluginDiagnostic, PluginInfo, PluginInstallMessage,
-    PreservedMessages, PreservedSegment, RefusalFallbackScope, StatusMessage, StatusMessageStatus,
-    StopReason, SummarizeMetadata, SystemMessage, SystemSubtype, TaskNotificationMessage,
+    DevIntentKind, DevIntentMessage, DevIntentTrigger, ElicitationCompleteMessage,
+    FailedPersistedFile, FeedbackDraftQueuedMessage, FilesPersistedMessage, HookProgressMessage,
+    HookResponseMessage, HookStartedMessage, InformationalMessage, InitMessage, InitPermissionMode,
+    KnownSystemEvent, LocalCommandOutputMessage, LocalCommandRun, McpMeta, McpServerError,
+    MemoryPaths, MemoryRecallItem, MemoryRecallMessage, MessageOrigin, MessageRole, MirrorErrorKey,
+    MirrorErrorMessage, ModelRefusalFallbackMessage, ModelRefusalNoFallbackMessage,
+    NotificationMessage, OutputStyle, PeerMessageHoldCause, PeerMessageHoldMessage,
+    PeerMessageHoldOutcome, PeerMessageHoldState, PeerMessageLane, PermissionDeniedMessage,
+    PersistedFile, PluginDiagnostic, PluginInfo, PluginInstallMessage, PreservedMessages,
+    PreservedSegment, RefusalFallbackScope, StatusMessage, StatusMessageStatus, StopReason,
+    SummarizeMetadata, SystemMessage, SystemSubtype, TaskEndReason, TaskNotificationMessage,
     TaskPatch, TaskProgressMessage, TaskStartedMessage, TaskStatus, TaskType, TaskUpdatedMessage,
-    TaskUsage, ThinkingTokensMessage, ToolResultMeta, ToolUseMeta, VcsMutationKind,
+    TaskUsage, ThinkingTokensMessage, ToolResultMeta, ToolUseMeta, TurnHandoffAvailableMessage,
+    TurnPreemptedMessage, UsageReport, UsageReportExtraUsage, UsageReportLimit,
+    UsageReportRateLimits, UsageReportScope, UsageReportScopeLabel, VcsMutationKind,
     VcsStateChangedMessage, WorkerShuttingDownMessage,
 };
 
