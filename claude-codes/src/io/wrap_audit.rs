@@ -151,6 +151,16 @@ fn diff_lost(wire: &Value, typed: &Value, path: &str, out: &mut Vec<String>) {
                 }
             }
         }
+        // A whole-valued float leaves the CLI as a JSON integer (`40`, not
+        // `40.0`) and comes back from an `f64` field as `40.0`; the value is
+        // the same, so compare numbers numerically rather than textually.
+        (Value::Number(w), Value::Number(t)) => {
+            if w.as_f64() != t.as_f64() {
+                out.push(format!(
+                    "value at `{path}` changed on typed round-trip (wire={wire}, typed={typed})"
+                ));
+            }
+        }
         _ => {
             if wire != typed {
                 out.push(format!(
