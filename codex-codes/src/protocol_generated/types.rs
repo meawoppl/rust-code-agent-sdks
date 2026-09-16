@@ -1536,7 +1536,16 @@ pub struct ConfigRequirements {
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    pub allowed_windows_sandbox_implementations: Option<Vec<WindowsSandboxSetupMode>>,
+    pub allowed_windows_sandbox_implementations: Option<Vec<WindowsSandboxImplementation>>,
+    /// Effective login methods after managed, forced-login, and workspace
+    /// restrictions. An empty list permits no login method. Older servers
+    /// omit this field.
+    #[serde(
+        rename = "allowedLoginMethods",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub allowed_login_methods: Option<Vec<ForcedLoginMethod>>,
     #[serde(
         rename = "autoReview",
         default,
@@ -2657,12 +2666,24 @@ pub enum FunctionCallOutputContentItem {
     InputImage {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         detail: Option<ImageDetail>,
-        image_url: String,
+        #[serde(flatten)]
+        image: ImageReference,
     },
     #[serde(rename = "input_audio")]
     InputAudio { audio_url: String },
     #[serde(rename = "encrypted_content")]
     EncryptedContent { encrypted_content: String },
+}
+
+/// How a Responses-API `input_image` content item names its image: an
+/// inline `image_url` (data URL or remote URL) or a previously uploaded
+/// `file_id`. Flattened into [`FunctionCallOutputContentItem::InputImage`];
+/// untagged, so exactly one of the two keys is on the wire (`openai/codex@main` 50d77959b).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ImageReference {
+    Inline { image_url: String },
+    File { file_id: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -4333,6 +4354,25 @@ pub struct McpServerToolCallResponse {
     pub structured_content: Option<Value>,
 }
 
+/// UI resource and display preference for model invocations, captured from
+/// the tool descriptor (`ThreadItem::McpToolCall::mcp_app_ui`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpAppUi {
+    #[serde(rename = "resourceUri")]
+    pub resource_uri: String,
+    #[serde(rename = "preferredModelDisplayMode")]
+    pub preferred_model_display_mode: McpAppDisplayMode,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum McpAppDisplayMode {
+    #[serde(rename = "inline")]
+    Inline,
+    #[serde(rename = "fullscreen")]
+    Fullscreen,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct McpToolCallAppContext {
@@ -4568,6 +4608,8 @@ pub struct Model {
     pub service_tiers: Option<Vec<ModelServiceTier>>,
     #[serde(rename = "supportedReasoningEfforts", default)]
     pub supported_reasoning_efforts: Vec<ReasoningEffortOption>,
+    /// Deprecated upstream: always `false`; models no longer support
+    /// personality selection.
     #[serde(
         rename = "supportsPersonality",
         default,
@@ -4979,6 +5021,10 @@ pub struct PermissionsRequestApprovalResponse {
     pub strict_auto_review: Option<bool>,
 }
 
+/// Deprecated upstream: `friendly` and `pragmatic` no longer select a style,
+/// and `Model::supports_personality` is now always `false`. The setting is
+/// still reported and accepted on the wire; changing it on a turn does not
+/// rewrite the thread's existing instructions.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Personality {
     #[serde(rename = "none")]
@@ -7704,12 +7750,18 @@ pub enum ThreadItem {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         error: Option<McpToolCallError>,
         id: String,
+        /// Legacy compatibility field; prefer `mcp_app_ui.resource_uri` when
+        /// available.
         #[serde(
             rename = "mcpAppResourceUri",
             default,
             skip_serializing_if = "Option::is_none"
         )]
         mcp_app_resource_uri: Option<String>,
+        /// Presentation captured from the invoked descriptor; absent in
+        /// older history.
+        #[serde(rename = "mcpAppUi", default, skip_serializing_if = "Option::is_none")]
+        mcp_app_ui: Option<McpAppUi>,
         #[serde(rename = "pluginId", default, skip_serializing_if = "Option::is_none")]
         plugin_id: Option<String>,
         #[serde(
@@ -8170,6 +8222,14 @@ pub struct ThreadResumeResponse {
     pub approval_policy: AskForApproval,
     #[serde(rename = "approvalsReviewer", default)]
     pub approvals_reviewer: Value,
+    /// Effective collaboration mode. Absent when resuming from an older
+    /// server.
+    #[serde(
+        rename = "collaborationMode",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub collaboration_mode: Option<CollaborationMode>,
     #[serde()]
     pub cwd: AbsolutePathBuf,
     /// Saved list of disabled plugin IDs. Does not yet filter plugin
@@ -9372,7 +9432,8 @@ pub enum UserInput {
     Image {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         detail: Option<ImageDetail>,
-        url: String,
+        #[serde(flatten)]
+        image: UserInputImageReference,
     },
     #[serde(rename = "localImage")]
     LocalImage {
@@ -9394,6 +9455,23 @@ pub enum UserInput {
     Mention {
         name: String,
         path: String,
+    },
+}
+
+/// How a [`UserInput::Image`] names its image: an inline `url` (data URL or
+/// remote URL) or a previously uploaded `fileId`. Flattened into the variant;
+/// untagged, so exactly one of the two keys is on the wire. Mirrors the v2
+/// `ImageReference` upstream; the Responses-API twin used by tool outputs is
+/// [`ImageReference`].
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum UserInputImageReference {
+    Inline {
+        url: String,
+    },
+    File {
+        #[serde(rename = "fileId")]
+        file_id: String,
     },
 }
 
@@ -9520,6 +9598,19 @@ pub enum WindowsSandboxSetupMode {
     Elevated,
     #[serde(rename = "unelevated")]
     Unelevated,
+}
+
+/// A Windows sandbox implementation a managed policy may allow
+/// ([`ConfigRequirements::allowed_windows_sandbox_implementations`]). Grows
+/// `mxc` beyond the two [`WindowsSandboxSetupMode`] values.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum WindowsSandboxImplementation {
+    #[serde(rename = "elevated")]
+    Elevated,
+    #[serde(rename = "unelevated")]
+    Unelevated,
+    #[serde(rename = "mxc")]
+    Mxc,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

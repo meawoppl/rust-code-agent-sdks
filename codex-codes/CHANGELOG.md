@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.154.3] - 2026-09-16
+
+Models the `openai/codex@main` (`50d77959b`) app-server schema drift the
+nightly reported in #378. The 0.154.0 release emits none of the new fields
+yet; every addition is optional or defaulted, so existing payloads
+round-trip unchanged.
+
+### Added
+
+- `ImageReference` (`Inline { image_url }` | `File { file_id }`, untagged)
+  flattened into `FunctionCallOutputContentItem::InputImage`, and
+  `UserInputImageReference` (`Inline { url }` | `File { fileId }`) flattened
+  into `UserInput::Image`: an image may now name a previously uploaded file
+  instead of carrying a URL.
+- `ThreadItem::McpToolCall::mcp_app_ui` (`McpAppUi { resource_uri,
+  preferred_model_display_mode: McpAppDisplayMode }`) — presentation
+  captured from the invoked tool descriptor. `mcp_app_resource_uri` is
+  retained as the legacy compatibility field.
+- `ConfigRequirements.allowed_login_methods` (`Option<Vec<ForcedLoginMethod>>`)
+  — effective login methods after managed, forced-login, and workspace
+  restrictions; an empty list permits none.
+- `WindowsSandboxImplementation` (`elevated` | `unelevated` | `mxc`) and
+  `ThreadResumeResponse.collaboration_mode` (`Option<CollaborationMode>`).
+
+### Changed
+
+- **Breaking:** `FunctionCallOutputContentItem::InputImage` and
+  `UserInput::Image` replace their `image_url: String` / `url: String`
+  fields with the flattened `image` enum above. Construct with
+  `UserInput::Image { image: UserInputImageReference::Inline { url }, detail }`.
+  No in-workspace caller built either variant.
+- **Breaking:** `ConfigRequirements.allowed_windows_sandbox_implementations`
+  is now `Option<Vec<WindowsSandboxImplementation>>` (was
+  `Vec<WindowsSandboxSetupMode>`), matching the upstream rename.
+- `Personality` and `Model.supports_personality` are documented as
+  deprecated upstream: `friendly` and `pragmatic` no longer select a style
+  and `supportsPersonality` is always `false`. Wire shapes are unchanged.
+- Re-snapshot `tests/schemas/*.json` from `openai/codex@main`
+  (`50d77959b`). The snapshot also gains `WorkspaceRouting` and
+  `AccountRoutingOverride`, which back the `#[experimental]`
+  `GetAccountResponse.workspaceRouting` field that the published schema
+  strips; they are not modeled until the field is.
+
 ## [0.154.2] - 2026-09-12
 
 ### Added
