@@ -755,3 +755,222 @@ fn parse_error_from_invalid_envelope_keeps_raw_line_without_method() {
     // raw_json is populated because the line was valid JSON, just not a JsonRpcMessage.
     assert_eq!(pe.raw_json.as_ref().unwrap()["completely"], "unexpected");
 }
+
+/// `UserInput::Image` flattens an untagged image reference: an inline `url`
+/// or an uploaded `fileId`, never both (openai/codex@main 50d77959b).
+#[test]
+fn user_input_image_round_trips_url_and_file_id() {
+    use codex_codes::protocol::{ImageDetail, UserInput, UserInputImageReference};
+
+    let inline = UserInput::Image {
+        detail: Some(ImageDetail::High),
+        image: UserInputImageReference::Inline {
+            url: "data:image/png;base64,AAAA".into(),
+        },
+    };
+    let wire = serde_json::to_value(&inline).unwrap();
+    assert_eq!(
+        wire,
+        serde_json::json!({"type": "image", "detail": "high", "url": "data:image/png;base64,AAAA"})
+    );
+    assert_eq!(serde_json::from_value::<UserInput>(wire).unwrap(), inline);
+
+    let uploaded: UserInput =
+        serde_json::from_value(serde_json::json!({"type": "image", "fileId": "file_123"})).unwrap();
+    assert_eq!(
+        uploaded,
+        UserInput::Image {
+            detail: None,
+            image: UserInputImageReference::File {
+                file_id: "file_123".into()
+            },
+        }
+    );
+    let wire = serde_json::to_value(&uploaded).unwrap();
+    assert_eq!(wire["fileId"], "file_123");
+    assert!(wire.get("url").is_none());
+    assert!(wire.get("detail").is_none());
+}
+
+/// `FunctionCallOutputContentItem::InputImage` keeps its snake_case
+/// Responses-API keys and accepts either `image_url` or `file_id`.
+#[test]
+fn function_call_output_input_image_round_trips_image_url_and_file_id() {
+    use codex_codes::protocol::{FunctionCallOutputContentItem, ImageReference};
+
+    let inline: FunctionCallOutputContentItem = serde_json::from_value(serde_json::json!({
+        "type": "input_image",
+        "image_url": "https://example.test/a.png",
+        "detail": "low"
+    }))
+    .unwrap();
+    let FunctionCallOutputContentItem::InputImage { image, detail } = &inline else {
+        panic!("expected InputImage");
+    };
+    assert_eq!(
+        *image,
+        ImageReference::Inline {
+            image_url: "https://example.test/a.png".into()
+        }
+    );
+    assert!(detail.is_some());
+    let wire = serde_json::to_value(&inline).unwrap();
+    assert_eq!(wire["image_url"], "https://example.test/a.png");
+    assert!(wire.get("file_id").is_none());
+
+    let uploaded: FunctionCallOutputContentItem =
+        serde_json::from_value(serde_json::json!({"type": "input_image", "file_id": "file_9"}))
+            .unwrap();
+    assert_eq!(
+        uploaded,
+        FunctionCallOutputContentItem::InputImage {
+            detail: None,
+            image: ImageReference::File {
+                file_id: "file_9".into()
+            },
+        }
+    );
+}
+
+/// An `mcpToolCall` item carries the new `mcpAppUi` block beside the legacy
+/// `mcpAppResourceUri`, and older history without it still parses.
+#[test]
+fn mcp_tool_call_item_carries_mcp_app_ui() {
+    use codex_codes::protocol::{McpAppDisplayMode, McpAppUi, ThreadItem as ProtocolThreadItem};
+
+    let item: ProtocolThreadItem = serde_json::from_value(serde_json::json!({
+        "type": "mcpToolCall",
+        "id": "item_1",
+        "server": "widgets",
+        "tool": "lookup",
+        "arguments": {"q": "x"},
+        "status": "completed",
+        "mcpAppResourceUri": "ui://widget/lookup.html",
+        "mcpAppUi": {
+            "resourceUri": "ui://widget/lookup.html",
+            "preferredModelDisplayMode": "fullscreen"
+        }
+    }))
+    .unwrap();
+    let ProtocolThreadItem::McpToolCall {
+        mcp_app_ui,
+        mcp_app_resource_uri,
+        ..
+    } = &item
+    else {
+        panic!("expected McpToolCall");
+    };
+    assert_eq!(
+        *mcp_app_ui,
+        Some(McpAppUi {
+            resource_uri: "ui://widget/lookup.html".into(),
+            preferred_model_display_mode: McpAppDisplayMode::Fullscreen,
+        })
+    );
+    assert_eq!(
+        mcp_app_resource_uri.as_deref(),
+        Some("ui://widget/lookup.html")
+    );
+    let wire = serde_json::to_value(&item).unwrap();
+    assert_eq!(wire["mcpAppUi"]["preferredModelDisplayMode"], "fullscreen");
+
+    let legacy: ProtocolThreadItem = serde_json::from_value(serde_json::json!({
+        "type": "mcpToolCall",
+        "id": "item_1",
+        "server": "widgets",
+        "tool": "lookup",
+        "arguments": {},
+        "status": "inProgress"
+    }))
+    .unwrap();
+    let ProtocolThreadItem::McpToolCall { mcp_app_ui, .. } = &legacy else {
+        panic!("expected McpToolCall");
+    };
+    assert!(mcp_app_ui.is_none());
+    assert!(serde_json::to_value(&legacy)
+        .unwrap()
+        .get("mcpAppUi")
+        .is_none());
+}
+
+/// `ConfigRequirements` reads the new `allowedLoginMethods` list and the
+/// widened `allowedWindowsSandboxImplementations` (now including `mxc`).
+#[test]
+fn config_requirements_reads_login_methods_and_sandbox_implementations() {
+    use codex_codes::protocol::{
+        ConfigRequirements, ForcedLoginMethod, WindowsSandboxImplementation,
+    };
+
+    let reqs: ConfigRequirements = serde_json::from_value(serde_json::json!({
+        "allowedLoginMethods": ["chatgpt"],
+        "allowedWindowsSandboxImplementations": ["elevated", "mxc"]
+    }))
+    .unwrap();
+    assert_eq!(
+        reqs.allowed_login_methods,
+        Some(vec![ForcedLoginMethod::Chatgpt])
+    );
+    assert_eq!(
+        reqs.allowed_windows_sandbox_implementations,
+        Some(vec![
+            WindowsSandboxImplementation::Elevated,
+            WindowsSandboxImplementation::Mxc
+        ])
+    );
+
+    let none: ConfigRequirements = serde_json::from_value(serde_json::json!({
+        "allowedLoginMethods": []
+    }))
+    .unwrap();
+    assert_eq!(none.allowed_login_methods, Some(vec![]));
+    let wire = serde_json::to_value(ConfigRequirements::default()).unwrap();
+    assert!(wire.get("allowedLoginMethods").is_none());
+}
+
+/// `thread/resume` reports the effective `collaborationMode` when the server
+/// is new enough, and older servers that omit it still parse.
+#[test]
+fn thread_resume_response_reads_collaboration_mode() {
+    use codex_codes::protocol::ThreadResumeResponse;
+
+    let base = serde_json::json!({
+        "thread": {
+            "id": "thr_1",
+            "preview": "",
+            "modelProvider": "openai",
+            "createdAt": 0,
+            "updatedAt": 0,
+            "path": "/tmp/thr_1.jsonl",
+            "cwd": "/tmp",
+            "cliVersion": "0.154.0",
+            "source": "cli",
+            "agentNickname": null,
+            "agentRole": null,
+            "gitInfo": null,
+            "name": null,
+            "turns": []
+        },
+        "model": "gpt-5",
+        "modelProvider": "openai",
+        "cwd": "/tmp",
+        "approvalPolicy": "never",
+        "approvalsReviewer": "user",
+        "sandbox": {"type": "readOnly"},
+        "serviceTier": null,
+        "reasoningEffort": null
+    });
+
+    let mut with_mode = base.clone();
+    with_mode["collaborationMode"] = serde_json::json!({
+        "mode": "default",
+        "settings": {"model": "gpt-5", "reasoning_effort": null, "developer_instructions": null}
+    });
+    let resumed: ThreadResumeResponse = serde_json::from_value(with_mode).unwrap();
+    let mode = resumed.collaboration_mode.expect("collaborationMode");
+    assert_eq!(serde_json::to_value(&mode.mode).unwrap(), "default");
+
+    let older: ThreadResumeResponse = serde_json::from_value(base).unwrap();
+    assert!(older.collaboration_mode.is_none());
+    let wire = serde_json::to_value(&older).unwrap();
+    assert!(wire.get("collaborationMode").is_none());
+}
