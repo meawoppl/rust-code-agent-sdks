@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.154.4] - 2026-09-17
+
+Snapshot-only release for the `openai/codex@main` (`b0659c538`) app-server
+schema drift the nightly check reports. The 0.154.0 release schema has
+neither addition, and no crate type changes.
+
+### Changed
+
+- Re-snapshot `tests/schemas/*.json` from `openai/codex@main`. The snapshot
+  gains `ToolExposureSurface` (`code_mode` | `deferred` | `direct`, the
+  model-facing surfaces a tool can be exposed on) and
+  `AppConfig.omit_tools_from` (`Option<Vec<ToolExposureSurface>>`, extra
+  surfaces omitted for a connector's tools). `AppConfig` is the app-server's
+  internal connector config block and is not modeled here, so neither is the
+  new field. `schema_coverage` stays at 193/193 against the new snapshot.
+
 ## [0.154.3] - 2026-09-16
 
 Models the `openai/codex@main` (`50d77959b`) app-server schema drift the
