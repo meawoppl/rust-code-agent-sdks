@@ -3485,8 +3485,34 @@ pub struct AssistantMessage {
     pub is_api_error_message: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_error_status: Option<u16>,
+    /// Typed kind of the API error when `is_api_error_message` is true. An
+    /// open set the CLI grows release to release: 2.1.274 extends the
+    /// original `max_output_tokens` / `dlp_request_denied` /
+    /// `claude_code_version_too_old` with `effort_requires_thinking`,
+    /// `advisor_incompatible`, `tool_history_mismatch`,
+    /// `autocompact_thrashing`, `pdf_too_large`, `pdf_password_protected`,
+    /// `no_response`, `tls_untrusted_ca`, `gateway_content_type`,
+    /// `provider_credentials`, `gateway_signin_required`,
+    /// `gateway_session_expired`, `api_key_auth_disabled`,
+    /// `org_disabled_credential`, `invalid_credential_header`,
+    /// `model_requires_usage_credits`, `long_context_credits_required`,
+    /// `consent_unanswered`, `no_allowed_fallback`,
+    /// `model_substitution_disabled` and `field_not_granted`. Kinds with
+    /// parameters carry them in [`Self::api_error_params`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_error: Option<String>,
+    /// The server's `error.details.error_code` for this API error, copied
+    /// through when it is an identifier (`^[a-z][a-z0-9_]{0,63}$`) and
+    /// dropped otherwise. Carries server gate codes this CLI build has no
+    /// `api_error` value for, so a host can key on a new gate without a
+    /// Claude Code release. Absent when the response carried no code and
+    /// from CLIs before 2.1.274.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_error_code: Option<String>,
+    /// Parameters of [`Self::api_error`], present only for the kinds that
+    /// have any (CLI 2.1.274+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_error_params: Option<ApiErrorParams>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error_details: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -3501,6 +3527,157 @@ pub struct AssistantMessage {
     pub attribution_mcp_server: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attribution_mcp_tool: Option<String>,
+}
+
+/// Parameters of an assistant frame's `api_error`, carried as
+/// [`AssistantMessage::api_error_params`] only for the error kinds that have
+/// any (CLI 2.1.274+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct ApiErrorParams {
+    /// The effort level the API refused (`effort_requires_thinking`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effort: Option<String>,
+    /// The API provider whose credentials failed (`provider_credentials`,
+    /// `gateway_session_expired`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<ApiErrorProvider>,
+    /// How to repair the failed credentials (`provider_credentials`,
+    /// `gateway_session_expired`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remedy: Option<ApiErrorRemedy>,
+}
+
+/// The API provider whose credentials failed ([`ApiErrorParams::provider`]).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ApiErrorProvider {
+    Bedrock,
+    AnthropicAws,
+    Mantle,
+    AnthropicGoogleCloud,
+    Vertex,
+    Foundry,
+    Gateway,
+    /// A provider not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl ApiErrorProvider {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Bedrock => "bedrock",
+            Self::AnthropicAws => "anthropicAws",
+            Self::Mantle => "mantle",
+            Self::AnthropicGoogleCloud => "anthropicGoogleCloud",
+            Self::Vertex => "vertex",
+            Self::Foundry => "foundry",
+            Self::Gateway => "gateway",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for ApiErrorProvider {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for ApiErrorProvider {
+    fn from(s: &str) -> Self {
+        match s {
+            "bedrock" => Self::Bedrock,
+            "anthropicAws" => Self::AnthropicAws,
+            "mantle" => Self::Mantle,
+            "anthropicGoogleCloud" => Self::AnthropicGoogleCloud,
+            "vertex" => Self::Vertex,
+            "foundry" => Self::Foundry,
+            "gateway" => Self::Gateway,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for ApiErrorProvider {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ApiErrorProvider {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// How to repair failed provider credentials ([`ApiErrorParams::remedy`]).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ApiErrorRemedy {
+    /// A configured refresh command (`awsAuthRefresh` / `gcpAuthRefresh`)
+    /// refreshes the credentials.
+    RefreshCommand,
+    /// Refresh the provider's credentials by hand; no command is configured.
+    RefreshCredentials,
+    /// Refresh the Google application default credentials or the
+    /// `GOOGLE_APPLICATION_CREDENTIALS` key file.
+    Adc,
+    /// Replace the gateway token supplied through `ANTHROPIC_AUTH_TOKEN` or
+    /// `ANTHROPIC_CUSTOM_HEADERS`.
+    GatewayToken,
+    /// The host application owns these credentials.
+    HostManaged,
+    /// The credentials work but the model is not enabled for this account
+    /// and region (Amazon Bedrock).
+    ModelAccess,
+    /// A remedy not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl ApiErrorRemedy {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::RefreshCommand => "refresh_command",
+            Self::RefreshCredentials => "refresh_credentials",
+            Self::Adc => "adc",
+            Self::GatewayToken => "gateway_token",
+            Self::HostManaged => "host_managed",
+            Self::ModelAccess => "model_access",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for ApiErrorRemedy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for ApiErrorRemedy {
+    fn from(s: &str) -> Self {
+        match s {
+            "refresh_command" => Self::RefreshCommand,
+            "refresh_credentials" => Self::RefreshCredentials,
+            "adc" => Self::Adc,
+            "gateway_token" => Self::GatewayToken,
+            "host_managed" => Self::HostManaged,
+            "model_access" => Self::ModelAccess,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for ApiErrorRemedy {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ApiErrorRemedy {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// Nested message content for assistant messages

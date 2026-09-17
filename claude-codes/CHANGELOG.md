@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.274] - 2026-09-17
+
+Re-baseline against Claude CLI **2.1.274**. Models the 2.1.273 → 2.1.274
+stream-json drift, all additive (no removals or required/optional flips).
+The model catalog and CLI argument surface are byte-identical to 2.1.273.
+
+### Added
+
+- `AssistantMessage::api_error_code` — the server's `error.details.error_code`
+  for a synthetic API-error message, copied through when it is an identifier
+  (`^[a-z][a-z0-9_]{0,63}$`). Carries server gate codes the CLI build has no
+  `api_error` value for, so a host can key on a new gate without a Claude
+  Code release.
+- `AssistantMessage::api_error_params` (`ApiErrorParams { effort, provider,
+  remedy }`) — parameters of `api_error`, present only for the kinds that
+  have any: the refused effort level (`effort_requires_thinking`), the
+  provider whose credentials failed, and how to repair them
+  (`provider_credentials`, `gateway_session_expired`). Open-set enums
+  `ApiErrorProvider` (`bedrock`, `anthropicAws`, `mantle`,
+  `anthropicGoogleCloud`, `vertex`, `foundry`, `gateway`) and
+  `ApiErrorRemedy` (`refresh_command`, `refresh_credentials`, `adc`,
+  `gateway_token`, `host_managed`, `model_access`).
+- `ResultMessage::api_error_code` — the `api_error_code` of the API error
+  that ended the turn, on a `success` result with `is_error: true`.
+- `ResultMessage::startup_failure_reason` (`StartupFailureReason`, open-set
+  over the 16 known causes such as `cwd_unavailable`, `cli_version_too_old`,
+  `worktree_resume_refused`, `bypass_root`) — set on the zeroed
+  `error_during_execution` result a stream-json run writes before exiting on
+  a known startup failure; `errors` carries the same text as stderr. Paths
+  that used to end with stderr alone write that result only when the host
+  sets `CLAUDE_CODE_STARTUP_FAILURE_RESULTS`.
+
+### Changed
+
+- `AssistantMessage::api_error` is documented as the open set it always was;
+  2.1.274 grows it from 3 to 24 kinds (`effort_requires_thinking`,
+  `provider_credentials`, `gateway_session_expired`,
+  `model_requires_usage_credits`, `field_not_granted`, ...). No type change.
+- `system/init` `mcp_servers` entries gained an optional `source`; the crate
+  carries them as untyped `Value`s, so nothing changes.
+- Re-snapshot `tests/schemas/claude_stream_json_snapshot.txt`.
+
 ## [2.1.273] - 2026-09-16
 
 Re-baseline against Claude CLI **2.1.273**. Models the 2.1.270 → 2.1.273
