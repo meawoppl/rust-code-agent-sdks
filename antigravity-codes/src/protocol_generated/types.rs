@@ -243,6 +243,62 @@ impl<'de> Deserialize<'de> for AudioContentMimeType {
     }
 }
 
+/// `antigravity.localharness.BudgetConfig.BudgetScope`
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub enum BudgetConfigBudgetScope {
+    #[default]
+    Unspecified,
+    Lifetime,
+    ForwardLooking,
+    /// A value this crate does not know about yet.
+    ///
+    /// The harness is versioned independently of this crate, so an
+    /// unrecognised enum value is treated as forward compatibility rather
+    /// than as a decode error.
+    Unknown(String),
+}
+
+impl BudgetConfigBudgetScope {
+    /// The protobuf-JSON spelling of this value.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Unspecified => "BUDGET_SCOPE_UNSPECIFIED",
+            Self::Lifetime => "BUDGET_SCOPE_LIFETIME",
+            Self::ForwardLooking => "BUDGET_SCOPE_FORWARD_LOOKING",
+            Self::Unknown(s) => s,
+        }
+    }
+}
+
+impl std::fmt::Display for BudgetConfigBudgetScope {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Serialize for BudgetConfigBudgetScope {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for BudgetConfigBudgetScope {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(match crate::wire::EnumRepr::deserialize(d)? {
+            crate::wire::EnumRepr::Name(n) if n == "BUDGET_SCOPE_UNSPECIFIED" => Self::Unspecified,
+            crate::wire::EnumRepr::Name(n) if n == "BUDGET_SCOPE_LIFETIME" => Self::Lifetime,
+            crate::wire::EnumRepr::Name(n) if n == "BUDGET_SCOPE_FORWARD_LOOKING" => {
+                Self::ForwardLooking
+            }
+            crate::wire::EnumRepr::Number(0) => Self::Unspecified,
+            crate::wire::EnumRepr::Number(1) => Self::Lifetime,
+            crate::wire::EnumRepr::Number(2) => Self::ForwardLooking,
+            crate::wire::EnumRepr::Name(n) => Self::Unknown(n),
+            crate::wire::EnumRepr::Number(n) => Self::Unknown(n.to_string()),
+        })
+    }
+}
+
 /// `genai.CodeExecutionCallContent.CodeExecutionCallArguments.Language`
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum CodeExecutionCallContentCodeExecutionCallArgumentsLanguage {
@@ -2228,6 +2284,8 @@ pub struct BudgetConfig {
         with = "crate::wire::opt_int"
     )]
     pub max_total_tokens: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope: Option<BudgetConfigBudgetScope>,
 }
 
 /// `antigravity.localharness.CallHookRequest`
@@ -2469,6 +2527,30 @@ pub struct CodeExecutionResultContent {
     pub result: Option<String>,
     #[serde(alias = "is_error", default, skip_serializing_if = "Option::is_none")]
     pub is_error: Option<bool>,
+}
+
+/// `antigravity.localharness.CompactionConfig`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompactionConfig {
+    #[serde(
+        alias = "token_threshold",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub token_threshold: Option<u32>,
+    #[serde(
+        alias = "checkpoint_interval_tokens",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub checkpoint_interval_tokens: Option<u32>,
+    #[serde(
+        alias = "max_context_tokens",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub max_context_tokens: Option<u32>,
 }
 
 /// `genai.Content`
@@ -3210,6 +3292,12 @@ pub struct HarnessConfig {
         skip_serializing_if = "Option::is_none"
     )]
     pub budget_config: Option<BudgetConfig>,
+    #[serde(
+        alias = "compaction_config",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub compaction_config: Option<CompactionConfig>,
 }
 
 /// `antigravity.localharness.HarnessSideTools`
@@ -3364,6 +3452,12 @@ pub struct InitializeConversationResponse {
         skip_serializing_if = "Vec::is_empty"
     )]
     pub trajectory_usage: Vec<TrajectoryUsageEntry>,
+    #[serde(
+        alias = "sandbox_status",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub sandbox_status: Option<SandboxStatus>,
 }
 
 /// `antigravity.localharness.InputConfig`
@@ -3393,6 +3487,12 @@ pub struct InputConfig {
     pub client_info: Option<ClientInfo>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub env: HashMap<String, String>,
+    #[serde(
+        alias = "use_interactions_api",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub use_interactions_api: Option<bool>,
 }
 
 /// `antigravity.localharness.InputEvent`
@@ -4251,6 +4351,12 @@ pub struct PreToolResult {
         skip_serializing_if = "Option::is_none"
     )]
     pub modified_arguments_json: Option<String>,
+    #[serde(
+        alias = "modified_args",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub modified_args: Option<Struct>,
 }
 
 /// `antigravity.localharness.PreTurnArgs`
@@ -4335,6 +4441,20 @@ pub struct RunCommandToolConfig {
         skip_serializing_if = "Option::is_none"
     )]
     pub enable_sandbox: Option<bool>,
+}
+
+/// `antigravity.localharness.SandboxStatus`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SandboxStatus {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub available: Option<bool>,
+    #[serde(
+        alias = "unavailable_reason",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub unavailable_reason: Option<String>,
 }
 
 /// `antigravity.localharness.ScheduleToolConfig`
@@ -4846,6 +4966,12 @@ pub struct ToolCall {
     pub arguments_json: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub arguments: Option<Struct>,
+    #[serde(
+        alias = "trajectory_id",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub trajectory_id: Option<String>,
 }
 
 /// `genai.ToolCallContent`

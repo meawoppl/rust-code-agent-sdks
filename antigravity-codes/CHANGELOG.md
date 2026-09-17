@@ -5,6 +5,27 @@ All notable changes to `antigravity-codes` are documented here.
 The version tracks the `google-antigravity` release whose harness the crate was
 generated from and tested against.
 
+## [0.1.17] - 2026-09-17
+
+Re-baseline against `google-antigravity` 0.1.17: types regenerated from the
+0.1.17 wheel's descriptors (170 messages, 29 enums — up from 168/28). Regen
+against the committed 0.1.16 descriptors was verified as a byte-identical
+no-op first, so nothing hand-maintained was clobbered. All additions are
+optional fields or new messages; existing payloads round-trip unchanged.
+
+### Added
+
+- `CompactionConfig { token_threshold, checkpoint_interval_tokens,
+  max_context_tokens }` on `HarnessConfig.compaction_config`.
+- `SandboxStatus { available, unavailable_reason }` on
+  `InitializeConversationResponse.sandbox_status`.
+- `BudgetConfig.scope` with `BudgetConfigBudgetScope::{Unspecified,
+  Lifetime, ForwardLooking}` (`BUDGET_SCOPE_*`, open-set via `Unknown`).
+- `InputConfig.use_interactions_api`.
+- `PreToolResult.modified_args` (`Struct`), a typed sibling of the existing
+  `modified_arguments_json`.
+- `ToolCall.trajectory_id`.
+
 ## [0.1.16] - 2026-09-06
 
 Re-baseline against `google-antigravity` 0.1.16: types regenerated from the
