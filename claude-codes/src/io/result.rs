@@ -126,6 +126,14 @@ pub struct ResultMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_error_status: Option<u16>,
 
+    /// The `api_error_code` of the API error that ended the turn (see
+    /// `AssistantMessage::api_error_code`): the server's
+    /// `error.details.error_code` when it is an identifier. Absent when the
+    /// turn did not end on an API error, when the response carried no code,
+    /// and from CLIs before 2.1.274.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_error_code: Option<String>,
+
     /// Why generation stopped (e.g., end_turn, max_tokens)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_reason: Option<String>,
@@ -181,6 +189,132 @@ pub struct ResultMessage {
     /// results and on CLIs before 2.1.266.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub runner_exit: Option<RunnerExit>,
+
+    /// Why Claude Code refused to start. Set on the zeroed
+    /// `error_during_execution` result a stream-json run writes before
+    /// exiting on a known startup failure; `errors` carries the same text as
+    /// stderr. Failures that used to end with stderr alone write that result
+    /// only when the host sets `CLAUDE_CODE_STARTUP_FAILURE_RESULTS`. Absent
+    /// on every other result, on startup failures without a known cause, and
+    /// from CLIs before 2.1.274.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub startup_failure_reason: Option<StartupFailureReason>,
+}
+
+/// Why Claude Code refused to start, carried as
+/// [`ResultMessage::startup_failure_reason`] so a host can offer the fix
+/// instead of a retry (CLI 2.1.274+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum StartupFailureReason {
+    /// Managed settings pin a first-party or Cloud gateway sign-in, and an
+    /// Anthropic API key or auth token is configured instead.
+    OrgPinApiKeyConflict,
+    /// The sign-in's organization could not be verified against the pin
+    /// (network, or a revoked token).
+    OrgVerifyFailed,
+    /// The sign-in belongs to an organization the pin does not allow.
+    OrgPinMismatch,
+    /// Managed policy settings could not be read, or the pin names no
+    /// organization.
+    ManagedSettingsInvalid,
+    /// Managed settings the organization requires could not be loaded.
+    RemoteSettingsRequiredUnavailable,
+    /// The Cloud gateway ended this sign-in.
+    GatewaySigninRequired,
+    /// The Cloud gateway refused managed settings for this account.
+    GatewayAccessDenied,
+    /// A proxy setting is not a complete URL.
+    ProxyInvalid,
+    /// The per-user temp directory is unsafe or could not be created.
+    TempDirUnusable,
+    /// The working directory was deleted, moved or cannot be read.
+    CwdUnavailable,
+    /// Windows has no shell tool: Git Bash is missing, and PowerShell is
+    /// missing or turned off by `CLAUDE_CODE_USE_POWERSHELL_TOOL`.
+    ShellToolMissing,
+    /// The conversation to resume or continue is running as a background
+    /// session.
+    SessionHeldByBackground,
+    /// The resume was refused because the session's worktree failed its
+    /// safety checks or the resume was launched from inside it; `errors`
+    /// says whether a re-run continues without the worktree.
+    WorktreeResumeRefused,
+    /// The session's worktree could not be verified right now; retrying may
+    /// succeed.
+    WorktreeUnverified,
+    /// This Claude Code version is below the minimum Anthropic requires.
+    CliVersionTooOld,
+    /// Bypass permissions mode was requested while running as root.
+    BypassRoot,
+    /// A cause not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl StartupFailureReason {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::OrgPinApiKeyConflict => "org_pin_api_key_conflict",
+            Self::OrgVerifyFailed => "org_verify_failed",
+            Self::OrgPinMismatch => "org_pin_mismatch",
+            Self::ManagedSettingsInvalid => "managed_settings_invalid",
+            Self::RemoteSettingsRequiredUnavailable => "remote_settings_required_unavailable",
+            Self::GatewaySigninRequired => "gateway_signin_required",
+            Self::GatewayAccessDenied => "gateway_access_denied",
+            Self::ProxyInvalid => "proxy_invalid",
+            Self::TempDirUnusable => "temp_dir_unusable",
+            Self::CwdUnavailable => "cwd_unavailable",
+            Self::ShellToolMissing => "shell_tool_missing",
+            Self::SessionHeldByBackground => "session_held_by_background",
+            Self::WorktreeResumeRefused => "worktree_resume_refused",
+            Self::WorktreeUnverified => "worktree_unverified",
+            Self::CliVersionTooOld => "cli_version_too_old",
+            Self::BypassRoot => "bypass_root",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for StartupFailureReason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for StartupFailureReason {
+    fn from(s: &str) -> Self {
+        match s {
+            "org_pin_api_key_conflict" => Self::OrgPinApiKeyConflict,
+            "org_verify_failed" => Self::OrgVerifyFailed,
+            "org_pin_mismatch" => Self::OrgPinMismatch,
+            "managed_settings_invalid" => Self::ManagedSettingsInvalid,
+            "remote_settings_required_unavailable" => Self::RemoteSettingsRequiredUnavailable,
+            "gateway_signin_required" => Self::GatewaySigninRequired,
+            "gateway_access_denied" => Self::GatewayAccessDenied,
+            "proxy_invalid" => Self::ProxyInvalid,
+            "temp_dir_unusable" => Self::TempDirUnusable,
+            "cwd_unavailable" => Self::CwdUnavailable,
+            "shell_tool_missing" => Self::ShellToolMissing,
+            "session_held_by_background" => Self::SessionHeldByBackground,
+            "worktree_resume_refused" => Self::WorktreeResumeRefused,
+            "worktree_unverified" => Self::WorktreeUnverified,
+            "cli_version_too_old" => Self::CliVersionTooOld,
+            "bypass_root" => Self::BypassRoot,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for StartupFailureReason {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for StartupFailureReason {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// How the self-hosted runner's session process terminated, carried on a

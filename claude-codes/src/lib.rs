@@ -78,7 +78,7 @@
 //! ⚠️ **Important**: The Claude CLI protocol is unstable and evolving. This crate
 //! automatically checks your Claude CLI version and warns if it's newer than tested.
 //!
-//! Current tested version: **2.1.273**
+//! Current tested version: **2.1.274**
 //!
 //! Report compatibility issues at: <https://github.com/meawoppl/rust-claude-codes/pulls>
 //!
@@ -163,16 +163,17 @@ pub use io::{
 
 // System message and assistant message types
 pub use io::{
-    ApiKeySource, ApiRetryMessage, ApiRetryNoResponse, AssistantErrorKind, BackgroundTaskInfo,
-    BackgroundTasksChangedMessage, BatchToolUse, CloudSessionDeltaMessage,
-    CodeChangePublishedMessage, CommandInfo, CommandsChangedMessage, CompactBoundaryMessage,
-    CompactMetadata, CompactionTrigger, ContextAgent, ContextCategory, ContextMcpTool,
-    ContextMemoryFile, ContextOverLimit, ContextSkill, ContextUsage, ControlRequestProgressMessage,
-    DevIntentKind, DevIntentMessage, DevIntentTrigger, ElicitationCompleteMessage,
-    FailedPersistedFile, FeedbackDraftQueuedMessage, FilesPersistedMessage, HookProgressMessage,
-    HookResponseMessage, HookStartedMessage, InformationalMessage, InitMessage, InitPermissionMode,
-    KnownSystemEvent, LocalCommandOutputMessage, LocalCommandRun, McpMeta, McpServerError,
-    MemoryPaths, MemoryRecallItem, MemoryRecallMessage, MessageOrigin, MessageRole, MirrorErrorKey,
+    ApiErrorParams, ApiErrorProvider, ApiErrorRemedy, ApiKeySource, ApiRetryMessage,
+    ApiRetryNoResponse, AssistantErrorKind, BackgroundTaskInfo, BackgroundTasksChangedMessage,
+    BatchToolUse, CloudSessionDeltaMessage, CodeChangePublishedMessage, CommandInfo,
+    CommandsChangedMessage, CompactBoundaryMessage, CompactMetadata, CompactionTrigger,
+    ContextAgent, ContextCategory, ContextMcpTool, ContextMemoryFile, ContextOverLimit,
+    ContextSkill, ContextUsage, ControlRequestProgressMessage, DevIntentKind, DevIntentMessage,
+    DevIntentTrigger, ElicitationCompleteMessage, FailedPersistedFile, FeedbackDraftQueuedMessage,
+    FilesPersistedMessage, HookProgressMessage, HookResponseMessage, HookStartedMessage,
+    InformationalMessage, InitMessage, InitPermissionMode, KnownSystemEvent,
+    LocalCommandOutputMessage, LocalCommandRun, McpMeta, McpServerError, MemoryPaths,
+    MemoryRecallItem, MemoryRecallMessage, MessageOrigin, MessageRole, MirrorErrorKey,
     MirrorErrorMessage, ModelRefusalFallbackMessage, ModelRefusalNoFallbackMessage,
     NotificationMessage, OutputStyle, PeerMessageHoldCause, PeerMessageHoldMessage,
     PeerMessageHoldOutcome, PeerMessageHoldState, PeerMessageLane, PermissionDeniedMessage,
@@ -205,8 +206,9 @@ pub use io::{
 // Usage types
 pub use io::{
     AssistantUsage, CacheCreationDetails, DeferredToolUse, FastModeDisabledReason, RunnerExit,
-    RunnerExitPhase, ServerToolUse, SubagentKillCounts, SubagentRefusalCounts, SubagentResult,
-    SubagentSpawnRequests, SubagentStats, SubagentToolStats, SubagentUsageRollup, UsageInfo,
+    RunnerExitPhase, ServerToolUse, StartupFailureReason, SubagentKillCounts,
+    SubagentRefusalCounts, SubagentResult, SubagentSpawnRequests, SubagentStats, SubagentToolStats,
+    SubagentUsageRollup, UsageInfo,
 };
 
 // Typed tool input types
