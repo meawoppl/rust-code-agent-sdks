@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.276] - 2026-09-18
+
+Re-baseline against Claude CLI **2.1.276**. Models the 2.1.274 → 2.1.276
+stream-json drift: two additive fields and one required→optional flip. The
+model catalog, alias table, and CLI argument surface are byte-identical to
+2.1.274 apart from minified renames.
+
+### Added
+
+- `PermissionDeniedMessage::decision_reason_code`
+  (`PermissionDeniedReasonCode`, open-set over
+  `classifier_transcript_too_long`, `outside_reads_blocked`,
+  `memory_paused`) — a code a host can act on beside the unchanged
+  `decision_reason_type`; absent for every other reason.
+- `ToolResultMeta::remedy` (`ToolResultRemedy`) — the fix a host can offer
+  for what a `tool_result` reports, stamped from structured producer state:
+  `kind` (`ToolResultRemedyKind`, 14 known kinds from `mcp_needs_auth` to
+  `staged_for_review`) plus the parameters that kind needs — `servers`,
+  `provider` (`RemedyLoginProvider`: `claude_ai`, `claude_design`), `path`,
+  `managed`, `feature` (`RemedyFeature`: `workflows`, `artifacts`), `cause`
+  (`RemedyFeatureCause`), and `policy_kind` (`RemedyPolicyKind`). Every enum
+  is open-set with an `Unknown(String)` arm.
+
+### Changed
+
+- **Breaking:** `ToolResultMeta::non_execution_kind` is now
+  `Option<String>`. The CLI made it optional because an entry may carry a
+  `remedy` alone, on a result that did run (a staged settings write, a
+  sandbox violation on exit 0).
+- Re-snapshot `tests/schemas/claude_stream_json_snapshot.txt`.
+
+Not modeled: the bundle's new MCP-server error-code list
+(`CLAUDEAI_BEARER_REJECTED`, `FIRST_PARTY_AUTH_REJECTED`,
+`APPROVAL_REQUIRED`) is host-side telemetry routing and appears in no
+stream-json schema.
+
 ## [2.1.274] - 2026-09-17
 
 Re-baseline against Claude CLI **2.1.274**. Models the 2.1.273 → 2.1.274

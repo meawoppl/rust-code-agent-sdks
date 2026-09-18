@@ -78,7 +78,7 @@
 //! ⚠️ **Important**: The Claude CLI protocol is unstable and evolving. This crate
 //! automatically checks your Claude CLI version and warns if it's newer than tested.
 //!
-//! Current tested version: **2.1.274**
+//! Current tested version: **2.1.276**
 //!
 //! Report compatibility issues at: <https://github.com/meawoppl/rust-claude-codes/pulls>
 //!
@@ -177,14 +177,15 @@ pub use io::{
     MirrorErrorMessage, ModelRefusalFallbackMessage, ModelRefusalNoFallbackMessage,
     NotificationMessage, OutputStyle, PeerMessageHoldCause, PeerMessageHoldMessage,
     PeerMessageHoldOutcome, PeerMessageHoldState, PeerMessageLane, PermissionDeniedMessage,
-    PersistedFile, PluginDiagnostic, PluginInfo, PluginInstallMessage, PreservedMessages,
-    PreservedSegment, RefusalFallbackScope, StatusMessage, StatusMessageStatus, StopReason,
+    PermissionDeniedReasonCode, PersistedFile, PluginDiagnostic, PluginInfo, PluginInstallMessage,
+    PreservedMessages, PreservedSegment, RefusalFallbackScope, RemedyFeature, RemedyFeatureCause,
+    RemedyLoginProvider, RemedyPolicyKind, StatusMessage, StatusMessageStatus, StopReason,
     SummarizeMetadata, SystemMessage, SystemSubtype, TaskEndReason, TaskNotificationMessage,
     TaskPatch, TaskProgressMessage, TaskStartedMessage, TaskStatus, TaskType, TaskUpdatedMessage,
-    TaskUsage, ThinkingTokensMessage, ToolResultMeta, ToolUseMeta, TurnHandoffAvailableMessage,
-    TurnPreemptedMessage, UsageReport, UsageReportExtraUsage, UsageReportLimit,
-    UsageReportRateLimits, UsageReportScope, UsageReportScopeLabel, VcsMutationKind,
-    VcsStateChangedMessage, WorkerShuttingDownMessage,
+    TaskUsage, ThinkingTokensMessage, ToolResultMeta, ToolResultRemedy, ToolResultRemedyKind,
+    ToolUseMeta, TurnHandoffAvailableMessage, TurnPreemptedMessage, UsageReport,
+    UsageReportExtraUsage, UsageReportLimit, UsageReportRateLimits, UsageReportScope,
+    UsageReportScopeLabel, VcsMutationKind, VcsStateChangedMessage, WorkerShuttingDownMessage,
 };
 
 // Additional top-level output message wrappers
