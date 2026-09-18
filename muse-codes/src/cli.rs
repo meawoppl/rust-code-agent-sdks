@@ -89,6 +89,7 @@ pub struct MuseExecBuilder {
     base_url: Option<String>,
     agents: Option<String>,
     images: Vec<PathBuf>,
+    output_schema: Option<PathBuf>,
     workspace: Option<PathBuf>,
     worktree: Option<WorktreeMode>,
     worktree_base: Option<String>,
@@ -136,6 +137,7 @@ impl Default for MuseExecBuilder {
             base_url: None,
             agents: None,
             images: Vec::new(),
+            output_schema: None,
             workspace: None,
             worktree: None,
             worktree_base: None,
@@ -262,6 +264,16 @@ impl MuseExecBuilder {
     /// image-capable provider — the echo provider rejects it at startup.
     pub fn image(mut self, path: impl Into<PathBuf>) -> Self {
         self.images.push(path.into());
+        self
+    }
+
+    /// Shape the final answer with the JSON schema in this file
+    /// (`--output-schema`, Muse Code build 1.3.0-R3401.1+). Meta-provider-only
+    /// — the echo provider rejects it at startup with a usage error. The
+    /// conforming JSON document arrives as the `text` of the existing
+    /// `run.terminal.completed` record; no new record types are emitted.
+    pub fn output_schema(mut self, path: impl Into<PathBuf>) -> Self {
+        self.output_schema = Some(path.into());
         self
     }
 
@@ -484,6 +496,9 @@ impl MuseExecBuilder {
         for image in &self.images {
             cmd.arg("--image").arg(image);
         }
+        if let Some(schema) = &self.output_schema {
+            cmd.arg("--output-schema").arg(schema);
+        }
         if let Some(w) = &self.workspace {
             cmd.arg("--workspace").arg(w);
         }
@@ -626,6 +641,7 @@ mod tests {
             .agents("{}")
             .image("/tmp/a.png")
             .image("/tmp/b.png")
+            .output_schema("/tmp/schema.json")
             .workspace("/ws")
             .worktree(WorktreeMode::Create)
             .worktree_base("main")
@@ -673,6 +689,8 @@ mod tests {
             "/tmp/a.png",
             "--image",
             "/tmp/b.png",
+            "--output-schema",
+            "/tmp/schema.json",
             "--workspace",
             "/ws",
             "--worktree",
