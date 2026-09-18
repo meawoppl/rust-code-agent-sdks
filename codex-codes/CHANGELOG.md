@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.155.0] - 2026-09-18
+
+### Changed
+
+- Re-pin to Codex CLI **0.155.0**. Relative to 0.154.0 the release's
+  `codex app-server generate-json-schema` output adds the
+  `thread/attachment/{add,list,remove}` requests, the
+  `thread/attachment/updated` notification with their `ThreadAttachment*`
+  types, and `FeedbackUploadResponse.promptHash` — all already modeled from
+  the `openai/codex@main` snapshot (0.154.3). The release still ships
+  `thread/rollback`, which main removed and 0.154.2 dropped; everything else
+  the snapshot carries beyond the release (`ToolExposureSurface`,
+  `McpAppUi`, `ModelAccessPrograms`, `WorkspaceRouting`, the
+  `WindowsSandboxImplementation` rename) is optional or unreferenced, so
+  nothing moves. The live integration suite passes unchanged against
+  0.155.0. Pin-only release.
+
 ## [0.154.4] - 2026-09-17
 
 Snapshot-only release for the `openai/codex@main` (`b0659c538`) app-server
