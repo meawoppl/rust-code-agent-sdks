@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-09-18
+
+### Added
+
+- `MuseExecBuilder::output_schema` — passes `--output-schema <FILE>`, which
+  Muse Code build 1.3.0-R3401.1 added to `muse exec` (Meta-provider-only;
+  the echo provider rejects it at startup). The conforming JSON document
+  arrives as the `text` of the existing `run.terminal.completed` record —
+  no new record or payload types, verified with a live Muse Spark run.
+
+### Changed
+
+- Re-baseline the tested build to Muse Code **1.3.0 (1.3.0-R3401.1)**
+  (`muse-stable` rolled the build under the same 1.3.0 release). The echo
+  fingerprint matches the snapshot, `muse --help` is byte-identical, and
+  `muse exec --help` differs only by the new flag above. The on-disk model
+  catalog is unchanged (same `MuseModel` ids, default, and limits).
+
 ## [1.3.0] - 2026-09-16
 
 ### Changed

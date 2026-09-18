@@ -942,7 +942,7 @@ fn thread_resume_response_reads_collaboration_mode() {
             "updatedAt": 0,
             "path": "/tmp/thr_1.jsonl",
             "cwd": "/tmp",
-            "cliVersion": "0.154.0",
+            "cliVersion": "0.155.0",
             "source": "cli",
             "agentNickname": null,
             "agentRole": null,
