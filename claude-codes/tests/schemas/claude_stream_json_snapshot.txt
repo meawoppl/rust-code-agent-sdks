@@ -44,7 +44,7 @@ system/model_refusal_fallback: api_refusal_category, api_refusal_explanation, co
 system/model_refusal_no_fallback: api_refusal_category, api_refusal_explanation, content, original_model, refused_user_message_uuid, request_id, session_id, subtype, type, uuid
 system/notification: color, key, priority, session_id, subtype, text, timeout_ms, type, uuid
 system/peer_message_hold: cause, from, from_name, lane, message_uuid, outcome, session_id, state, subtype, type, uuid
-system/permission_denied: agent_id, decision_reason, decision_reason_type, message, session_id, subtype, tool_name, tool_use_id, type, uuid
+system/permission_denied: agent_id, decision_reason, decision_reason_code, decision_reason_type, message, session_id, subtype, tool_name, tool_use_id, type, uuid
 system/plugin_install: error, name, session_id, status, subtype, type, uuid
 system/session_state_changed: session_id, state, subtype, type, uuid
 system/status: compact_error, compact_result, permissionMode, session_id, status, subtype, type, uuid

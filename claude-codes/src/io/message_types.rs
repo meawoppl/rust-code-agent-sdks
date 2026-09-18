@@ -623,11 +623,370 @@ pub struct ToolResultMeta {
     /// tool's own execution output (`user-rejected`, `permission-rule`,
     /// `automode-*`, `interrupted`, `cancelled`). Open set — treat
     /// unrecognized values as valid reasons; absent means the tool ran to
-    /// completion.
-    pub non_execution_kind: String,
+    /// completion. Optional since CLI 2.1.276, when an entry may carry a
+    /// [`remedy`](Self::remedy) alone.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub non_execution_kind: Option<String>,
     /// The deny comment a human typed at a permission prompt, when present.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub user_feedback: Option<String>,
+    /// The fix a host can offer for what the result reports (CLI 2.1.276+).
+    /// May be present on a result that did run (a staged settings write, a
+    /// sandbox violation on exit 0), so read whether the call ran from
+    /// [`non_execution_kind`](Self::non_execution_kind), not from this.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remedy: Option<ToolResultRemedy>,
+}
+
+/// The fix a host can offer for what a `tool_result` reports, stamped from
+/// structured producer state (never parsed from the result text), carried
+/// as [`ToolResultMeta::remedy`] (CLI 2.1.276+). Only the parameters the
+/// [`kind`](Self::kind) needs are present.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ToolResultRemedy {
+    /// What the host can fix. New kinds are additive — treat
+    /// [`ToolResultRemedyKind::Unknown`] as no remedy.
+    pub kind: ToolResultRemedyKind,
+    /// `mcp_needs_auth` / `mcp_disabled`: the server names as configured.
+    /// `mcp_required_missing`: the name patterns the agent definition
+    /// requires that no connected server matches.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub servers: Option<Vec<String>>,
+    /// `auth_expired` / `auth_overridden` / `auth_missing_scope` /
+    /// `design_needs_authorization`: whose login the fix names.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<RemedyLoginProvider>,
+    /// `outside_reads_blocked`: the path the read block refused, when the
+    /// refusal names one. `staged_for_review`: the settings file the write
+    /// was held for.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    /// `outside_reads_blocked`: an organization policy sets the block, so
+    /// the user cannot remove it. `auth_overridden`: the overriding
+    /// credential was injected by the host environment, so nothing in this
+    /// session can unset it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub managed: Option<bool>,
+    /// `feature_disabled` / `policy_denied`: the feature that is off.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub feature: Option<RemedyFeature>,
+    /// `feature_disabled`: why the feature is off.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cause: Option<RemedyFeatureCause>,
+    /// `policy_denied`: the verdict.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub policy_kind: Option<RemedyPolicyKind>,
+}
+
+/// What a host can fix for a tool result ([`ToolResultRemedy::kind`]).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ToolResultRemedyKind {
+    /// An MCP server needs its login completed.
+    McpNeedsAuth,
+    /// An MCP server is disabled in settings.
+    McpDisabled,
+    /// The agent definition requires MCP servers that are not connected.
+    McpRequiredMissing,
+    /// The named login has expired.
+    AuthExpired,
+    /// A host-injected credential overrides the named login.
+    AuthOverridden,
+    /// The named login lacks a scope the call needed.
+    AuthMissingScope,
+    /// Claude Design needs its own authorization.
+    DesignNeedsAuthorization,
+    /// The command violated the sandbox policy.
+    SandboxViolation,
+    /// A read outside the working directories was refused.
+    OutsideReadsBlocked,
+    /// Memory is paused by `/pause-memory`.
+    MemoryPaused,
+    /// A feature is switched off; see [`ToolResultRemedy::cause`].
+    FeatureDisabled,
+    /// An organization policy denies a feature; see
+    /// [`ToolResultRemedy::policy_kind`].
+    PolicyDenied,
+    /// The command's exec image exceeded the OS argument limit.
+    SpawnArgLimit,
+    /// A settings-file write was held for the machine owner's review.
+    StagedForReview,
+    /// A remedy kind not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl ToolResultRemedyKind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::McpNeedsAuth => "mcp_needs_auth",
+            Self::McpDisabled => "mcp_disabled",
+            Self::McpRequiredMissing => "mcp_required_missing",
+            Self::AuthExpired => "auth_expired",
+            Self::AuthOverridden => "auth_overridden",
+            Self::AuthMissingScope => "auth_missing_scope",
+            Self::DesignNeedsAuthorization => "design_needs_authorization",
+            Self::SandboxViolation => "sandbox_violation",
+            Self::OutsideReadsBlocked => "outside_reads_blocked",
+            Self::MemoryPaused => "memory_paused",
+            Self::FeatureDisabled => "feature_disabled",
+            Self::PolicyDenied => "policy_denied",
+            Self::SpawnArgLimit => "spawn_arg_limit",
+            Self::StagedForReview => "staged_for_review",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for ToolResultRemedyKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for ToolResultRemedyKind {
+    fn from(s: &str) -> Self {
+        match s {
+            "mcp_needs_auth" => Self::McpNeedsAuth,
+            "mcp_disabled" => Self::McpDisabled,
+            "mcp_required_missing" => Self::McpRequiredMissing,
+            "auth_expired" => Self::AuthExpired,
+            "auth_overridden" => Self::AuthOverridden,
+            "auth_missing_scope" => Self::AuthMissingScope,
+            "design_needs_authorization" => Self::DesignNeedsAuthorization,
+            "sandbox_violation" => Self::SandboxViolation,
+            "outside_reads_blocked" => Self::OutsideReadsBlocked,
+            "memory_paused" => Self::MemoryPaused,
+            "feature_disabled" => Self::FeatureDisabled,
+            "policy_denied" => Self::PolicyDenied,
+            "spawn_arg_limit" => Self::SpawnArgLimit,
+            "staged_for_review" => Self::StagedForReview,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for ToolResultRemedyKind {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ToolResultRemedyKind {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// Whose login a remedy names ([`ToolResultRemedy::provider`]).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RemedyLoginProvider {
+    /// The claude.ai account (`/login`).
+    ClaudeAi,
+    /// Claude Design's own authorization (`/design login`).
+    ClaudeDesign,
+    /// A provider not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl RemedyLoginProvider {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::ClaudeAi => "claude_ai",
+            Self::ClaudeDesign => "claude_design",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for RemedyLoginProvider {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for RemedyLoginProvider {
+    fn from(s: &str) -> Self {
+        match s {
+            "claude_ai" => Self::ClaudeAi,
+            "claude_design" => Self::ClaudeDesign,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for RemedyLoginProvider {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for RemedyLoginProvider {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// The feature a `feature_disabled` / `policy_denied` remedy names
+/// ([`ToolResultRemedy::feature`]).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RemedyFeature {
+    Workflows,
+    Artifacts,
+    /// A feature not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl RemedyFeature {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Workflows => "workflows",
+            Self::Artifacts => "artifacts",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for RemedyFeature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for RemedyFeature {
+    fn from(s: &str) -> Self {
+        match s {
+            "workflows" => Self::Workflows,
+            "artifacts" => Self::Artifacts,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for RemedyFeature {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for RemedyFeature {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// Why a feature is off for a `feature_disabled` remedy
+/// ([`ToolResultRemedy::cause`]).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RemedyFeatureCause {
+    /// `CLAUDE_CODE_DISABLE_WORKFLOWS`, or `disableWorkflows` set by a
+    /// settings layer above the user's own.
+    ManagedSettings,
+    /// An organization policy.
+    OrgPolicy,
+    /// Not launched for this account.
+    Unavailable,
+    /// The user's own `/config` setting is off (including a
+    /// `disableWorkflows` in their own settings).
+    UserSetting,
+    /// A cause not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl RemedyFeatureCause {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::ManagedSettings => "managed_settings",
+            Self::OrgPolicy => "org_policy",
+            Self::Unavailable => "unavailable",
+            Self::UserSetting => "user_setting",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for RemedyFeatureCause {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for RemedyFeatureCause {
+    fn from(s: &str) -> Self {
+        match s {
+            "managed_settings" => Self::ManagedSettings,
+            "org_policy" => Self::OrgPolicy,
+            "unavailable" => Self::Unavailable,
+            "user_setting" => Self::UserSetting,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for RemedyFeatureCause {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for RemedyFeatureCause {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// The verdict behind a `policy_denied` remedy
+/// ([`ToolResultRemedy::policy_kind`]).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RemedyPolicyKind {
+    /// The organization's policy turns the feature off.
+    OrgDenied,
+    /// A HIPAA-regulated organization signed in earlier in this process;
+    /// restarting clears it.
+    Latched,
+    /// A verdict not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl RemedyPolicyKind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::OrgDenied => "org_denied",
+            Self::Latched => "latched",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for RemedyPolicyKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for RemedyPolicyKind {
+    fn from(s: &str) -> Self {
+        match s {
+            "org_denied" => Self::OrgDenied,
+            "latched" => Self::Latched,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for RemedyPolicyKind {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for RemedyPolicyKind {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// User message
@@ -1695,6 +2054,11 @@ pub struct PermissionDeniedMessage {
     pub agent_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub decision_reason_type: Option<String>,
+    /// A closed-set code for a reason a host can act on, beside
+    /// `decision_reason_type` (whose values are unchanged). Absent for
+    /// every other reason; new values are additive (CLI 2.1.276+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decision_reason_code: Option<PermissionDeniedReasonCode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub decision_reason: Option<String>,
     pub message: String,
@@ -1702,6 +2066,61 @@ pub struct PermissionDeniedMessage {
     pub uuid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_id: Option<String>,
+}
+
+/// An actionable reason behind a `system/permission_denied` frame
+/// ([`PermissionDeniedMessage::decision_reason_code`]).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PermissionDeniedReasonCode {
+    /// The auto-mode classifier's transcript exceeded its context window.
+    ClassifierTranscriptTooLong,
+    /// `permissions.blockReadsOutsideWorkingDirectories` refused the path.
+    OutsideReadsBlocked,
+    /// `/pause-memory` has memory paused.
+    MemoryPaused,
+    /// A code not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl PermissionDeniedReasonCode {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::ClassifierTranscriptTooLong => "classifier_transcript_too_long",
+            Self::OutsideReadsBlocked => "outside_reads_blocked",
+            Self::MemoryPaused => "memory_paused",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for PermissionDeniedReasonCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for PermissionDeniedReasonCode {
+    fn from(s: &str) -> Self {
+        match s {
+            "classifier_transcript_too_long" => Self::ClassifierTranscriptTooLong,
+            "outside_reads_blocked" => Self::OutsideReadsBlocked,
+            "memory_paused" => Self::MemoryPaused,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for PermissionDeniedReasonCode {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PermissionDeniedReasonCode {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -4720,7 +5139,7 @@ mod tests {
         };
         let meta = user.tool_result_meta.as_ref().unwrap();
         assert_eq!(meta.len(), 2);
-        assert_eq!(meta[0].non_execution_kind, "user-rejected");
+        assert_eq!(meta[0].non_execution_kind.as_deref(), Some("user-rejected"));
         assert_eq!(meta[0].user_feedback.as_deref(), Some("use the staging db"));
         assert_eq!(meta[1].user_feedback, None);
 
