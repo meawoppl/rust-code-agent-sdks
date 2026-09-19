@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.155.1] - 2026-09-19
+
+Re-pin to Codex CLI **0.155.1** plus the `openai/codex@main` (`78245b47a`)
+app-server schema drift. The 0.155.1 release's
+`codex app-server generate-json-schema` output is byte-identical to 0.155.0.
+
+### Added
+
+- `PluginDetail.onboarding_skill` (`onboardingSkill`): the plugin's declared
+  onboarding `SkillSummary`, present when the plugin and the visible skill
+  are enabled. Optional; the 0.155.1 release does not send it yet.
+
+### Removed
+
+- `ConfigRequirements.windows_sandbox_private_desktop`
+  (`windowsSandboxPrivateDesktop`): upstream now always uses private desktops
+  for legacy Windows sandboxes (openai/codex#46554) and dropped the
+  requirement. The 0.155.1 release still emits the key; it is ignored on
+  deserialize.
+
 ## [0.155.0] - 2026-09-18
 
 ### Changed
