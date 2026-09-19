@@ -1620,12 +1620,6 @@ pub struct ConfigRequirements {
         skip_serializing_if = "Option::is_none"
     )]
     pub sqlite_home: Option<String>,
-    #[serde(
-        rename = "windowsSandboxPrivateDesktop",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub windows_sandbox_private_desktop: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -5122,6 +5116,13 @@ pub struct PluginDetail {
     pub marketplace_path: Option<AbsolutePathBuf>,
     #[serde(rename = "mcpServers", default)]
     pub mcp_servers: Vec<String>,
+    /// The declared onboarding skill, when the plugin and visible skill are enabled.
+    #[serde(
+        rename = "onboardingSkill",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub onboarding_skill: Option<SkillSummary>,
     #[serde(
         rename = "scheduledTasks",
         default,
