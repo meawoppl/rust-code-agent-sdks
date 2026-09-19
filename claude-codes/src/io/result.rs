@@ -54,10 +54,57 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub first_stream_post_ack_ms: Option<u64>,
 
+    /// Time the first stream POST spent waiting in the outbound queue, in
+    /// milliseconds (CLI 2.1.278+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_stream_post_queue_wait_ms: Option<u64>,
+
+    /// What the first stream POST was queued behind (CLI 2.1.278+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_stream_post_queued_behind: Option<StreamPostQueuedBehind>,
+
     /// Wall-clock epoch milliseconds when the first stream POST was issued
     /// (fractional; CLI 2.1.260+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub first_stream_post_wall_ms: Option<f64>,
+
+    /// Wall-clock epoch milliseconds when the triggering send's frame arrived
+    /// on a session reading its input from the session server's SSE stream
+    /// (`--sdk-url`), before the input loop read it (CLI 2.1.278+). With
+    /// [`frame_enqueued_wall_ms`](Self::frame_enqueued_wall_ms) and
+    /// [`turn_started_wall_ms`](Self::turn_started_wall_ms) it splits the
+    /// stretch between the server's persist and `request_sent_wall_ms` into
+    /// transit, the input loop's handling of the frame, its wait on the
+    /// command queue, and the turn's own work. Present only together with
+    /// `request_sent_wall_ms`, and only when the transport recorded the
+    /// receipt; absent on a local stdin host.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frame_received_wall_ms: Option<f64>,
+
+    /// Wall-clock epoch milliseconds when the input loop put the triggering
+    /// send's frame on the command queue (CLI 2.1.278+). Present exactly
+    /// when [`frame_received_wall_ms`](Self::frame_received_wall_ms) is.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frame_enqueued_wall_ms: Option<f64>,
+
+    /// Wall-clock epoch milliseconds when the turn's clock started: the
+    /// anchor `duration_ms`, `ttft_ms`, `ttft_stream_ms`,
+    /// `time_to_request_ms`, `first_content_frame_ms`, `first_stream_post_ms`
+    /// and `first_stream_post_ack_ms` are measured from (CLI 2.1.278+).
+    /// Present exactly when
+    /// [`frame_received_wall_ms`](Self::frame_received_wall_ms) is.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub turn_started_wall_ms: Option<f64>,
+
+    /// Time until the first text POST was issued, in milliseconds
+    /// (CLI 2.1.278+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_text_post_ms: Option<u64>,
+
+    /// Wall-clock epoch milliseconds when the first text POST was issued
+    /// (fractional; CLI 2.1.278+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_text_post_wall_ms: Option<f64>,
 
     /// Wire uuid of the user message this result answers.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -498,6 +545,70 @@ pub struct PermissionDenial {
 
     /// The unique identifier for this tool use request
     pub tool_use_id: String,
+}
+
+/// What the first stream POST of a turn was queued behind, carried as
+/// [`ResultMessage::first_stream_post_queued_behind`] (CLI 2.1.278+).
+/// Internal timing instrumentation; the CLI does not describe the values.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum StreamPostQueuedBehind {
+    /// `durable_post`
+    DurablePost,
+    /// `ephemeral_post`
+    EphemeralPost,
+    /// `retry_backoff`
+    RetryBackoff,
+    /// `hold`
+    Hold,
+    /// `none`
+    None,
+    /// A value not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl StreamPostQueuedBehind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::DurablePost => "durable_post",
+            Self::EphemeralPost => "ephemeral_post",
+            Self::RetryBackoff => "retry_backoff",
+            Self::Hold => "hold",
+            Self::None => "none",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for StreamPostQueuedBehind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for StreamPostQueuedBehind {
+    fn from(s: &str) -> Self {
+        match s {
+            "durable_post" => Self::DurablePost,
+            "ephemeral_post" => Self::EphemeralPost,
+            "retry_backoff" => Self::RetryBackoff,
+            "hold" => Self::Hold,
+            "none" => Self::None,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for StreamPostQueuedBehind {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for StreamPostQueuedBehind {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// Why fast mode can't serve right now, carried on `result` frames and

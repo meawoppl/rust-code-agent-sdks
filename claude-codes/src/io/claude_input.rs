@@ -75,6 +75,8 @@ impl ClaudeInput {
             file_attachments: None,
             seeded_summon: None,
             client_composed: None,
+            initiator: None,
+            pasted_content: None,
             historical: None,
         })
     }
@@ -113,6 +115,8 @@ impl ClaudeInput {
             file_attachments: None,
             seeded_summon: None,
             client_composed: None,
+            initiator: None,
+            pasted_content: None,
             historical: None,
         })
     }

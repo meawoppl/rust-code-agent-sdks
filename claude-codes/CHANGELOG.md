@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.278] - 2026-09-19
+
+Re-baseline against Claude CLI **2.1.278**. Models the 2.1.276 → 2.1.278
+stream-json drift: all additive, all optional. Every enum value set and wire
+literal is unchanged, and `claude --help` and the model catalog are
+byte-identical to 2.1.276.
+
+### Added
+
+- `InitMessage::scratchpad_path` — absolute path of the session's scratchpad
+  directory; omitted when the scratchpad is disabled and from the redacted
+  init sent over the Remote Control bridge.
+- `TurnHandoffAvailableMessage::staged_files` and `::no_query_first` — two
+  more worker capability markers, previously landing in `extra`.
+- `UserMessage::initiator` — the host's label for what started the turn
+  (`scheduled-task`, `sleep-auto-resume`, …); usage attribution only.
+- `UserMessage::pasted_content` — content the user pasted rather than typed,
+  each entry a string or an array of content blocks. The top-level drift
+  check does not see this one (it sits on the nested SDK user-message
+  schema).
+- `CommandInfo::builtin` — marks Claude Code's own slash commands on
+  `system/commands_changed` rows. Also nested-only.
+- `ResultMessage` timing instrumentation:
+  `first_stream_post_queue_wait_ms`, `first_stream_post_queued_behind`
+  (`StreamPostQueuedBehind`, open-set over `durable_post`, `ephemeral_post`,
+  `retry_backoff`, `hold`, `none`), `frame_received_wall_ms`,
+  `frame_enqueued_wall_ms`, `turn_started_wall_ms`, `first_text_post_ms`,
+  `first_text_post_wall_ms`.
+
 ## [2.1.276] - 2026-09-18
 
 Re-baseline against Claude CLI **2.1.276**. Models the 2.1.274 → 2.1.276

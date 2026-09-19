@@ -1068,6 +1068,19 @@ pub struct UserMessage {
     /// type; its text is delivered as written (CLI 2.1.259+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_composed: Option<bool>,
+    /// The host's own label for what started this turn (e.g. the desktop
+    /// app's `scheduled-task`, `sleep-auto-resume`); `user` or absent means a
+    /// person sent it. Usage attribution only; it does not change how the
+    /// turn runs (CLI 2.1.278+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub initiator: Option<String>,
+    /// Content the user pasted into the prompt rather than typed: each entry
+    /// a string or an array of content blocks. The CLI appends the text of
+    /// each entry after the typed text, in order, and may wrap it in
+    /// `<pasted_content>` tags. Blocks other than text are ignored; send
+    /// images and documents in `message.content` (CLI 2.1.278+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pasted_content: Option<Vec<Value>>,
     /// Replayed history rather than a live message: the Remote Control
     /// bridge stamps it on the messages it flushes to the session server,
     /// which also stamps it on deliveries it replays (CLI 2.1.266+).
@@ -1978,6 +1991,13 @@ pub struct CommandInfo {
     pub argument_hint: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub aliases: Option<Vec<String>>,
+    /// True when the command is Claude Code's own; absent for a command
+    /// defined by a user, project, plugin or MCP server. Rows can share a
+    /// name: when a marked row carries it, `/name` runs that one, and an
+    /// unmarked row is the one `/name` runs only when no marked row shares
+    /// its name (CLI 2.1.278+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub builtin: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2261,6 +2281,13 @@ pub struct InitMessage {
     /// Memory storage paths (e.g., {"auto": "/path/to/memory/"})
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memory_paths: Option<MemoryPaths>,
+
+    /// Absolute path of this session's scratchpad directory, for clients
+    /// that read files from the session. Omitted when the scratchpad is
+    /// disabled, and from the redacted init sent over the Remote Control
+    /// bridge and by the hosted worker (CLI 2.1.278+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scratchpad_path: Option<String>,
 
     /// Fast mode toggle state (e.g., "off")
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -3218,6 +3245,20 @@ pub struct TurnHandoffAvailableMessage {
     /// other worker.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub relay_marker: Option<bool>,
+    /// Present, and true, when this worker starts a handed-off turn's calls
+    /// only after every `stage_file` control request it received earlier has
+    /// finished or failed (or a wait limit has passed); a worker that omits
+    /// it may start them while files are still downloading (CLI 2.1.278+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub staged_files: Option<bool>,
+    /// True when user messages with `shouldQuery` false that reach this
+    /// worker before a `turn_handoff` request are appended, and
+    /// acknowledged, before the handed-off turn produces any output.
+    /// Exception: a request that continues a turn whose leading lines an
+    /// earlier request appended; that turn goes first. A worker that omits
+    /// it may run the turn first (CLI 2.1.278+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub no_query_first: Option<bool>,
     pub uuid: String,
     pub session_id: String,
     #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
