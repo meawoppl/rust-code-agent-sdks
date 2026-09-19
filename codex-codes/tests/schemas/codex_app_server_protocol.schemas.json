@@ -10032,12 +10032,6 @@
               "string",
               "null"
             ]
-          },
-          "windowsSandboxPrivateDesktop": {
-            "type": [
-              "boolean",
-              "null"
-            ]
           }
         },
         "type": "object"
@@ -16104,6 +16098,18 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "onboardingSkill": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/v2/SkillSummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The declared onboarding skill, when the plugin and visible skill are enabled."
           },
           "scheduledTasks": {
             "items": {
