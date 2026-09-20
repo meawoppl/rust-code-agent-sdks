@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.86.0] - 2026-09-20
+
+### Added
+
+- `PiMessage::System` — pi 0.86.0 moved the system prompt and tool
+  loadout into the transcript (earendil-works/pi#9548). Every turn now
+  opens with a `role: "system"` message (`message_start` /
+  `message_end` before the user message, and first in `agent_end`'s
+  `messages`) carrying named prompt `sections`, `toolsAdded`
+  declarations, and `toolsRemoved` references. Without this variant the
+  stream failed at the first frame of every model turn with
+  `unknown variant "system"`.
+- A fresh RPC tool-use capture, `test_cases/rpc_tool_use_0_86_0.jsonl`,
+  alongside the 0.84.4 one; the corpus tests now run over both, and a
+  new test pins the leading system message's sections and tool set.
+
+### Changed
+
+- Re-baseline the tested pin to pi **0.86.0** (from 0.85.1). The full
+  live tier passes against 0.86.0 once the variant lands: six
+  credential-free RPC checks, the streamed model turn, and the
+  model-tool conformance trio. The `tool_execution_end`-without-`args`
+  quirk is still present and now pinned on both captures.
+
 ## [0.85.1] - 2026-09-06
 
 ### Changed
