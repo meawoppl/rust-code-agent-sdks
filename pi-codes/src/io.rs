@@ -106,6 +106,39 @@ pub enum ContentBlock {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "role", rename_all = "camelCase")]
 pub enum PiMessage {
+    /// The prompt and tool loadout (pi ≥ 0.86.0). The first request of a
+    /// session emits one carrying every prompt section and tool
+    /// declaration; later changes emit further system messages that
+    /// patch `sections` by name (`null` removes one) and list
+    /// `toolsAdded` / `toolsRemoved`. Replaying them in order yields the
+    /// current prompt and tools. Streams as `message_start` /
+    /// `message_end` ahead of the user message and leads `agent_end`'s
+    /// `messages`.
+    System {
+        /// A plain string or an array of text blocks; empty when the
+        /// prompt lives entirely in `sections`.
+        content: Value,
+        /// Named prompt sections (`preamble`, `tools`, `rules`, `cwd`,
+        /// `docs`, `project_context`, ...) — string bodies, or `null`
+        /// to remove a section declared earlier.
+        #[serde(default, skip_serializing_if = "serde_json::Map::is_empty")]
+        sections: serde_json::Map<String, Value>,
+        /// Full tool declarations (`name`, `description`, `parameters`)
+        /// now available to the model.
+        #[serde(rename = "toolsAdded", default, skip_serializing_if = "Vec::is_empty")]
+        tools_added: Vec<Value>,
+        /// `{ "name": ... }` references for tools withdrawn.
+        #[serde(
+            rename = "toolsRemoved",
+            default,
+            skip_serializing_if = "Vec::is_empty"
+        )]
+        tools_removed: Vec<Value>,
+        #[serde(default)]
+        timestamp: f64,
+        #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+        extra: serde_json::Map<String, Value>,
+    },
     User {
         /// A plain string or an array of content blocks — both are legal.
         content: Value,
@@ -366,6 +399,53 @@ mod tests {
         assert_eq!(content.len(), 3);
         assert_eq!(stop_reason, "stop");
         assert!(matches!(content[2], ContentBlock::ToolCall { .. }));
+    }
+
+    #[test]
+    fn system_message_from_docs_parses() {
+        let m: PiMessage = serde_json::from_value(serde_json::json!({
+            "role": "system",
+            "content": "",
+            "sections": {
+                "preamble": "You are an expert coding assistant...",
+                "tools": "<tools>\n- read: ...\n</tools>",
+                "cwd": "/project"
+            },
+            "toolsAdded": [{"name": "read", "description": "...", "parameters": {}}],
+            "timestamp": 1733234400000i64
+        }))
+        .unwrap();
+        let PiMessage::System {
+            sections,
+            tools_added,
+            tools_removed,
+            ..
+        } = m
+        else {
+            panic!("wrong role")
+        };
+        assert_eq!(sections.len(), 3);
+        assert_eq!(tools_added[0]["name"], "read");
+        assert!(tools_removed.is_empty());
+
+        let patch: PiMessage = serde_json::from_value(serde_json::json!({
+            "role": "system",
+            "content": "",
+            "sections": {"skills": null},
+            "toolsRemoved": [{"name": "write"}],
+            "timestamp": 1733234640000i64
+        }))
+        .unwrap();
+        let PiMessage::System {
+            sections,
+            tools_removed,
+            ..
+        } = patch
+        else {
+            panic!("wrong role")
+        };
+        assert!(sections["skills"].is_null());
+        assert_eq!(tools_removed[0]["name"], "write");
     }
 
     #[test]

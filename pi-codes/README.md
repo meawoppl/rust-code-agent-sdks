@@ -5,7 +5,7 @@ Typed Rust SDK for the [pi coding agent](https://github.com/earendil-works/pi)
 `pi --mode json` JSONL event stream and the `pi --mode rpc` stdin/stdout
 command protocol, plus an async (Tokio) RPC client.
 
-Tested against pi 0.85.1. The crate version may carry a patch offset
+Tested against pi 0.86.0. The crate version may carry a patch offset
 above the CLI release for crate-side additions.
 
 ## What's covered
@@ -19,9 +19,10 @@ above the CLI release for crate-side additions.
 - **`--mode json`** — the one-shot event stream: `PiEvent` with typed
   lifecycle/tool events and an `Unknown` fallback that preserves the
   payload, so newer CLIs degrade soft.
-- **Messages** — `user` / `assistant` / `toolResult` / `bashExecution`
-  roles with content blocks (text, thinking, toolCall, image) and usage
-  accounting.
+- **Messages** — `system` / `user` / `assistant` / `toolResult` /
+  `bashExecution` roles with content blocks (text, thinking, toolCall,
+  image) and usage accounting. The `system` role (pi ≥ 0.86.0) carries
+  the prompt `sections` and `toolsAdded` / `toolsRemoved` declarations.
 
 ## Live testing
 
@@ -41,8 +42,14 @@ the model reads a planted nonce file, writes a requested nonce to a
 requested path, and runs a shell command with a disk-visible side
 effect — write/bash verified on disk, never from the transcript.
 
-## Measured wire notes (pi 0.84.4)
+## Measured wire notes (pi 0.84.4 → 0.86.0)
 
+- **Every turn opens with a `system` message (0.86.0).** It streams as
+  `message_start` / `message_end` before the user message and leads
+  `agent_end`'s `messages`, carrying the full prompt as named
+  `sections` plus `toolsAdded` declarations; later prompt/tool changes
+  arrive as further `system` messages that patch by name. Pinned by
+  the 0.86.0 corpus; 0.84.4 never emitted one.
 - **pi has no tool-approval gate.** read/bash/edit/write run without
   prompting; there is no `--yolo` equivalent because nothing needs
   bypassing. `--approve`/`--no-approve` only control trusting
