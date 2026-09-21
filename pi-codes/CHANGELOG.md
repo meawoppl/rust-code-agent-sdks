@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.86.1] - 2026-09-21
+
+### Changed
+
+- Re-baseline the tested pin to pi **0.86.1** (from 0.86.0). No wire
+  changes: the packaged `docs/{json,rpc,session-format,sdk}.md` are
+  byte-identical between the two releases, and the full live tier
+  passes unmodified. Upstream's only user-visible addition is a `meta`
+  provider (Muse Spark models via `/login meta` or `META_API_KEY`);
+  the crate passes provider names through as strings, so
+  `.provider("meta")` works with no type changes.
+
 ## [0.86.0] - 2026-09-20
 
 ### Added
