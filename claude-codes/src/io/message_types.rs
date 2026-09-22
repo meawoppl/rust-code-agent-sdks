@@ -3915,6 +3915,11 @@ pub struct AssistantMessage {
     /// thinking. Wrapper-level sibling — never inside `message.content`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub narration_block_indexes: Vec<usize>,
+    /// How a renderer should treat this frame's narration blocks:
+    /// `"hidden"` or `"faint"` on CLI 2.1.280+ (kept open for future
+    /// values). Omitted when the CLI expresses no preference.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub narration_hint: Option<String>,
     /// Structured twin of the `/context` report, carried on the synthetic
     /// assistant message that delivers the markdown table. Present only on
     /// `/context` results from CLIs new enough to attach it (2.1.239+).

@@ -19,7 +19,7 @@ pub enum ClaudeModel {
     /// Newest Sonnet-family model (floating alias `sonnet`).
     Sonnet,
     /// Newest Opus-family model (floating alias `opus`). Resolves to
-    /// `claude-opus-5` first-party as of CLI 2.1.219.
+    /// `claude-opus-5-5` first-party as of CLI 2.1.280.
     Opus,
     /// Newest Haiku-family model (floating alias `haiku`).
     Haiku,
@@ -35,10 +35,17 @@ pub enum ClaudeModel {
     Opus1m,
     /// Newest Fable with the 1M-token context beta (alias `fable[1m]`).
     Fable1m,
+    /// Fable 5.1 (`claude-fable-5-1`).
+    Fable51,
     /// Fable 5 (`claude-fable-5`).
     Fable5,
+    /// Mythos 5.1 (`claude-mythos-5-1`).
+    Mythos51,
     /// Mythos 5 (`claude-mythos-5`).
     Mythos5,
+    /// Opus 5.5 (`claude-opus-5-5`), released 2026-09-22 — the new
+    /// first-party float target of the `opus` alias.
+    Opus55,
     /// Opus 5 (`claude-opus-5`).
     Opus5,
     /// Opus 4.8 (`claude-opus-4-8`).
@@ -87,8 +94,11 @@ impl ClaudeModel {
             Self::Sonnet1m => "sonnet[1m]",
             Self::Opus1m => "opus[1m]",
             Self::Fable1m => "fable[1m]",
+            Self::Fable51 => "claude-fable-5-1",
             Self::Fable5 => "claude-fable-5",
+            Self::Mythos51 => "claude-mythos-5-1",
             Self::Mythos5 => "claude-mythos-5",
+            Self::Opus55 => "claude-opus-5-5",
             Self::Opus5 => "claude-opus-5",
             Self::Opus48 => "claude-opus-4-8",
             Self::Opus47 => "claude-opus-4-7",
@@ -126,8 +136,11 @@ impl ClaudeModel {
             Self::Sonnet1m => "Sonnet (latest, 1M context)",
             Self::Opus1m => "Opus (latest, 1M context)",
             Self::Fable1m => "Fable (latest, 1M context)",
+            Self::Fable51 => "Fable 5.1",
             Self::Fable5 => "Fable 5",
+            Self::Mythos51 => "Mythos 5.1",
             Self::Mythos5 => "Mythos 5",
+            Self::Opus55 => "Opus 5.5",
             Self::Opus5 => "Opus 5",
             Self::Opus48 => "Opus 4.8",
             Self::Opus47 => "Opus 4.7",
@@ -176,8 +189,11 @@ impl ClaudeModel {
             Self::Sonnet1m,
             Self::Opus1m,
             Self::Fable1m,
+            Self::Fable51,
             Self::Fable5,
+            Self::Mythos51,
             Self::Mythos5,
+            Self::Opus55,
             Self::Opus5,
             Self::Opus48,
             Self::Opus47,
@@ -215,8 +231,11 @@ impl From<&str> for ClaudeModel {
             "sonnet[1m]" => Self::Sonnet1m,
             "opus[1m]" => Self::Opus1m,
             "fable[1m]" => Self::Fable1m,
+            "claude-fable-5-1" => Self::Fable51,
             "claude-fable-5" => Self::Fable5,
+            "claude-mythos-5-1" => Self::Mythos51,
             "claude-mythos-5" => Self::Mythos5,
+            "claude-opus-5-5" => Self::Opus55,
             "claude-opus-5" => Self::Opus5,
             "claude-opus-4-8" => Self::Opus48,
             "claude-opus-4-7" => Self::Opus47,
