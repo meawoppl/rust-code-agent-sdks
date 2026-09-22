@@ -84,6 +84,9 @@ pub mod methods {
     pub const PLUGIN_UNINSTALL: &str = "plugin/uninstall";
     pub const REVIEW_START: &str = "review/start";
     pub const MODEL_LIST: &str = "model/list";
+    pub const ACCOUNT_GATEWAYOAUTH_READ: &str = "account/gatewayOAuth/read";
+    pub const ACCOUNT_GATEWAYOAUTH_LOGIN: &str = "account/gatewayOAuth/login";
+    pub const ACCOUNT_GATEWAYOAUTH_CANCEL: &str = "account/gatewayOAuth/cancel";
     pub const MODELPROVIDER_CAPABILITIES_READ: &str = "modelProvider/capabilities/read";
     pub const EXPERIMENTALFEATURE_LIST: &str = "experimentalFeature/list";
     pub const EXPERIMENTALFEATURE_ENABLEMENT_SET: &str = "experimentalFeature/enablement/set";
@@ -176,6 +179,7 @@ pub mod methods {
     pub const FS_CHANGED: &str = "fs/changed";
     pub const CONFIG_WARNING: &str = "configWarning";
     pub const ACCOUNT_UPDATED: &str = "account/updated";
+    pub const ACCOUNT_GATEWAY_OAUTH_CHANGED: &str = "account/gatewayOAuth/changed";
     pub const APP_LIST_UPDATED: &str = "app/list/updated";
     pub const COMMAND_EXEC_OUTPUT_DELTA: &str = "command/exec/outputDelta";
     pub const EXTERNAL_AGENT_CONFIG_IMPORT_COMPLETED: &str = "externalAgentConfig/import/completed";

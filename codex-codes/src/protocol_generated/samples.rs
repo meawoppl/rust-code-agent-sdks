@@ -8,6 +8,10 @@ pub fn server_notification_samples() -> Vec<(&'static str, Value)> {
         ("account/login/completed", json!({"success": false})),
         ("account/rateLimits/updated", json!({"rateLimits": {}})),
         ("account/updated", json!({})),
+        (
+            "account/gatewayOAuth/changed",
+            json!({"providerId": "openai", "status": "started"}),
+        ),
         ("app/list/updated", json!({"data": []})),
         (
             "autoApprovalReview/strictReviewRequired",

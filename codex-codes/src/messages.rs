@@ -36,11 +36,12 @@ use crate::protocol::{
     FileChangeOutputDeltaNotification, FileChangePatchUpdatedNotification,
     FileChangeRequestApprovalParams, FsChangedNotification,
     FuzzyFileSearchSessionCompletedNotification, FuzzyFileSearchSessionUpdatedNotification,
-    GuardianWarningNotification, HookCompletedNotification, HookStartedNotification,
-    ItemCompletedNotification, ItemGuardianApprovalReviewCompletedNotification,
-    ItemGuardianApprovalReviewStartedNotification, ItemStartedNotification,
-    McpServerEventStreamNotification, McpServerOauthLoginCompletedNotification,
-    McpServerStatusUpdatedNotification, McpToolCallProgressNotification, ModelReroutedNotification,
+    GatewayOAuthChangedNotification, GuardianWarningNotification, HookCompletedNotification,
+    HookStartedNotification, ItemCompletedNotification,
+    ItemGuardianApprovalReviewCompletedNotification, ItemGuardianApprovalReviewStartedNotification,
+    ItemStartedNotification, McpServerEventStreamNotification,
+    McpServerOauthLoginCompletedNotification, McpServerStatusUpdatedNotification,
+    McpToolCallProgressNotification, ModelReroutedNotification,
     ModelSafetyBufferingUpdatedNotification, ModelVerificationNotification, PlanDeltaNotification,
     ProcessExitedNotification, ProcessOutputDeltaNotification, ProjectChangedNotification,
     ReasoningSummaryPartAddedNotification, ReasoningSummaryTextDeltaNotification,
@@ -147,6 +148,8 @@ pub enum Notification {
     ConfigWarning(ConfigWarningNotification),
     /// `account/updated`
     AccountUpdated(AccountUpdatedNotification),
+    /// `account/gatewayOAuth/changed`
+    GatewayOAuthChanged(GatewayOAuthChangedNotification),
     /// `app/list/updated`
     AppListUpdated(AppListUpdatedNotification),
     /// `command/exec/outputDelta`
@@ -304,6 +307,7 @@ impl Notification {
             Self::FsChanged(_) => methods::FS_CHANGED,
             Self::ConfigWarning(_) => methods::CONFIG_WARNING,
             Self::AccountUpdated(_) => methods::ACCOUNT_UPDATED,
+            Self::GatewayOAuthChanged(_) => methods::ACCOUNT_GATEWAY_OAUTH_CHANGED,
             Self::AppListUpdated(_) => methods::APP_LIST_UPDATED,
             Self::CommandExecOutputDelta(_) => methods::COMMAND_EXEC_OUTPUT_DELTA,
             Self::ExternalAgentConfigImportCompleted(_) => {
@@ -551,6 +555,9 @@ impl Notification {
             methods::ACCOUNT_UPDATED => {
                 serde_json::from_value(params_value).map(Self::AccountUpdated)
             }
+            methods::ACCOUNT_GATEWAY_OAUTH_CHANGED => {
+                serde_json::from_value(params_value).map(Self::GatewayOAuthChanged)
+            }
             methods::APP_LIST_UPDATED => {
                 serde_json::from_value(params_value).map(Self::AppListUpdated)
             }
@@ -727,6 +734,7 @@ impl Notification {
             Self::FsChanged(v) => pack(methods::FS_CHANGED, v),
             Self::ConfigWarning(v) => pack(methods::CONFIG_WARNING, v),
             Self::AccountUpdated(v) => pack(methods::ACCOUNT_UPDATED, v),
+            Self::GatewayOAuthChanged(v) => pack(methods::ACCOUNT_GATEWAY_OAUTH_CHANGED, v),
             Self::AppListUpdated(v) => pack(methods::APP_LIST_UPDATED, v),
             Self::CommandExecOutputDelta(v) => pack(methods::COMMAND_EXEC_OUTPUT_DELTA, v),
             Self::ExternalAgentConfigImportCompleted(v) => {

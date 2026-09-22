@@ -2717,6 +2717,62 @@ pub struct FuzzyFileSearchSessionUpdatedNotification {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
+pub struct GatewayOAuthCancelResponse {}
+
+/// Sent on `account/gatewayOAuth/changed` as an explicit gateway OAuth
+/// sign-in progresses.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GatewayOAuthChangedNotification {
+    /// Authorization handoff, sent only to the connection that started
+    /// login.
+    #[serde(rename = "authUrl", default, skip_serializing_if = "Option::is_none")]
+    pub auth_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(rename = "providerId", default)]
+    pub provider_id: String,
+    pub status: GatewayOAuthStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct GatewayOAuthLoginResponse {}
+
+/// Current effective gateway policy and credential readiness; never
+/// contains credentials.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct GatewayOAuthReadResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(rename = "providerId", default)]
+    pub provider_id: String,
+    #[serde(rename = "providerName", default)]
+    pub provider_name: String,
+    /// Whether the selected provider uses gateway OAuth, even when already
+    /// signed in.
+    #[serde(default)]
+    pub required: bool,
+    /// `None` when the effective provider does not use gateway OAuth.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<GatewayOAuthStatus>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum GatewayOAuthStatus {
+    #[serde(rename = "notReady")]
+    NotReady,
+    #[serde(rename = "started")]
+    Started,
+    #[serde(rename = "succeeded")]
+    Succeeded,
+    #[serde(rename = "failed")]
+    Failed,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct GetAccountParams {
     #[serde(
         rename = "refreshToken",
@@ -3405,6 +3461,15 @@ pub struct InitializeCapabilities {
         skip_serializing_if = "Option::is_none"
     )]
     pub experimental_api: Option<bool>,
+    /// Use explicit gateway OAuth login instead of automatic browser
+    /// authorization. Applies to this app-server's gateway runtime; later
+    /// connections cannot undo it.
+    #[serde(
+        rename = "explicitGatewayOauth",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub explicit_gateway_oauth: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub extensions: Option<Value>,
     #[serde(
@@ -4248,6 +4313,15 @@ pub enum McpServerStartupState {
 pub struct McpServerStatus {
     #[serde(rename = "authStatus")]
     pub auth_status: McpAuthStatus,
+    /// HTTP origin of the effective configured endpoint, including plugin
+    /// servers. Excludes credentials, path, query, and fragment; `None` for
+    /// non-HTTP transports.
+    #[serde(
+        rename = "httpOrigin",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub http_origin: Option<String>,
     /// Current thread-runtime connection state; absent when unavailable.
     #[serde(
         rename = "runtimeStatus",
@@ -8295,8 +8369,24 @@ pub enum ThreadHistoryMode {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreadItemEntry {
+    /// Unix timestamp (milliseconds) when the item completed, if recorded by
+    /// the producer.
+    #[serde(
+        rename = "completedAtMs",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub completed_at_ms: Option<i64>,
     #[serde()]
     pub item: ThreadItem,
+    /// Unix timestamp (milliseconds) when the item started, if recorded by
+    /// the producer.
+    #[serde(
+        rename = "startedAtMs",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub started_at_ms: Option<i64>,
     #[serde(rename = "turnId", default)]
     pub turn_id: String,
 }
