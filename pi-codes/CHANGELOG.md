@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.87.0] - 2026-09-22
+
+### Changed
+
+- Re-baseline the tested pin to pi **0.87.0** (from 0.86.1). No wire
+  changes on the RPC surface: the packaged `docs/{json,rpc}.md` and the
+  `pi --help` output are byte-identical between the two releases, and
+  the full live tier passes unmodified. Upstream's 0.87.0 changes are
+  SDK-side (`finishTurn` replaces `shouldStopAfterTurn`, canonical
+  `SessionManager` context, `context_with_system` and
+  `agent_before_settle` extension events, per-model image input limits)
+  plus a new append-only `context_edit` session entry in
+  `docs/session-format.md`. This crate does not parse session files, so
+  the new entry type needs no modeling.
+
 ## [0.86.1] - 2026-09-21
 
 ### Changed
