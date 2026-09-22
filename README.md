@@ -37,7 +37,7 @@ catches up, the next tested release jumps to or past the CLI's number.
 metadata can't distinguish published versions — so explicit offset notes are
 the least-bad scheme.)
 
-- **`claude-codes`** — currently `claude-codes 2.1.278`, tested against Claude CLI `2.1.278`.
+- **`claude-codes`** — currently `claude-codes 2.1.280`, tested against Claude CLI `2.1.280`.
 - **`codex-codes`** — currently `codex-codes 0.155.2`, tested against Codex CLI `0.155.1`.
 - **`opencode-codes`** — currently `opencode-codes 1.18.32`, tested against opencode `1.18.32`.
 - **`muse-codes`** — currently `muse-codes 1.3.1`, tested against Muse Code `1.3.0` (build `1.3.0-R3401.1`).

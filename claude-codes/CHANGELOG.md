@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.280] - 2026-09-22
+
+### Added
+
+- **`ClaudeModel`**: `Opus55` (`claude-opus-5-5`, "Opus 5.5", released
+  2026-09-22 — the `opus` floating alias now resolves here first-party),
+  plus `Fable51` (`claude-fable-5-1`) and `Mythos51`
+  (`claude-mythos-5-1`) from the 2.1.280 binary's model registry.
+- `AssistantMessage.narration_hint` — optional `"hidden"`/`"faint"`
+  renderer preference for the frame's narration blocks (2.1.280+),
+  companion to `narration_block_indexes`; kept open for future values.
+
+### Changed
+
+- Re-baseline the tested pin to Claude CLI **2.1.280**: full integration
+  tier green (28 live incl. the strict stream audit) and the drift
+  snapshot refreshed (`assistant` + `narration_hint` was the only wire
+  change from 2.1.278).
+
 ## [2.1.278] - 2026-09-19
 
 Re-baseline against Claude CLI **2.1.278**. Models the 2.1.276 → 2.1.278
