@@ -1297,7 +1297,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "opencode-codes"
-version = "1.18.31"
+version = "1.18.32"
 dependencies = [
  "futures-core",
  "jsonschema",
@@ -1353,7 +1353,7 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
 name = "pi-codes"
-version = "0.86.1"
+version = "0.87.0"
 dependencies = [
  "env_logger",
  "log",
