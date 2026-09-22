@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.155.2] - 2026-09-22
+
+Tested pin stays at Codex CLI **0.155.1**; this release models the
+`openai/codex@main` (`94174e44c`) app-server schema drift. The 0.155.1
+release's `codex app-server generate-json-schema` output does not ship any
+of these yet, so the new fields are optional and the new methods are inert
+against the pinned CLI.
+
+### Added
+
+- Explicit gateway OAuth sign-in (openai/codex#47207):
+  - `Notification::GatewayOAuthChanged` (`account/gatewayOAuth/changed`)
+    carrying `GatewayOAuthChangedNotification { auth_url, provider_id,
+    status, error }` and the `GatewayOAuthStatus` enum
+    (`notReady | started | succeeded | failed`). `auth_url` is only sent to
+    the connection that started the login.
+  - Client request methods `account/gatewayOAuth/read`, `.../login` and
+    `.../cancel` (`methods::ACCOUNT_GATEWAYOAUTH_{READ,LOGIN,CANCEL}`, no
+    params) with response types `GatewayOAuthReadResponse`,
+    `GatewayOAuthLoginResponse` and `GatewayOAuthCancelResponse`.
+  - `InitializeCapabilities.explicit_gateway_oauth` (`explicitGatewayOauth`):
+    opt into explicit gateway OAuth login instead of automatic browser
+    authorization for this app-server's gateway runtime.
+- `McpServerStatus.http_origin` (`httpOrigin`): HTTP origin of the effective
+  configured endpoint, including plugin servers; `None` for non-HTTP
+  transports.
+- `ThreadItemEntry.started_at_ms` / `completed_at_ms` (`startedAtMs` /
+  `completedAtMs`): producer-recorded item timestamps on thread reads.
+
 ## [0.155.1] - 2026-09-19
 
 Re-pin to Codex CLI **0.155.1** plus the `openai/codex@main` (`78245b47a`)

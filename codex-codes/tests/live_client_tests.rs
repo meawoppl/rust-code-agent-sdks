@@ -219,6 +219,7 @@ async fn test_async_client_custom_initialize() {
                 extensions: None,
                 mcp_server_openai_form_elicitation: None,
                 opt_out_notification_methods: None,
+                explicit_gateway_oauth: None,
                 request_attestation: None,
             }),
         })
@@ -606,6 +607,7 @@ async fn test_typed_message_audit_strict() {
                     Notification::FsChanged(_) => "FsChanged",
                     Notification::ConfigWarning(_) => "ConfigWarning",
                     Notification::AccountUpdated(_) => "AccountUpdated",
+                    Notification::GatewayOAuthChanged(_) => "GatewayOAuthChanged",
                     Notification::AppListUpdated(_) => "AppListUpdated",
                     Notification::CommandExecOutputDelta(_) => "CommandExecOutputDelta",
                     Notification::ExternalAgentConfigImportCompleted(_) => {
