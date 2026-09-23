@@ -1501,6 +1501,62 @@ impl<'de> Deserialize<'de> for StopResultDecision {
     }
 }
 
+/// `antigravity.localharness.ToolExecutionMode`
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub enum ToolExecutionMode {
+    #[default]
+    Unspecified,
+    Sync,
+    Async,
+    /// A value this crate does not know about yet.
+    ///
+    /// The harness is versioned independently of this crate, so an
+    /// unrecognised enum value is treated as forward compatibility rather
+    /// than as a decode error.
+    Unknown(String),
+}
+
+impl ToolExecutionMode {
+    /// The protobuf-JSON spelling of this value.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Unspecified => "TOOL_EXECUTION_MODE_UNSPECIFIED",
+            Self::Sync => "TOOL_EXECUTION_MODE_SYNC",
+            Self::Async => "TOOL_EXECUTION_MODE_ASYNC",
+            Self::Unknown(s) => s,
+        }
+    }
+}
+
+impl std::fmt::Display for ToolExecutionMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Serialize for ToolExecutionMode {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ToolExecutionMode {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(match crate::wire::EnumRepr::deserialize(d)? {
+            crate::wire::EnumRepr::Name(n) if n == "TOOL_EXECUTION_MODE_UNSPECIFIED" => {
+                Self::Unspecified
+            }
+            crate::wire::EnumRepr::Name(n) if n == "TOOL_EXECUTION_MODE_SYNC" => Self::Sync,
+            crate::wire::EnumRepr::Name(n) if n == "TOOL_EXECUTION_MODE_ASYNC" => Self::Async,
+            crate::wire::EnumRepr::Number(0) => Self::Unspecified,
+            crate::wire::EnumRepr::Number(1) => Self::Sync,
+            crate::wire::EnumRepr::Number(2) => Self::Async,
+            crate::wire::EnumRepr::Name(n) => Self::Unknown(n),
+            crate::wire::EnumRepr::Number(n) => Self::Unknown(n.to_string()),
+        })
+    }
+}
+
 /// `antigravity.localharness.TrajectoryStateUpdate.State`
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum TrajectoryStateUpdateState {
@@ -2247,6 +2303,16 @@ impl AudioContent {
     }
 }
 
+/// `antigravity.localharness.AutoPolicyConfig`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AutoPolicyConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+}
+
 /// `antigravity.localharness.BudgetConfig`
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -2669,6 +2735,8 @@ pub struct CustomAgent {
         skip_serializing_if = "Option::is_none"
     )]
     pub agent_behavior: Option<AgentBehavior>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<ModelConfig>,
 }
 
 /// `antigravity.localharness.CustomEndpoint`
@@ -2704,14 +2772,21 @@ pub struct CustomSystemInstructionsPart {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub template: Option<CustomSystemInstructionsSystemInstructionTemplate>,
+    pub template: Option<SystemInstructionTemplate>,
+    #[serde(
+        alias = "builtin_section",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub builtin_section: Option<String>,
 }
 
 /// The `part` oneof of [`CustomSystemInstructionsPart`], as an owned value.
 #[derive(Debug, Clone, PartialEq)]
 pub enum CustomSystemInstructionsPartPart {
     Text(String),
-    Template(CustomSystemInstructionsSystemInstructionTemplate),
+    Template(SystemInstructionTemplate),
+    BuiltinSection(String),
 }
 
 impl CustomSystemInstructionsPart {
@@ -2723,37 +2798,16 @@ impl CustomSystemInstructionsPart {
         if let Some(v) = self.template {
             return Some(CustomSystemInstructionsPartPart::Template(v));
         }
+        if let Some(v) = self.builtin_section {
+            return Some(CustomSystemInstructionsPartPart::BuiltinSection(v));
+        }
         None
     }
 
     /// True when any arm of the `part` oneof is set.
     pub fn has_part(&self) -> bool {
-        self.text.is_some() || self.template.is_some()
+        self.text.is_some() || self.template.is_some() || self.builtin_section.is_some()
     }
-}
-
-/// `antigravity.localharness.CustomSystemInstructions.SystemInstructionTemplate`
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CustomSystemInstructionsSystemInstructionTemplate {
-    #[serde(
-        alias = "template_name",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub template_name: Option<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub args: Vec<CustomSystemInstructionsSystemInstructionTemplateArg>,
-}
-
-/// `antigravity.localharness.CustomSystemInstructions.SystemInstructionTemplate.Arg`
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CustomSystemInstructionsSystemInstructionTemplateArg {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub value: Option<String>,
 }
 
 /// `genai.DocumentContent`
@@ -3298,6 +3352,12 @@ pub struct HarnessConfig {
         skip_serializing_if = "Option::is_none"
     )]
     pub compaction_config: Option<CompactionConfig>,
+    #[serde(
+        alias = "rules_config",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub rules_config: Option<RulesConfig>,
 }
 
 /// `antigravity.localharness.HarnessSideTools`
@@ -4203,6 +4263,12 @@ pub struct PolicyConfig {
         skip_serializing_if = "Option::is_none"
     )]
     pub workspace_containment: Option<PolicyConfigWorkspaceContainment>,
+    #[serde(
+        alias = "auto_config",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub auto_config: Option<AutoPolicyConfig>,
 }
 
 /// `antigravity.localharness.PolicyDecisionRequest`
@@ -4215,6 +4281,8 @@ pub struct PolicyDecisionRequest {
     pub rule_id: Option<String>,
     #[serde(alias = "tool_args", default, skip_serializing_if = "Option::is_none")]
     pub tool_args: Option<PreToolArgs>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
 
 /// `antigravity.localharness.PolicyDecisionResponse`
@@ -4346,12 +4414,6 @@ pub struct PreToolResult {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     #[serde(
-        alias = "modified_arguments_json",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub modified_arguments_json: Option<String>,
-    #[serde(
         alias = "modified_args",
         default,
         skip_serializing_if = "Option::is_none"
@@ -4417,6 +4479,14 @@ pub struct ReviewSnippet {
     pub review_id: Option<String>,
 }
 
+/// `antigravity.localharness.RulesConfig`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RulesConfig {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub filenames: Vec<String>,
+}
+
 /// `antigravity.localharness.RunCommandToolConfig`
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -4441,6 +4511,12 @@ pub struct RunCommandToolConfig {
         skip_serializing_if = "Option::is_none"
     )]
     pub enable_sandbox: Option<bool>,
+    #[serde(
+        alias = "execution_mode",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub execution_mode: Option<ToolExecutionMode>,
 }
 
 /// `antigravity.localharness.SandboxStatus`
@@ -4756,6 +4832,26 @@ pub struct SubagentsConfig {
         skip_serializing_if = "Vec::is_empty"
     )]
     pub allowed_subagents: Vec<String>,
+}
+
+/// `antigravity.localharness.SystemInstructionTemplate`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemInstructionTemplate {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub args: Vec<SystemInstructionTemplateArg>,
+}
+
+/// `antigravity.localharness.SystemInstructionTemplate.Arg`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemInstructionTemplateArg {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
 }
 
 /// `antigravity.localharness.SystemInstructions`
