@@ -5,6 +5,43 @@ All notable changes to `antigravity-codes` are documented here.
 The version tracks the `google-antigravity` release whose harness the crate was
 generated from and tested against.
 
+## [0.1.18] - 2026-09-23
+
+Re-baseline against `google-antigravity` 0.1.18: types regenerated from the
+0.1.18 wheel's descriptors (172 messages, 30 enums — up from 170/29). Regen
+against the committed 0.1.17 descriptors was verified as a byte-identical
+no-op first, so nothing hand-maintained was clobbered. Unlike the previous
+two re-baselines this one carries a type rename and a field removal; see
+below.
+
+### Added
+
+- `RulesConfig { filenames }` on `HarnessConfig.rules_config`.
+- `AutoPolicyConfig { enabled, model }` on `PolicyConfig.auto_config`.
+- `PolicyDecisionRequest.reason`.
+- `CustomAgent.model: Option<ModelConfig>`.
+- `CustomSystemInstructions.Part.builtin_section` as a third `oneof` arm:
+  `CustomSystemInstructionsPartPart::BuiltinSection(String)`.
+- `RunCommandToolConfig.execution_mode` with
+  `ToolExecutionMode::{Unspecified, Sync, Async}` (`TOOL_EXECUTION_MODE_*`,
+  open-set via `Unknown`).
+
+### Changed
+
+- **Breaking:** upstream hoisted the system-instruction template out of
+  `CustomSystemInstructions`, so
+  `CustomSystemInstructionsSystemInstructionTemplate{,Arg}` are now
+  `SystemInstructionTemplate{,Arg}` and the template's `template_name`
+  field is now `name` (wire `name`, previously `templateName`).
+  `CustomSystemInstructions.Part.template` and the
+  `CustomSystemInstructionsPartPart::Template` arm carry the new type.
+
+### Removed
+
+- **Breaking:** `PreToolResult.modified_arguments_json`. Upstream dropped the
+  JSON-string field in favour of the typed `modified_args` `Struct` added in
+  0.1.17.
+
 ## [0.1.17] - 2026-09-17
 
 Re-baseline against `google-antigravity` 0.1.17: types regenerated from the
