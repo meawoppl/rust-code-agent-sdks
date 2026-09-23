@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.87.1] - 2026-09-23
+
+### Changed
+
+- Re-baseline the tested pin to pi **0.87.1** (from 0.87.0). No wire
+  changes on the RPC surface: `pi --help` is byte-identical between the
+  two releases, the RPC command set in the packaged docs is unchanged,
+  and the full live tier passes unmodified. Upstream's 0.87.1 changes are
+  model-catalog additions (Claude Opus 5.5, GPT-6 Sol/Luna, Grok 4.7 as
+  the xAI default) and bug fixes. The packaged docs were reorganized in
+  this release (`rpc.md` split into `rpc-commands.md`,
+  `rpc-extension-ui.md` and `message-types.md`; `json.md` rewritten as
+  the canonical event reference), so the byte-diff signal this changelog
+  usually cites is noisy from here on; compare command and event name
+  sets instead.
+
 ## [0.87.0] - 2026-09-22
 
 ### Changed
