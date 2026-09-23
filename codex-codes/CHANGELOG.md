@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.156.1] - 2026-09-23
+
+Re-baseline the tested pin to Codex CLI **0.156.1** (from 0.155.1) and model
+the `openai/codex@main` (`40eac3ce8`) app-server schema drift. The 0.156.1
+release's `codex app-server generate-json-schema` output is a strict subset of
+the main snapshot this crate already tracked: its delta against 0.155.1
+(`AccountRoutingOverride`, `McpAppUi`/`McpAppDisplayMode`,
+`ModelAccessPrograms`, `ToolExposureSurface`, `WindowsSandboxImplementation`,
+`WorkspaceRouting`, the `thread/rollback` removal) was modeled in the
+0.154.x/0.155.x releases, so the re-pin itself needs no type work. The two
+additions below are main-only and the pinned CLI does not emit them yet.
+
+### Added
+
+- `McpResourceReadParams.target: Option<McpResourceReadTarget>` and the new
+  `McpResourceReadTarget { connector_id, link_id: Option<String> }`
+  (openai/codex#47248): an explicit hosted app/account for
+  `mcpServer/resource/read`. Omit `target` to keep legacy resource discovery.
+  `link_id` is required-but-nullable on the wire, so `None` serializes as
+  `null` and explicitly requests no-auth access.
+- `PluginSummary.extensions: Option<PluginExtensions>` (openai/codex#47263),
+  the host-integration surface of a plugin's bundled MCP app:
+  `PluginExtensions { entrypoints, settings_entrypoints, thread_entrypoints,
+  file_handlers, settings, search_mention_providers }`, the `PluginEntrypoint`
+  tagged enum (`global` with an optional `PluginQuickAction`, `settings` with
+  `search_terms`, `thread`, `file` with `extensions`), `PluginIcon`,
+  `PluginQuickActionTarget::Tool { name, arguments }`, `PluginSearchProvider`
+  + `PluginSearchProviderCall { name, arguments, meta }` (wire `_meta`), and
+  `PluginSettings { app_id, read_tool_name, update_tool_name }`.
+
+### Changed
+
+- Tested pin: Codex CLI 0.155.1 → **0.156.1**. Live suite passes unmodified.
+
 ## [0.155.2] - 2026-09-22
 
 Tested pin stays at Codex CLI **0.155.1**; this release models the
