@@ -98,7 +98,8 @@ pub enum CliFlag {
     AddDir(Vec<PathBuf>),
     /// Agent for the current session
     Agent(String),
-    /// JSON object defining custom agents
+    /// JSON object defining custom agents, or with `--print` the path to a
+    /// file that holds one (CLI 2.1.281+)
     Agents(String),
     /// Enable bypassing all permission checks as an option
     AllowDangerouslySkipPermissions,
