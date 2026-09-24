@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.281] - 2026-09-24
+
+Re-baseline against Claude CLI **2.1.281**. Models the 2.1.280 → 2.1.281
+stream-json drift: one new `system` subtype and seven additive optional
+fields across three wire types, no removals. The model registry is
+byte-identical to 2.1.280; the only CLI surface change is `--agents`
+accepting a file path under `--print`.
+
+### Added
+
+- `system/per_turn_effort_changed` (`SystemSubtype::PerTurnEffortChanged`,
+  `PerTurnEffortChangedMessage`, `KnownSystemEvent::PerTurnEffortChanged`,
+  `SystemMessage::{is,as}_per_turn_effort_changed`) — the conversation
+  stopped sending effort per turn after the server refused it; always
+  carries `per_turn_effort_active: false`.
+- `InitMessage::per_turn_effort_active` — whether per-turn effort is active
+  for the init frame's model (`true` only ever arrives on an init).
+- `InitMessage::view_mode` (`ViewMode`: `focus` | `default`, open-set) —
+  the `/focus` transcript view, on Remote Control bridge and headless
+  stream-json inits.
+- `ConversationResetMessage::trigger` (`ConversationResetTrigger`: `clear`
+  | `plan_mode_exit` | `fresh_session` | `onboarding`, open-set),
+  `::user_message_uuid` (trigger `clear` only: the `/clear` message's uuid)
+  and `::timestamp` (ISO 8601 UTC, display only).
+- `AssistantMessage::local_command_outcome` (`LocalCommandOutcome` with
+  `LocalCommandOutcomeKind`: `unavailable_headless` | `unknown` | `failed`
+  | `restart_required`, open-set, plus the `unknown` kind's closest-command
+  `suggestion`) — what a local-command row reports, so a host can offer a
+  fix instead of relaying the text.
+
+### Changed
+
+- Re-baseline the tested pin to Claude CLI **2.1.281** and refresh the drift
+  snapshot (49 union members). `CliFlag::Agents` docs note that `--print`
+  also accepts a file path.
+
 ## [2.1.280] - 2026-09-22
 
 ### Added

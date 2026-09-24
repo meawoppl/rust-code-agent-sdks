@@ -49,6 +49,7 @@ pub enum SystemSubtype {
     TurnHandoffAvailable,
     TurnPreempted,
     PeerMessageHold,
+    PerTurnEffortChanged,
     /// A subtype not yet known to this version of the crate.
     Unknown(String),
 }
@@ -92,6 +93,7 @@ impl SystemSubtype {
             Self::TurnHandoffAvailable => "turn_handoff_available",
             Self::TurnPreempted => "turn_preempted",
             Self::PeerMessageHold => "peer_message_hold",
+            Self::PerTurnEffortChanged => "per_turn_effort_changed",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -142,6 +144,7 @@ impl From<&str> for SystemSubtype {
             "turn_handoff_available" => Self::TurnHandoffAvailable,
             "turn_preempted" => Self::TurnPreempted,
             "peer_message_hold" => Self::PeerMessageHold,
+            "per_turn_effort_changed" => Self::PerTurnEffortChanged,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -1501,6 +1504,19 @@ impl SystemMessage {
         serde_json::from_value(self.data.clone()).ok()
     }
 
+    /// Check if this is a per_turn_effort_changed message.
+    pub fn is_per_turn_effort_changed(&self) -> bool {
+        self.subtype == SystemSubtype::PerTurnEffortChanged
+    }
+
+    /// Try to parse as a per_turn_effort_changed message.
+    pub fn as_per_turn_effort_changed(&self) -> Option<PerTurnEffortChangedMessage> {
+        if self.subtype != SystemSubtype::PerTurnEffortChanged {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
     /// Parse any typed system subtype known to this crate version.
     pub fn as_known_system_event(&self) -> Option<KnownSystemEvent> {
         macro_rules! parse {
@@ -1572,6 +1588,9 @@ impl SystemMessage {
             }
             SystemSubtype::TurnPreempted => parse!(TurnPreempted, TurnPreemptedMessage),
             SystemSubtype::PeerMessageHold => parse!(PeerMessageHold, PeerMessageHoldMessage),
+            SystemSubtype::PerTurnEffortChanged => {
+                parse!(PerTurnEffortChanged, PerTurnEffortChangedMessage)
+            }
             SystemSubtype::Unknown(_) => None,
         }
     }
@@ -1659,6 +1678,9 @@ impl SystemMessage {
             SystemSubtype::PeerMessageHold => {
                 reserialize(parse_system::<PeerMessageHoldMessage>(self))
             }
+            SystemSubtype::PerTurnEffortChanged => {
+                reserialize(parse_system::<PerTurnEffortChangedMessage>(self))
+            }
             SystemSubtype::Unknown(_) => None,
         }
     }
@@ -1712,6 +1734,7 @@ pub enum KnownSystemEvent {
     TurnHandoffAvailable(TurnHandoffAvailableMessage),
     TurnPreempted(TurnPreemptedMessage),
     PeerMessageHold(PeerMessageHoldMessage),
+    PerTurnEffortChanged(PerTurnEffortChangedMessage),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2363,6 +2386,27 @@ pub struct InitMessage {
     /// (the shape is internal and evolving) (CLI 2.1.266+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub startup_timing: Option<serde_json::Map<String, Value>>,
+
+    /// Whether per-turn effort is active for this frame's `model`. `true`:
+    /// an effort change keeps the prompt cache, because the effort is sent
+    /// inside the conversation at the turn where it changes. `false`: the
+    /// effort is sent only as the top-level parameter, so a change rewrites
+    /// the cached prefix. Mid-session the CLI reports only a change to
+    /// `false` (`system/per_turn_effort_changed`); `true` comes only from an
+    /// init and is provisional after a fresh process or once the
+    /// conversation's refusals are cleared, so keep listening all session.
+    /// Absent means unknown (CLI 2.1.281+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub per_turn_effort_active: Option<bool>,
+
+    /// Whether the session's transcript is in focus view. Toggled by
+    /// `/focus`, including over Remote Control. Present on Remote Control
+    /// bridge init frames and on the per-turn init of headless stream-json
+    /// runs; absent on hosts that do not publish it and on CLIs before
+    /// 2.1.281. Re-emitted inits carry the current value — the newest frame
+    /// wins.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub view_mode: Option<ViewMode>,
 }
 
 /// The server-configured session indicator that the terminal renders as a
@@ -2373,6 +2417,58 @@ pub struct FooterIndicator {
     /// The label to show — already sanitized to a single line of plain text,
     /// exactly as the terminal footer renders it after its `◆` glyph.
     pub text: String,
+}
+
+/// The session's transcript view, carried as [`InitMessage::view_mode`]
+/// (CLI 2.1.281+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ViewMode {
+    /// The model is told the user sees only its final message per turn, so
+    /// clients may collapse each turn to the prompt and the final response.
+    Focus,
+    /// The ordinary full transcript.
+    Default,
+    /// A mode not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl ViewMode {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Focus => "focus",
+            Self::Default => "default",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for ViewMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for ViewMode {
+    fn from(s: &str) -> Self {
+        match s {
+            "focus" => Self::Focus,
+            "default" => Self::Default,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for ViewMode {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ViewMode {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// Status system message - sent during operations like context compaction
@@ -3583,6 +3679,24 @@ impl<'de> Deserialize<'de> for PeerMessageHoldOutcome {
     }
 }
 
+/// `system/per_turn_effort_changed` — the conversation stopped sending effort
+/// per turn, because the server refused its per-turn effort message or a
+/// `role:"system"` message. From the retried request on, an effort change
+/// rewrites the cached prefix, for every model, until a later `system/init`
+/// says otherwise. Sent once, when the conversation first turns per-turn
+/// effort off, before the retried request's output; sent again only if the
+/// server refuses again after the conversation's refusals are cleared (for
+/// example by `/clear` or a compaction). It can repeat a `false` the host
+/// already holds. Pairs with [`InitMessage::per_turn_effort_active`]
+/// (CLI 2.1.281+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerTurnEffortChangedMessage {
+    /// Always `false`: a change to `true` is reported only by `system/init`.
+    pub per_turn_effort_active: bool,
+    pub uuid: String,
+    pub session_id: String,
+}
+
 /// The run that printed a local-command row, carried as
 /// [`AssistantMessage::local_command_run`].
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -3592,6 +3706,80 @@ pub struct LocalCommandRun {
     /// Its arguments as the echo shows them (`***` when the command marks
     /// them sensitive).
     pub args: String,
+}
+
+/// What a local-command row reports, carried as
+/// [`AssistantMessage::local_command_outcome`] so a host can offer a fix
+/// instead of relaying the text (CLI 2.1.281+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LocalCommandOutcome {
+    pub kind: LocalCommandOutcomeKind,
+    /// Kind `unknown` only: the registered command closest to the typed
+    /// name, no slash.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub suggestion: Option<String>,
+}
+
+/// The outcome a local-command row reports ([`LocalCommandOutcome::kind`]).
+/// New kinds are additive; the CLI itself drops the whole outcome when it
+/// meets a kind it does not know, so treat [`Unknown`](Self::Unknown) as
+/// absent.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LocalCommandOutcomeKind {
+    /// An interactive-panel command this (headless) session cannot open.
+    UnavailableHeadless,
+    /// No command has the typed name; see
+    /// [`LocalCommandOutcome::suggestion`].
+    Unknown,
+    /// The command ran and failed.
+    Failed,
+    /// The change applies after Claude Code restarts.
+    RestartRequired,
+    /// A kind not yet known to this version of the crate.
+    Other(String),
+}
+
+impl LocalCommandOutcomeKind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::UnavailableHeadless => "unavailable_headless",
+            Self::Unknown => "unknown",
+            Self::Failed => "failed",
+            Self::RestartRequired => "restart_required",
+            Self::Other(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for LocalCommandOutcomeKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for LocalCommandOutcomeKind {
+    fn from(s: &str) -> Self {
+        match s {
+            "unavailable_headless" => Self::UnavailableHeadless,
+            "unknown" => Self::Unknown,
+            "failed" => Self::Failed,
+            "restart_required" => Self::RestartRequired,
+            other => Self::Other(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for LocalCommandOutcomeKind {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for LocalCommandOutcomeKind {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// Structured twin of a `/usage` result, carried as
@@ -3942,6 +4130,13 @@ pub struct AssistantMessage {
     /// `message.content` (CLI 2.1.273+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub local_command_run: Option<LocalCommandRun>,
+    /// On the local-command twin, what the row reports (`unavailable_headless`,
+    /// `unknown`, `failed`, `restart_required`), so a host can offer a fix
+    /// instead of relaying the text. Absent when the row reports none of
+    /// these; new kinds are additive, so treat an unknown one as absent.
+    /// Wrapper-level sibling — never inside `message.content` (CLI 2.1.281+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_command_outcome: Option<LocalCommandOutcome>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub is_meta: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

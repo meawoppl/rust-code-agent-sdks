@@ -78,7 +78,7 @@
 //! ⚠️ **Important**: The Claude CLI protocol is unstable and evolving. This crate
 //! automatically checks your Claude CLI version and warns if it's newer than tested.
 //!
-//! Current tested version: **2.1.278**
+//! Current tested version: **2.1.281**
 //!
 //! Report compatibility issues at: <https://github.com/meawoppl/rust-claude-codes/pulls>
 //!
@@ -171,28 +171,29 @@ pub use io::{
     ContextSkill, ContextUsage, ControlRequestProgressMessage, DevIntentKind, DevIntentMessage,
     DevIntentTrigger, ElicitationCompleteMessage, FailedPersistedFile, FeedbackDraftQueuedMessage,
     FilesPersistedMessage, HookProgressMessage, HookResponseMessage, HookStartedMessage,
-    InformationalMessage, InitMessage, InitPermissionMode, KnownSystemEvent,
-    LocalCommandOutputMessage, LocalCommandRun, McpMeta, McpServerError, MemoryPaths,
-    MemoryRecallItem, MemoryRecallMessage, MessageOrigin, MessageRole, MirrorErrorKey,
+    InformationalMessage, InitMessage, InitPermissionMode, KnownSystemEvent, LocalCommandOutcome,
+    LocalCommandOutcomeKind, LocalCommandOutputMessage, LocalCommandRun, McpMeta, McpServerError,
+    MemoryPaths, MemoryRecallItem, MemoryRecallMessage, MessageOrigin, MessageRole, MirrorErrorKey,
     MirrorErrorMessage, ModelRefusalFallbackMessage, ModelRefusalNoFallbackMessage,
     NotificationMessage, OutputStyle, PeerMessageHoldCause, PeerMessageHoldMessage,
-    PeerMessageHoldOutcome, PeerMessageHoldState, PeerMessageLane, PermissionDeniedMessage,
-    PermissionDeniedReasonCode, PersistedFile, PluginDiagnostic, PluginInfo, PluginInstallMessage,
-    PreservedMessages, PreservedSegment, RefusalFallbackScope, RemedyFeature, RemedyFeatureCause,
-    RemedyLoginProvider, RemedyPolicyKind, StatusMessage, StatusMessageStatus, StopReason,
-    SummarizeMetadata, SystemMessage, SystemSubtype, TaskEndReason, TaskNotificationMessage,
-    TaskPatch, TaskProgressMessage, TaskStartedMessage, TaskStatus, TaskType, TaskUpdatedMessage,
-    TaskUsage, ThinkingTokensMessage, ToolResultMeta, ToolResultRemedy, ToolResultRemedyKind,
-    ToolUseMeta, TurnHandoffAvailableMessage, TurnPreemptedMessage, UsageReport,
-    UsageReportExtraUsage, UsageReportLimit, UsageReportRateLimits, UsageReportScope,
-    UsageReportScopeLabel, VcsMutationKind, VcsStateChangedMessage, WorkerShuttingDownMessage,
+    PeerMessageHoldOutcome, PeerMessageHoldState, PeerMessageLane, PerTurnEffortChangedMessage,
+    PermissionDeniedMessage, PermissionDeniedReasonCode, PersistedFile, PluginDiagnostic,
+    PluginInfo, PluginInstallMessage, PreservedMessages, PreservedSegment, RefusalFallbackScope,
+    RemedyFeature, RemedyFeatureCause, RemedyLoginProvider, RemedyPolicyKind, StatusMessage,
+    StatusMessageStatus, StopReason, SummarizeMetadata, SystemMessage, SystemSubtype,
+    TaskEndReason, TaskNotificationMessage, TaskPatch, TaskProgressMessage, TaskStartedMessage,
+    TaskStatus, TaskType, TaskUpdatedMessage, TaskUsage, ThinkingTokensMessage, ToolResultMeta,
+    ToolResultRemedy, ToolResultRemedyKind, ToolUseMeta, TurnHandoffAvailableMessage,
+    TurnPreemptedMessage, UsageReport, UsageReportExtraUsage, UsageReportLimit,
+    UsageReportRateLimits, UsageReportScope, UsageReportScopeLabel, VcsMutationKind,
+    VcsStateChangedMessage, ViewMode, WorkerShuttingDownMessage,
 };
 
 // Additional top-level output message wrappers
 pub use io::{
     AuthStatusMessage, CommandLifecycleMessage, CommandLifecycleState, ConversationResetMessage,
-    PromptSuggestionMessage, StreamEventMessage, SubagentRetry, ToolProgressMessage,
-    ToolUseSummaryMessage,
+    ConversationResetTrigger, PromptSuggestionMessage, StreamEventMessage, SubagentRetry,
+    ToolProgressMessage, ToolUseSummaryMessage,
 };
 
 // Wire-fidelity audit for verifying frames are fully typed

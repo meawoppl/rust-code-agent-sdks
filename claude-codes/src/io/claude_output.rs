@@ -301,6 +301,85 @@ pub struct ConversationResetMessage {
     pub uuid: String,
     /// The OLD session id — the identity being retired by this reset.
     pub session_id: String,
+    /// What discarded the conversation. Informational: reset on every
+    /// `conversation_reset` frame whatever this says, and treat an absent
+    /// (CLI before 2.1.281) or unrecognized value as an unspecified reset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger: Option<ConversationResetTrigger>,
+    /// Only with trigger `clear`: the uuid of the user message whose
+    /// `/clear` was executed (the client's own uuid for that message when it
+    /// came from a Remote Control or stream-json client, otherwise the uuid
+    /// the CLI assigned to the typed command). Lets a consumer match this
+    /// frame to a `/clear` message it has already seen, wiping once whichever
+    /// arrives first. Absent for the other triggers, when that uuid is not a
+    /// canonical UUID, and from CLIs before 2.1.281.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_message_uuid: Option<String>,
+    /// When the reset happened, as an ISO 8601 string in UTC from the clock
+    /// of the process that performed it. Meant for display, not for ordering
+    /// frames. Absent from CLIs before 2.1.281; fall back to the time the
+    /// frame was received.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timestamp: Option<String>,
+}
+
+/// What discarded the conversation ([`ConversationResetMessage::trigger`],
+/// CLI 2.1.281+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ConversationResetTrigger {
+    /// The `/clear` command (or its `/reset` and `/new` aliases).
+    Clear,
+    /// Leaving plan mode with the clear-context option.
+    PlanModeExit,
+    /// A flow that starts a fresh session to implement an approved plan.
+    FreshSession,
+    /// An onboarding flow re-run inside an existing session.
+    Onboarding,
+    /// A trigger not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl ConversationResetTrigger {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Clear => "clear",
+            Self::PlanModeExit => "plan_mode_exit",
+            Self::FreshSession => "fresh_session",
+            Self::Onboarding => "onboarding",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl std::fmt::Display for ConversationResetTrigger {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for ConversationResetTrigger {
+    fn from(s: &str) -> Self {
+        match s {
+            "clear" => Self::Clear,
+            "plan_mode_exit" => Self::PlanModeExit,
+            "fresh_session" => Self::FreshSession,
+            "onboarding" => Self::Onboarding,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for ConversationResetTrigger {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ConversationResetTrigger {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// Raw preserved record for Claude Code transcript-only message types.

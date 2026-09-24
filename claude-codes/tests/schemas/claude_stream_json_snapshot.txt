@@ -3,13 +3,13 @@
 # One line per wire label: `<type[/subtype]>: comma-separated top-level field keys`.
 # Minified schema names and nested/describe() detail are intentionally omitted;
 # see the header of check_claude_schema_drift.py for the comparison contract.
-# union_members: 48
+# union_members: 49
 
-assistant: aborted, advisor_model, api_error, api_error_code, api_error_params, api_error_status, attribution_agent, attribution_mcp_server, attribution_mcp_tool, attribution_plugin, attribution_skill, batch_tool_uses, context_usage, error, error_details, historical, is_api_error_message, is_meta, is_virtual, local_command_run, local_command_source, message, narration_block_indexes, narration_hint, parent_tool_use_id, request_id, resume_reason, resumed_from_incomplete_thinking, session_id, subagent_type, supersedes, task_description, timestamp, tool_use_meta, type, usage_report, user_message_uuid, user_message_uuids, uuid, wire_ingest_context, wire_tool_inputs
+assistant: aborted, advisor_model, api_error, api_error_code, api_error_params, api_error_status, attribution_agent, attribution_mcp_server, attribution_mcp_tool, attribution_plugin, attribution_skill, batch_tool_uses, context_usage, error, error_details, historical, is_api_error_message, is_meta, is_virtual, local_command_outcome, local_command_run, local_command_source, message, narration_block_indexes, narration_hint, parent_tool_use_id, request_id, resume_reason, resumed_from_incomplete_thinking, session_id, subagent_type, supersedes, task_description, timestamp, tool_use_meta, type, usage_report, user_message_uuid, user_message_uuids, uuid, wire_ingest_context, wire_tool_inputs
 auth_status: error, isAuthenticating, output, session_id, type, uuid
 command_lifecycle: command_uuid, session_id, state, type, uuid
 content: content, type
-conversation_reset: new_conversation_id, session_id, type, uuid
+conversation_reset: new_conversation_id, session_id, timestamp, trigger, type, user_message_uuid, uuid
 document: cache_control, citations, context, source, title, type
 file: file_id, type
 image: cache_control, source, type
@@ -36,7 +36,7 @@ system/hook_progress: hook_event, hook_id, hook_name, output, session_id, stderr
 system/hook_response: exit_code, hook_event, hook_id, hook_name, outcome, output, session_id, stderr, stdout, subtype, type, uuid
 system/hook_started: hook_event, hook_id, hook_name, session_id, subtype, type, uuid
 system/informational: content, level, prevent_continuation, session_id, subtype, tool_use_id, type, uuid
-system/init: agents, analytics_disabled, apiKeySource, betas, capabilities, claude_code_version, cloud_session, cwd, effort, fast_mode_disabled_reason, fast_mode_state, footer_indicator, mcp_server_errors, mcp_servers, memory_paths, model, output_style, permissionMode, plugin_errors, plugin_warnings, plugins, powershell_path, product_feedback_disabled, scratchpad_path, session_id, skills, slash_commands, startup_timing, subtype, terminal_slash_commands, tools, type, uuid, worker_epoch
+system/init: agents, analytics_disabled, apiKeySource, betas, capabilities, claude_code_version, cloud_session, cwd, effort, fast_mode_disabled_reason, fast_mode_state, footer_indicator, mcp_server_errors, mcp_servers, memory_paths, model, output_style, per_turn_effort_active, permissionMode, plugin_errors, plugin_warnings, plugins, powershell_path, product_feedback_disabled, scratchpad_path, session_id, skills, slash_commands, startup_timing, subtype, terminal_slash_commands, tools, type, uuid, view_mode, worker_epoch
 system/local_command_output: content, session_id, subtype, type, uuid
 system/memory_recall: memories, mode, session_id, subtype, type, uuid
 system/mirror_error: error, key, session_id, subtype, type, uuid
@@ -44,6 +44,7 @@ system/model_refusal_fallback: api_refusal_category, api_refusal_explanation, co
 system/model_refusal_no_fallback: api_refusal_category, api_refusal_explanation, content, original_model, refused_user_message_uuid, request_id, session_id, subtype, type, uuid
 system/notification: color, key, priority, session_id, subtype, text, timeout_ms, type, uuid
 system/peer_message_hold: cause, from, from_name, lane, message_uuid, outcome, session_id, state, subtype, type, uuid
+system/per_turn_effort_changed: per_turn_effort_active, session_id, subtype, type, uuid
 system/permission_denied: agent_id, decision_reason, decision_reason_code, decision_reason_type, message, session_id, subtype, tool_name, tool_use_id, type, uuid
 system/plugin_install: error, name, session_id, status, subtype, type, uuid
 system/session_state_changed: session_id, state, subtype, type, uuid
