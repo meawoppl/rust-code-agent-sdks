@@ -787,6 +787,8 @@ pub enum CodexErrorInfo {
     UsageLimitExceeded,
     #[serde(rename = "rateLimitExceeded")]
     RateLimitExceeded,
+    #[serde(rename = "flexUnavailable")]
+    FlexUnavailable,
     #[serde(rename = "serverOverloaded")]
     ServerOverloaded,
     #[serde(rename = "cyberPolicy")]
@@ -5143,6 +5145,8 @@ pub enum PlanType {
     Pro,
     #[serde(rename = "prolite")]
     Prolite,
+    #[serde(rename = "promax")]
+    Promax,
     #[serde(rename = "edu_plus")]
     Edu_plus,
     #[serde(rename = "edu_pro")]
@@ -5238,83 +5242,6 @@ pub enum PluginDisabledReason {
     Unknown,
 }
 
-/// A UI entrypoint contributed by a plugin's bundled MCP app. Every variant
-/// shares the presentation fields (`app_id`, `tool_name`, `title`,
-/// `resource_uri`, `icons`); the `type` tag says where the host surfaces it.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "camelCase")]
-pub enum PluginEntrypoint {
-    Global {
-        #[serde(rename = "appId")]
-        app_id: String,
-        icons: Vec<PluginIcon>,
-        #[serde(
-            rename = "quickAction",
-            default,
-            skip_serializing_if = "Option::is_none"
-        )]
-        quick_action: Option<PluginQuickAction>,
-        #[serde(rename = "resourceUri")]
-        resource_uri: String,
-        title: String,
-        #[serde(rename = "toolName")]
-        tool_name: String,
-    },
-    Settings {
-        #[serde(rename = "appId")]
-        app_id: String,
-        icons: Vec<PluginIcon>,
-        #[serde(rename = "resourceUri")]
-        resource_uri: String,
-        #[serde(rename = "searchTerms", default)]
-        search_terms: Vec<String>,
-        title: String,
-        #[serde(rename = "toolName")]
-        tool_name: String,
-    },
-    Thread {
-        #[serde(rename = "appId")]
-        app_id: String,
-        icons: Vec<PluginIcon>,
-        #[serde(rename = "resourceUri")]
-        resource_uri: String,
-        title: String,
-        #[serde(rename = "toolName")]
-        tool_name: String,
-    },
-    File {
-        #[serde(rename = "appId")]
-        app_id: String,
-        extensions: Vec<String>,
-        icons: Vec<PluginIcon>,
-        #[serde(rename = "resourceUri")]
-        resource_uri: String,
-        title: String,
-        #[serde(rename = "toolName")]
-        tool_name: String,
-    },
-}
-
-/// Host-integration surface a plugin exposes (`PluginSummary.extensions`).
-/// The per-surface lists default to empty; `entrypoints` is the legacy
-/// undifferentiated list and is absent when the plugin uses the typed lists.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct PluginExtensions {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub entrypoints: Option<Vec<PluginEntrypoint>>,
-    #[serde(rename = "fileHandlers", default)]
-    pub file_handlers: Vec<PluginEntrypoint>,
-    #[serde(rename = "searchMentionProviders", default)]
-    pub search_mention_providers: Vec<PluginSearchProvider>,
-    #[serde(default)]
-    pub settings: Vec<PluginSettings>,
-    #[serde(rename = "settingsEntrypoints", default)]
-    pub settings_entrypoints: Vec<PluginEntrypoint>,
-    #[serde(rename = "threadEntrypoints", default)]
-    pub thread_entrypoints: Vec<PluginEntrypoint>,
-}
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginHookSummary {
@@ -5322,20 +5249,6 @@ pub struct PluginHookSummary {
     pub event_name: HookEventName,
     #[serde(default)]
     pub key: String,
-}
-
-/// Icon asset for a plugin entrypoint or quick action.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct PluginIcon {
-    #[serde(rename = "mimeType", default, skip_serializing_if = "Option::is_none")]
-    pub mime_type: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sizes: Option<Vec<String>>,
-    #[serde(default)]
-    pub src: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub theme: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -5572,28 +5485,6 @@ pub struct PluginMarketplaceEntry {
     pub plugins: Vec<PluginSummary>,
 }
 
-/// One-click action attached to a global plugin entrypoint.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PluginQuickAction {
-    #[serde(default)]
-    pub icons: Vec<PluginIcon>,
-    pub target: PluginQuickActionTarget,
-    #[serde(default)]
-    pub title: String,
-}
-
-/// What a `PluginQuickAction` invokes when triggered.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "camelCase")]
-pub enum PluginQuickActionTarget {
-    Tool {
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        arguments: Option<Value>,
-        name: String,
-    },
-}
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginReadParams {
@@ -5671,46 +5562,6 @@ pub struct PluginReconcileResponse {
     /// Backend remote plugin IDs whose bundle or identity update failed.
     #[serde(rename = "failedRemotePluginIds", default)]
     pub failed_remote_plugin_ids: Vec<String>,
-}
-
-/// A plugin-provided search/mention provider backed by an MCP tool.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct PluginSearchProvider {
-    #[serde(rename = "appId", default)]
-    pub app_id: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub call: Option<PluginSearchProviderCall>,
-    #[serde(rename = "linkId", default)]
-    pub link_id: String,
-    #[serde(default)]
-    pub title: String,
-    #[serde(rename = "toolName", default)]
-    pub tool_name: String,
-}
-
-/// Pre-bound MCP tool call a `PluginSearchProvider` issues.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct PluginSearchProviderCall {
-    #[serde(rename = "_meta", default)]
-    pub meta: Value,
-    #[serde(default)]
-    pub arguments: Value,
-    #[serde(default)]
-    pub name: String,
-}
-
-/// Read/update tool pair backing a plugin's settings surface.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct PluginSettings {
-    #[serde(rename = "appId", default)]
-    pub app_id: String,
-    #[serde(rename = "readToolName", default)]
-    pub read_tool_name: String,
-    #[serde(rename = "updateToolName", default)]
-    pub update_tool_name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -6017,10 +5868,6 @@ pub struct PluginSummary {
     pub eligible_plan_types: Option<Vec<String>>,
     #[serde(default)]
     pub enabled: bool,
-    /// Host-integration surface (entrypoints, settings, search providers)
-    /// contributed by the plugin's bundled MCP app, when it has one.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub extensions: Option<PluginExtensions>,
     #[serde(default)]
     pub id: String,
     #[serde(rename = "installPolicy")]

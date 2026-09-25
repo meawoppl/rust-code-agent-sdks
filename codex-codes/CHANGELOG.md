@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.157.0] - 2026-09-25
+
+Re-baseline the tested pin to Codex CLI **0.157.0** (from 0.156.1) and model
+the `openai/codex@main` (`4b1c0c30d`) app-server schema drift. The 0.157.0
+release's `codex app-server generate-json-schema` output is definition-for-
+definition identical to the main snapshot this crate tracked at 0.156.1
+(its delta against 0.156.1 — `explicitGatewayOauth`, `McpResourceReadTarget`,
+the `account/gatewayOAuth/*` requests — was modeled in 0.155.x/0.156.x), so
+the re-pin itself needs no type work. The two additions and one removal below
+are main-only; the pinned CLI does not emit the new enum values yet and never
+emitted the removed field.
+
+### Added
+
+- `CodexErrorInfo::FlexUnavailable` (`flexUnavailable`, openai/codex#47967):
+  a distinct terminal error when Flex-tier capacity is unavailable, emitted
+  where `serverOverloaded` was previously the closest match.
+- `PlanType::Promax` (`promax`, openai/codex#47971): the Pro Max plan tier
+  in `account/read` and `account/rateLimits/read` responses.
+
+### Removed
+
+- `PluginSummary.extensions` and the `PluginExtensions` tree it carried
+  (`PluginEntrypoint`, `PluginIcon`, `PluginQuickAction`,
+  `PluginQuickActionTarget`, `PluginSearchProvider`,
+  `PluginSearchProviderCall`, `PluginSettings`), added in 0.156.1 from
+  openai/codex#47263 and deleted upstream three days later in
+  openai/codex#48035 before any release shipped it. No released CLI ever
+  emitted the field.
+
+### Changed
+
+- Re-snapshot `tests/schemas/*.json` from `openai/codex@main` `4b1c0c30d`.
+  `codegen_protocol.py` preview on the new snapshot changes nothing beyond
+  the enum bodies and the removed types above; `schema_coverage` stays at
+  100%.
+
 ## [0.156.1] - 2026-09-23
 
 Re-baseline the tested pin to Codex CLI **0.156.1** (from 0.155.1) and model
