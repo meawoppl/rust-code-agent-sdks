@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-09-25
+
+### Added
+
+- `auth::CREDENTIAL_BACKEND_ENV` (`TBH_CREDENTIAL_BACKEND`): Muse Code
+  1.4.0 stores `muse auth set` keys in the OS keychain by default and fails
+  outright where none is reachable (`keychain write failed (internal error
+  -2147483648)` — a container, a CI runner, a sandboxed `HOME`). Setting it
+  to `file` on the child's environment keeps the pre-1.4.0 plain
+  `auth.json` store, which is also the only store `credentials_present`
+  inspects. `auth_set`/`logout` still inherit the caller's environment
+  unchanged; the live auth round-trip test now sets it.
+
+### Changed
+
+- Re-baseline the tested pin to Muse Code **1.4.0 (1.4.0-R4161.1)** (from
+  1.3.0-R3401.1). No wire drift: the echo-provider stream fingerprint
+  matches the committed snapshot, `muse --help`, `muse auth --help` and
+  `muse exec --help` are byte-identical to 1.3.0, and a live Muse Spark
+  `exec --json` run parses end to end. The on-disk model catalog is
+  unchanged (same `MuseModel` ids, default, limits, and reasoning-effort
+  tiers). The crate version follows the tested release per the
+  version == tested convention.
+
 ## [1.3.1] - 2026-09-18
 
 ### Added
