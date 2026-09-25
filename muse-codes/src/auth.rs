@@ -14,6 +14,14 @@
 //!
 //! Credential resolution order (per the CLI): `META_API_KEY` env always
 //! wins, then the saved credential at `~/.config/muse/auth.json`.
+//!
+//! Since Muse Code 1.4.0 `muse auth set` stores the key in the OS keychain
+//! by default and fails outright where none is reachable (a container, a
+//! CI runner, a sandboxed `HOME`: `keychain write failed (internal error
+//! -2147483648)`). Set [`CREDENTIAL_BACKEND_ENV`] to `file` on the child's
+//! environment to keep the pre-1.4.0 plain-file store, which is also the
+//! only store [`credentials_present`] inspects. [`auth_set`] and
+//! [`logout`] inherit the caller's environment unchanged.
 
 use crate::error::{Error, Result};
 use std::path::PathBuf;
@@ -24,6 +32,11 @@ use tokio::process::{Child, ChildStdout};
 
 /// Environment variable that overrides any saved credential.
 pub const META_API_KEY_VAR: &str = "META_API_KEY";
+
+/// Environment variable selecting where `muse auth set` stores the key
+/// (Muse Code 1.4.0+): `file` keeps the plain `auth.json` store; unset
+/// means the OS keychain, which fails on hosts without one.
+pub const CREDENTIAL_BACKEND_ENV: &str = "TBH_CREDENTIAL_BACKEND";
 
 /// Path of the saved credential file (`~/.config/muse/auth.json`),
 /// honoring `XDG_CONFIG_HOME`. `None` when no home directory resolves.
