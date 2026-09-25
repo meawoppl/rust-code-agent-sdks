@@ -736,6 +736,72 @@ impl LoginFlow {
         }
     }
 
+    /// Poll for login completion WITHOUT submitting a code — the path the
+    /// 2.1.28x flow normally takes. The CLI opens the browser and polls
+    /// the authorization session in the background (device-code grant),
+    /// persisting credentials itself when the user approves; the on-screen
+    /// "Paste code here if prompted" box is only the fallback for machines
+    /// where that recommended sign-in isn't available. Drivers should
+    /// interleave this with their own paste-input handling and treat
+    /// EITHER as completion.
+    ///
+    /// Waits up to `wait`, then:
+    /// - `Ok(Some(outcome))` — credentials landed (token extracted when
+    ///   observable, same recovery channels as
+    ///   [`submit_code_and_wait`](Self::submit_code_and_wait)); the child
+    ///   is left for the caller to drop.
+    /// - `Ok(None)` — still pending; call again.
+    /// - `Err(Error::LoginChildExited)` — the child died without success.
+    pub fn poll_outcome(&mut self, wait: Duration) -> Result<Option<LoginOutcome>> {
+        const CREDS_TOKEN_GRACE: Duration = Duration::from_secs(3);
+        let deadline = Instant::now() + wait;
+        let mut creds_seen_at: Option<Instant> = None;
+        loop {
+            if creds_seen_at.is_none() && self.creds.updated() {
+                creds_seen_at = Some(Instant::now());
+            }
+            if let Some(seen) = creds_seen_at {
+                let (transcript, osc52) = {
+                    let (lock, _) = &*self.buf;
+                    let g = lock.lock().unwrap();
+                    (strip_ansi(&g.0), extract_osc52_token(&g.0))
+                };
+                let osc52_status = Osc52Status::from(&osc52);
+                let (token, token_source) = match (extract_token(&transcript), osc52) {
+                    (Some(t), _) => (Some(t), Some(TokenSource::Screen)),
+                    (None, Osc52Scan::Token(t)) => (Some(t), Some(TokenSource::Osc52)),
+                    (None, _) => (None, None),
+                };
+                if token.is_some() || seen.elapsed() >= CREDS_TOKEN_GRACE {
+                    return Ok(Some(LoginOutcome {
+                        token,
+                        token_source,
+                        credentials_updated: true,
+                        osc52: osc52_status,
+                        copy_nudge_sent: false,
+                        transcript,
+                    }));
+                }
+            } else if let Ok(Some(status)) = self.child.try_wait() {
+                // Child gone before any credential write — a failure, with
+                // the transcript as forensics (matching finish()'s shape).
+                self.finished = true;
+                let transcript = {
+                    let (lock, _) = &*self.buf;
+                    strip_ansi(&lock.lock().unwrap().0)
+                };
+                return Err(Error::LoginChildExited {
+                    code: Some(status.exit_code()),
+                    transcript,
+                });
+            }
+            if Instant::now() >= deadline {
+                return Ok(None);
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    }
+
     /// Wait for the flow to complete and collect the outcome.
     ///
     /// For [`LoginMode::SetupToken`] the minted token is extracted from the

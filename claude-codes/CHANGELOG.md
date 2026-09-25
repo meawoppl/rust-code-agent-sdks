@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.283] - 2026-09-25
+
+### Added
+
+- **`LoginFlow::poll_outcome`** — poll for login completion WITHOUT
+  submitting a code. Investigated on CLI 2.1.282: the sign-in flow now
+  opens the browser and polls the authorization session in the
+  background (device-code grant, PKCE authorize URL redirecting to the
+  hosted `platform.claude.com/oauth/code/callback` page); credentials
+  are persisted by the CLI when the user approves, and the on-screen
+  "Paste code here if prompted" box is only the fallback for machines
+  where the recommended sign-in isn't available. Drivers should
+  interleave `poll_outcome` with their own paste handling and treat
+  either as completion — wirecheck's login card now does exactly that
+  (previously it parked on the paste and would time out on logins that
+  had already succeeded).
+
 ## [2.1.282] - 2026-09-25
 
 Re-baseline against Claude CLI **2.1.282**. Models the 2.1.281 → 2.1.282

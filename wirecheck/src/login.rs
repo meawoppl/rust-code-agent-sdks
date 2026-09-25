@@ -156,18 +156,40 @@ pub async fn claude_start(state: Shared, slot: Arc<ClaudeFlowSlot>, mode: String
                 };
             }
         }
-        let code = rx
-            .recv_timeout(Duration::from_secs(600))
-            .map_err(|_| "timed out waiting for the pasted code".to_string())?;
-        {
-            let mut portal = state_for_thread.blocking_write();
-            if let Some(panel) = portal.agents.get_mut("claude") {
-                panel.login = LoginState::Waiting;
+        // Race the two completion paths. On 2.1.28x the CLI polls the
+        // authorization session itself (device-code grant) and persists
+        // credentials when the user approves in the browser — no paste
+        // arrives. The paste box is the fallback for machines where that
+        // recommended sign-in isn't available, so honor whichever fires.
+        let deadline = std::time::Instant::now() + Duration::from_secs(600);
+        let outcome = loop {
+            match rx.try_recv() {
+                Ok(code) => {
+                    {
+                        let mut portal = state_for_thread.blocking_write();
+                        if let Some(panel) = portal.agents.get_mut("claude") {
+                            panel.login = LoginState::Waiting;
+                        }
+                    }
+                    break flow
+                        .submit_code_and_wait(&code, Duration::from_secs(120))
+                        .map_err(|e| e.to_string())?;
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    return Err("login page went away before completion".to_string());
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => {}
             }
-        }
-        let outcome = flow
-            .submit_code_and_wait(&code, Duration::from_secs(120))
-            .map_err(|e| e.to_string())?;
+            if let Some(outcome) = flow
+                .poll_outcome(Duration::from_secs(2))
+                .map_err(|e| e.to_string())?
+            {
+                break outcome;
+            }
+            if std::time::Instant::now() >= deadline {
+                return Err("timed out waiting for browser sign-in or a pasted code".to_string());
+            }
+        };
         // Summarize WITHOUT the token value: setup-token outcomes carry a
         // secret that must not reach state/logs; its presence is the news.
         Ok::<String, String>(format!(
