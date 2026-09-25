@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.282] - 2026-09-25
+
+Re-baseline against Claude CLI **2.1.282**. Models the 2.1.281 → 2.1.282
+stream-json drift: one additive optional field on `result`, no removals and
+no new subtypes. The model registry and `claude --help` are byte-identical
+to 2.1.281. The only other schema change is a new `session-inbox` value in
+the task-notification provenance `subkind`, which `MessageOrigin` already
+carries verbatim through its open `kind` + flattened `extra` shape.
+
+### Added
+
+- `ResultMessage::frame_intake_phases_ms: Option<BTreeMap<String, u64>>` —
+  how the triggering send's frame spent the time between
+  `frame_received_wall_ms` and `frame_enqueued_wall_ms`, in integer
+  milliseconds per intake step (`before_read`, `dedup`, `flag_settle`,
+  `receive_hook`, `attachments`, `admission_wait`, `admit_check`, `other`).
+  Steps that did not run are absent; `before_read` and `other` are always
+  present; unrecognized step names are kept. Present exactly when
+  `frame_received_wall_ms` is, except from older producers.
+
+### Changed
+
+- Re-snapshot `tests/schemas/claude_stream_json_snapshot.txt` from CLI
+  2.1.282 and re-pin `TESTED_VERSION`.
+
 ## [2.1.281] - 2026-09-24
 
 Re-baseline against Claude CLI **2.1.281**. Models the 2.1.280 → 2.1.281

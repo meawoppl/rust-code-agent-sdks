@@ -87,6 +87,25 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub frame_enqueued_wall_ms: Option<f64>,
 
+    /// How the triggering send's frame spent the time between
+    /// [`frame_received_wall_ms`](Self::frame_received_wall_ms) and
+    /// [`frame_enqueued_wall_ms`](Self::frame_enqueued_wall_ms), in integer
+    /// milliseconds per intake step (CLI 2.1.282+): `before_read` (until the
+    /// input loop read the frame, including any wait behind earlier frames
+    /// and a first message's wait for the worker to finish starting),
+    /// `dedup`, `flag_settle`, `receive_hook`, `attachments`,
+    /// `admission_wait` (held behind a pending model switch, a pending MCP
+    /// server-set change, start-up work the worker still owed its first
+    /// turn, or an earlier held frame), `admit_check` (the host's decision
+    /// whether to queue the frame, when it had to be awaited) and `other`.
+    /// Steps that did not run are absent; `before_read` and `other` are
+    /// always present. The values sum to the enqueued-minus-received gap
+    /// unless a step came out negative and was clamped to 0. Open set —
+    /// keep unrecognized step names. Present exactly when
+    /// `frame_received_wall_ms` is, except from older producers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frame_intake_phases_ms: Option<std::collections::BTreeMap<String, u64>>,
+
     /// Wall-clock epoch milliseconds when the turn's clock started: the
     /// anchor `duration_ms`, `ttft_ms`, `ttft_stream_ms`,
     /// `time_to_request_ms`, `first_content_frame_ms`, `first_stream_post_ms`
