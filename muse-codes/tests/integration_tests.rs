@@ -84,6 +84,8 @@ async fn auth_set_and_logout_roundtrip_in_sandbox_home() {
     let child = tokio::process::Command::new(&muse)
         .args(["auth", "set", "--provider", "meta", "--api-key-stdin"])
         .env("HOME", &sandbox)
+        // Muse 1.4.0+ defaults to the OS keychain, absent in a sandbox HOME.
+        .env(muse_codes::auth::CREDENTIAL_BACKEND_ENV, "file")
         .env_remove("XDG_CONFIG_HOME")
         .stdin(std::process::Stdio::piped())
         .output_stdin(b"meta-dummy-key-not-real\n")
@@ -107,6 +109,7 @@ async fn auth_set_and_logout_roundtrip_in_sandbox_home() {
     let out = tokio::process::Command::new(&muse)
         .arg("logout")
         .env("HOME", &sandbox)
+        .env(muse_codes::auth::CREDENTIAL_BACKEND_ENV, "file")
         .env_remove("XDG_CONFIG_HOME")
         .output()
         .await
