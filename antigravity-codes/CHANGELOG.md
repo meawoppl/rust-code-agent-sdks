@@ -5,6 +5,30 @@ All notable changes to `antigravity-codes` are documented here.
 The version tracks the `google-antigravity` release whose harness the crate was
 generated from and tested against.
 
+## [0.1.19] - 2026-09-26
+
+Re-baseline against `google-antigravity` 0.1.19: types regenerated from the
+0.1.19 wheel's descriptors (176 messages, 31 enums — up from 172/30). Regen
+against the committed 0.1.18 descriptors was verified as a byte-identical
+no-op first, so nothing hand-maintained was clobbered. This re-baseline is
+purely additive: no renames, no removals, no `oneof` arm changes to existing
+fields. The 0.1.19 wheel also drops most of the SDK's Python sub-packages
+(`connections`, `conversation`, `hooks`, `policy`, `proto`, `tools`,
+`triggers`, `utils`); the harness binary and the descriptors this crate is
+generated from are unaffected.
+
+### Added
+
+- Skills: `SkillsConfig { enabled, skills: Vec<SkillSource> }` on
+  `HarnessConfig.skills_config`, with `SkillSource { directory_path }`.
+- `ActionSkillLookup { operation, requested_skill_names, resolved_skill_names,
+  error_message }` on `StepUpdate.skill_lookup`, with
+  `ActionSkillLookupOperation::{Unspecified, ListSkills, LookupSkills,
+  GetSkillResources}` (`OPERATION_*`, open-set via `Unknown`).
+- `SpeechAnnotation { speaker, style }` on
+  `TextContent.Annotation.speech_metadata`, surfaced as the
+  `TextContentAnnotationType::SpeechMetadata` arm.
+
 ## [0.1.18] - 2026-09-23
 
 Re-baseline against `google-antigravity` 0.1.18: types regenerated from the

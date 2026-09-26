@@ -73,6 +73,66 @@ impl<'de> Deserialize<'de> for ActionEditFileDiffLineLineAction {
     }
 }
 
+/// `antigravity.localharness.ActionSkillLookup.Operation`
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub enum ActionSkillLookupOperation {
+    #[default]
+    Unspecified,
+    ListSkills,
+    LookupSkills,
+    GetSkillResources,
+    /// A value this crate does not know about yet.
+    ///
+    /// The harness is versioned independently of this crate, so an
+    /// unrecognised enum value is treated as forward compatibility rather
+    /// than as a decode error.
+    Unknown(String),
+}
+
+impl ActionSkillLookupOperation {
+    /// The protobuf-JSON spelling of this value.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Unspecified => "OPERATION_UNSPECIFIED",
+            Self::ListSkills => "OPERATION_LIST_SKILLS",
+            Self::LookupSkills => "OPERATION_LOOKUP_SKILLS",
+            Self::GetSkillResources => "OPERATION_GET_SKILL_RESOURCES",
+            Self::Unknown(s) => s,
+        }
+    }
+}
+
+impl std::fmt::Display for ActionSkillLookupOperation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Serialize for ActionSkillLookupOperation {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ActionSkillLookupOperation {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(match crate::wire::EnumRepr::deserialize(d)? {
+            crate::wire::EnumRepr::Name(n) if n == "OPERATION_UNSPECIFIED" => Self::Unspecified,
+            crate::wire::EnumRepr::Name(n) if n == "OPERATION_LIST_SKILLS" => Self::ListSkills,
+            crate::wire::EnumRepr::Name(n) if n == "OPERATION_LOOKUP_SKILLS" => Self::LookupSkills,
+            crate::wire::EnumRepr::Name(n) if n == "OPERATION_GET_SKILL_RESOURCES" => {
+                Self::GetSkillResources
+            }
+            crate::wire::EnumRepr::Number(0) => Self::Unspecified,
+            crate::wire::EnumRepr::Number(1) => Self::ListSkills,
+            crate::wire::EnumRepr::Number(2) => Self::LookupSkills,
+            crate::wire::EnumRepr::Number(3) => Self::GetSkillResources,
+            crate::wire::EnumRepr::Name(n) => Self::Unknown(n),
+            crate::wire::EnumRepr::Number(n) => Self::Unknown(n.to_string()),
+        })
+    }
+}
+
 /// `antigravity.localharness.AgentBehavior`
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum AgentBehavior {
@@ -2197,6 +2257,32 @@ pub struct ActionSearchWeb {
     pub summary: Option<String>,
 }
 
+/// `antigravity.localharness.ActionSkillLookup`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActionSkillLookup {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub operation: Option<ActionSkillLookupOperation>,
+    #[serde(
+        alias = "requested_skill_names",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub requested_skill_names: Vec<String>,
+    #[serde(
+        alias = "resolved_skill_names",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub resolved_skill_names: Vec<String>,
+    #[serde(
+        alias = "error_message",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub error_message: Option<String>,
+}
+
 /// `antigravity.localharness.ActionViewFile`
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -3352,6 +3438,12 @@ pub struct HarnessConfig {
         skip_serializing_if = "Option::is_none"
     )]
     pub compaction_config: Option<CompactionConfig>,
+    #[serde(
+        alias = "skills_config",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub skills_config: Option<SkillsConfig>,
     #[serde(
         alias = "rules_config",
         default,
@@ -4549,6 +4641,39 @@ pub struct SearchWebToolConfig {
     pub enabled: Option<bool>,
 }
 
+/// `antigravity.localharness.SkillSource`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillSource {
+    #[serde(
+        alias = "directory_path",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub directory_path: Option<String>,
+}
+
+/// `antigravity.localharness.SkillsConfig`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillsConfig {
+    /// Proto default: `true`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skills: Vec<SkillSource>,
+}
+
+/// `genai.SpeechAnnotation`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpeechAnnotation {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speaker: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<String>,
+}
+
 /// `antigravity.localharness.StepUpdate`
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -4657,6 +4782,12 @@ pub struct StepUpdate {
         skip_serializing_if = "Option::is_none"
     )]
     pub custom_tool: Option<ActionCustomTool>,
+    #[serde(
+        alias = "skill_lookup",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub skill_lookup: Option<ActionSkillLookup>,
     #[serde(
         alias = "request_text",
         default,
@@ -4924,6 +5055,12 @@ pub struct TextContentAnnotation {
     #[serde(alias = "word_info", default, skip_serializing_if = "Option::is_none")]
     pub word_info: Option<WordInfo>,
     #[serde(
+        alias = "speech_metadata",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub speech_metadata: Option<SpeechAnnotation>,
+    #[serde(
         alias = "start_index",
         default,
         skip_serializing_if = "Option::is_none"
@@ -4940,6 +5077,7 @@ pub enum TextContentAnnotationType {
     FileCitation(FileCitation),
     PlaceCitation(PlaceCitation),
     WordInfo(WordInfo),
+    SpeechMetadata(SpeechAnnotation),
 }
 
 impl TextContentAnnotation {
@@ -4957,6 +5095,9 @@ impl TextContentAnnotation {
         if let Some(v) = self.word_info {
             return Some(TextContentAnnotationType::WordInfo(v));
         }
+        if let Some(v) = self.speech_metadata {
+            return Some(TextContentAnnotationType::SpeechMetadata(v));
+        }
         None
     }
 
@@ -4966,6 +5107,7 @@ impl TextContentAnnotation {
             || self.file_citation.is_some()
             || self.place_citation.is_some()
             || self.word_info.is_some()
+            || self.speech_metadata.is_some()
     }
 }
 
