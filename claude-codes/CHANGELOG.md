@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.284] - 2026-09-26
+
+Re-baseline against Claude CLI **2.1.283**. Models the 2.1.282 → 2.1.283
+stream-json drift: one additive optional field on `stream_event`, no removals,
+no new subtypes, and no enum or literal changes anywhere in the extracted
+schemas (nested objects included). The model registry is byte-identical to
+2.1.282. `claude --help` gained one flag, mirrored on `CliFlag`.
+
+### Added
+
+- `StreamEventMessage::thinking_display: Option<String>` — the
+  `thinking.display` value Claude Code put in the API request body for the
+  response the event belongs to, i.e. which display the thinking text was
+  requested with (not how to show it). Set on `message_start`, on a thinking
+  block's `content_block_start` and on `thinking_delta` events when the body
+  had a display; absent on every other event, on Remote Control sessions and
+  from older CLIs. Upstream marks it `@internal`, so the value set is open.
+- `CliFlag::ClientDataUrl` (`--client-data-url <url>`) — URL of a signed
+  configuration document; the CLI exits if it cannot load it or it does not
+  cover the selected model. The `CLAUDE_CODE_CLIENT_DATA_URL` environment
+  variable is the equivalent that keeps the URL out of the process list.
+
 ## [2.1.283] - 2026-09-25
 
 ### Added
