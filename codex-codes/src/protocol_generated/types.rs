@@ -8414,8 +8414,13 @@ pub struct ThreadItemEntry {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreadItemsListParams {
+    /// Opaque continuation cursor, or an exclusive item anchor in the
+    /// requested visible turn (`openai/codex@main` de9e78e3). An item anchor
+    /// requires a non-empty `turn_id`; ascending (the default) returns items
+    /// after it, descending returns items before it. Continue with the
+    /// returned string cursor.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cursor: Option<String>,
+    pub cursor: Option<ThreadItemsListCursor>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<u32>,
     #[serde(
@@ -8429,6 +8434,28 @@ pub struct ThreadItemsListParams {
     /// Optional turn id filter; omitted returns items across the thread.
     #[serde(rename = "turnId", default, skip_serializing_if = "Option::is_none")]
     pub turn_id: Option<String>,
+}
+
+/// Starting position for a `thread/items/list` page: either the opaque
+/// string cursor a previous page returned, or an item anchor
+/// (`openai/codex@main` de9e78e3). Untagged, so a bare string stays a bare
+/// string on the wire.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ThreadItemsListCursor {
+    Opaque(String),
+    Anchor(ThreadItemsListAnchor),
+}
+
+/// An exclusive item position within the requested visible turn
+/// (`openai/codex@main` de9e78e3).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ThreadItemsListAnchor {
+    Item {
+        #[serde(rename = "itemId")]
+        item_id: String,
+    },
 }
 
 /// Response to `thread/items/list` (0.148 upstream).

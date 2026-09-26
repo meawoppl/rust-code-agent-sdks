@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.157.1] - 2026-09-26
+
+Re-baseline the tested pin to Codex CLI **0.157.1** (from 0.157.0) and model
+the `openai/codex@main` (`de9e78e3`) app-server schema drift. The 0.157.1
+release's `codex app-server generate-json-schema` output is byte-identical to
+0.157.0's, so the re-pin itself needs no type work. The change below is
+main-only: the pinned CLI still accepts only the opaque string cursor, which
+serializes exactly as before.
+
+### Changed
+
+- **Breaking:** `ThreadItemsListParams.cursor` is now
+  `Option<ThreadItemsListCursor>` (was `Option<String>`), openai/codex#48151.
+  The cursor is an untagged union of the opaque continuation string a previous
+  page returned (`ThreadItemsListCursor::Opaque`) and an exclusive item anchor
+  (`ThreadItemsListCursor::Anchor(ThreadItemsListAnchor::Item { item_id })`,
+  wire `{"type": "item", "itemId": …}`). An anchor requires a non-empty
+  `turn_id`; ascending (the default) returns items after it, descending
+  returns items before it, and the response's string cursors continue from
+  there. Callers that passed a `String` wrap it in
+  `ThreadItemsListCursor::Opaque`.
+
+### Added
+
+- `ThreadItemsListCursor` and `ThreadItemsListAnchor` (see above).
+
 ## [0.157.0] - 2026-09-25
 
 Re-baseline the tested pin to Codex CLI **0.157.0** (from 0.156.1) and model
