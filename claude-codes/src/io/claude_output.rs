@@ -131,6 +131,16 @@ pub struct StreamEventMessage {
     /// `thinking_tokens` frames, and from CLIs before 2.1.268.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resume_reason: Option<String>,
+    /// The `thinking.display` value Claude Code put in the API request body
+    /// for the response this event belongs to — i.e. which display the
+    /// thinking text was *requested* with, not how to show it. Set on
+    /// `message_start`, on a thinking block's `content_block_start` and on
+    /// `thinking_delta` events when the request body had a display; absent
+    /// on every other event, on Remote Control sessions and from CLIs before
+    /// 2.1.283. Two responses of one turn can differ. Marked `@internal`
+    /// upstream, so treat the value set as open.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thinking_display: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

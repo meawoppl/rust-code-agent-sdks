@@ -111,6 +111,11 @@ pub enum CliFlag {
     Betas(Vec<String>),
     /// Enable Claude in Chrome integration
     Chrome,
+    /// URL of a signed configuration document; the CLI exits if it cannot
+    /// load it or it does not cover the selected model. Setting
+    /// `CLAUDE_CODE_CLIENT_DATA_URL` instead keeps the URL out of the
+    /// process list (CLI 2.1.283+)
+    ClientDataUrl(String),
     /// Continue the most recent conversation
     Continue,
     /// Bypass all permission checks
@@ -193,6 +198,7 @@ impl CliFlag {
             CliFlag::AppendSystemPrompt(_) => "--append-system-prompt",
             CliFlag::Betas(_) => "--betas",
             CliFlag::Chrome => "--chrome",
+            CliFlag::ClientDataUrl(_) => "--client-data-url",
             CliFlag::Continue => "--continue",
             CliFlag::DangerouslySkipPermissions => "--dangerously-skip-permissions",
             CliFlag::Debug(_) => "--debug",
@@ -264,6 +270,7 @@ impl CliFlag {
             CliFlag::Agent(v)
             | CliFlag::Agents(v)
             | CliFlag::AppendSystemPrompt(v)
+            | CliFlag::ClientDataUrl(v)
             | CliFlag::FallbackModel(v)
             | CliFlag::JsonSchema(v)
             | CliFlag::Model(v)
@@ -331,6 +338,7 @@ impl CliFlag {
             ("AppendSystemPrompt", "--append-system-prompt"),
             ("Betas", "--betas"),
             ("Chrome", "--chrome"),
+            ("ClientDataUrl", "--client-data-url"),
             ("Continue", "--continue"),
             (
                 "DangerouslySkipPermissions",
