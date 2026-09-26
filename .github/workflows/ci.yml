@@ -22,7 +22,7 @@ jobs:
           components: rustfmt, clippy
       
       - name: Cache cargo registry
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
@@ -30,7 +30,7 @@ jobs:
             ${{ runner.os }}-cargo-registry-
       
       - name: Cache cargo index
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
@@ -38,7 +38,7 @@ jobs:
             ${{ runner.os }}-cargo-git-
       
       - name: Cache cargo build
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: target
           key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
@@ -307,7 +307,7 @@ jobs:
           toolchain: "1.85"
       
       - name: Cache cargo registry
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-msrv-${{ hashFiles('**/Cargo.lock') }}
@@ -315,7 +315,7 @@ jobs:
             ${{ runner.os }}-cargo-registry-msrv-
       
       - name: Cache cargo index
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-git-msrv-${{ hashFiles('**/Cargo.lock') }}
@@ -323,7 +323,7 @@ jobs:
             ${{ runner.os }}-cargo-git-msrv-
       
       - name: Cache cargo build
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: target
           key: ${{ runner.os }}-cargo-build-msrv-${{ hashFiles('**/Cargo.lock') }}
