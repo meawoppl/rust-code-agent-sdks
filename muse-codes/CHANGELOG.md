@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-09-27
+
+### Added
+
+- `Provider::Local` — passes `--provider local`, which Muse Code build
+  1.4.0-R4302.1 added (`muse --help` now lists `echo, meta, or local`;
+  R4161.1 rejected it as an unsupported provider). The provider is gated
+  behind the `local_models` experiment: with it off, `muse exec` exits at
+  startup with `Local models are disabled`.
+
+### Changed
+
+- Re-baseline the tested pin to Muse Code build **1.4.0-R4302.1** (from
+  1.4.0-R4161.1). No wire drift: the echo-provider stream fingerprint
+  matches the committed snapshot, `muse exec --help` and `muse auth --help`
+  are byte-identical, and the live suite passes unmodified. The MSP schema
+  (`muse schema generate-json-schema`, served by `muse serve`) gained a
+  `session/delete` method and a `session/deleteCompleted` notification;
+  this crate models the `exec --json` stream, not MSP, so neither is
+  modeled.
+
 ## [1.4.0] - 2026-09-25
 
 ### Added

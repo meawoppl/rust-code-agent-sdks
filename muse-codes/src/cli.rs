@@ -13,6 +13,10 @@ pub enum Provider {
     /// Credential-free echo provider — exercises the full event stream
     /// without model calls. What this crate's committed captures use.
     Echo,
+    /// Local-model provider (Muse Code build 1.4.0-R4302.1+). Gated behind
+    /// the `local_models` experiment — with it off the run exits at startup
+    /// with `Local models are disabled`.
+    Local,
 }
 
 impl Provider {
@@ -20,6 +24,7 @@ impl Provider {
         match self {
             Provider::Meta => "meta",
             Provider::Echo => "echo",
+            Provider::Local => "local",
         }
     }
 }
@@ -769,6 +774,19 @@ mod tests {
                 "go"
             ]
         );
+    }
+
+    /// Each provider mode is spelled the way `--provider` accepts it.
+    #[test]
+    fn provider_modes_use_the_cli_spelling() {
+        for (provider, want) in [
+            (Provider::Meta, "meta"),
+            (Provider::Echo, "echo"),
+            (Provider::Local, "local"),
+        ] {
+            let got = args(&MuseExecBuilder::new("hi").provider(provider));
+            assert_eq!(got, ["exec", "--json", "--provider", want, "hi"]);
+        }
     }
 
     /// Nothing optional leaks into a minimal invocation.
