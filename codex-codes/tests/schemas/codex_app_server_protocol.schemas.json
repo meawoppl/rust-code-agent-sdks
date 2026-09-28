@@ -8417,6 +8417,7 @@
               "serverOverloaded",
               "cyberPolicy",
               "misalignmentPolicyViolation",
+              "tooManyDenials",
               "internalServerError",
               "unauthorized",
               "badRequest",
@@ -13935,6 +13936,13 @@
             "minimum": 0.0,
             "type": [
               "integer",
+              "null"
+            ]
+          },
+          "serverName": {
+            "description": "Limit discovery to one server. With a thread ID, reuse that thread's MCP connection.",
+            "type": [
+              "string",
               "null"
             ]
           },
@@ -25234,7 +25242,7 @@
                 "type": "null"
               }
             ],
-            "description": "Only populated when the Turn's status is failed."
+            "description": "Error associated with a failed or interrupted turn."
           },
           "id": {
             "description": "Identifier for this turn. Codex-generated turn IDs are UUIDv7.",
