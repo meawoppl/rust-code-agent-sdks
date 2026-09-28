@@ -16,7 +16,8 @@ use std::fmt;
 /// A model selector accepted by `claude --model`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ClaudeModel {
-    /// Newest Sonnet-family model (floating alias `sonnet`).
+    /// Newest Sonnet-family model (floating alias `sonnet`). Resolves to
+    /// `claude-sonnet-5-5` first-party as of CLI 2.1.284.
     Sonnet,
     /// Newest Opus-family model (floating alias `opus`). Resolves to
     /// `claude-opus-5-5` first-party as of CLI 2.1.280.
@@ -60,6 +61,9 @@ pub enum ClaudeModel {
     Opus41,
     /// Opus 4 (`claude-opus-4-0`).
     Opus40,
+    /// Sonnet 5.5 (`claude-sonnet-5-5`), released 2026-09-28 — the new
+    /// first-party float target of the `sonnet` alias.
+    Sonnet55,
     /// Sonnet 5 (`claude-sonnet-5`).
     Sonnet5,
     /// Sonnet 4.6 (`claude-sonnet-4-6`).
@@ -106,6 +110,7 @@ impl ClaudeModel {
             Self::Opus45 => "claude-opus-4-5",
             Self::Opus41 => "claude-opus-4-1",
             Self::Opus40 => "claude-opus-4-0",
+            Self::Sonnet55 => "claude-sonnet-5-5",
             Self::Sonnet5 => "claude-sonnet-5",
             Self::Sonnet46 => "claude-sonnet-4-6",
             Self::Sonnet45 => "claude-sonnet-4-5",
@@ -148,6 +153,7 @@ impl ClaudeModel {
             Self::Opus45 => "Opus 4.5",
             Self::Opus41 => "Opus 4.1",
             Self::Opus40 => "Opus 4",
+            Self::Sonnet55 => "Sonnet 5.5",
             Self::Sonnet5 => "Sonnet 5",
             Self::Sonnet46 => "Sonnet 4.6",
             Self::Sonnet45 => "Sonnet 4.5",
@@ -201,6 +207,7 @@ impl ClaudeModel {
             Self::Opus45,
             Self::Opus41,
             Self::Opus40,
+            Self::Sonnet55,
             Self::Sonnet5,
             Self::Sonnet46,
             Self::Sonnet45,
@@ -243,6 +250,7 @@ impl From<&str> for ClaudeModel {
             "claude-opus-4-5" => Self::Opus45,
             "claude-opus-4-1" => Self::Opus41,
             "claude-opus-4-0" => Self::Opus40,
+            "claude-sonnet-5-5" => Self::Sonnet55,
             "claude-sonnet-5" => Self::Sonnet5,
             "claude-sonnet-4-6" => Self::Sonnet46,
             "claude-sonnet-4-5" => Self::Sonnet45,
