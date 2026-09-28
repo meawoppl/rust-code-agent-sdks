@@ -795,6 +795,10 @@ pub enum CodexErrorInfo {
     CyberPolicy,
     #[serde(rename = "misalignmentPolicyViolation")]
     MisalignmentPolicyViolation,
+    /// Guardian interrupted the turn after hitting its denial limit. Only
+    /// attached when `auto_review.circuit_break_action = "strict"`.
+    #[serde(rename = "tooManyDenials")]
+    TooManyDenials,
     #[serde(rename = "internalServerError")]
     InternalServerError,
     #[serde(rename = "unauthorized")]
@@ -3641,6 +3645,14 @@ pub struct ListMcpServerStatusParams {
     pub detail: Option<McpServerStatusDetail>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
+    /// Limit discovery to one server. With a thread ID, reuse that thread's
+    /// MCP connection.
+    #[serde(
+        rename = "serverName",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub server_name: Option<String>,
     #[serde(rename = "threadId", default, skip_serializing_if = "Option::is_none")]
     pub thread_id: Option<String>,
 }

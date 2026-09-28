@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.158.0] - 2026-09-28
+
+Re-baseline the tested pin to Codex CLI **0.158.0** (from 0.157.1) and model
+the `openai/codex@main` (`44fe510ce`) app-server schema drift. The 0.158.0
+release's schema delta against 0.157.1 (`flexUnavailable`, the `promax` plan,
+removal of the `PluginEntrypoint` / plugin-extension tree) was already
+absorbed from main in earlier releases of this crate, so the re-pin itself
+needs no type work. Both additions below are main-only and optional on the
+wire; the pinned CLI neither emits the new error nor reads the new param.
+
+### Added
+
+- `CodexErrorInfo::TooManyDenials` (wire `tooManyDenials`), openai/codex#48796.
+  Attached to `turn.error` when Guardian interrupts a turn at its denial
+  limit and the server runs with `auto_review.circuit_break_action =
+  "strict"`. `Turn.error` can therefore be populated on interrupted turns,
+  not only failed ones.
+- `ListMcpServerStatusParams.server_name` (wire `serverName`),
+  openai/codex#48783. Limits MCP status discovery to one server; combined
+  with `thread_id` it reuses that thread's MCP connection.
+
 ## [0.157.1] - 2026-09-26
 
 Re-baseline the tested pin to Codex CLI **0.157.1** (from 0.157.0) and model
