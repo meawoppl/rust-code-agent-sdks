@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.285] - 2026-09-28
+
+### Added
+
+- **`ClaudeModel::Sonnet55`** (`claude-sonnet-5-5`, "Sonnet 5.5",
+  released 2026-09-28) — and the `sonnet` floating alias now resolves
+  there first-party (staged rollout in the 2.1.284 bundle, new table
+  active). The only registry addition since the 2.1.280 catalog refresh.
+
+### Changed
+
+- Re-baseline the tested pin to Claude CLI **2.1.284**: full integration
+  tier green, drift script clean (no wire changes).
+
 ## [2.1.284] - 2026-09-26
 
 Re-baseline against Claude CLI **2.1.283**. Models the 2.1.282 → 2.1.283
