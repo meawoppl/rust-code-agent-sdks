@@ -5,6 +5,19 @@ All notable changes to `antigravity-codes` are documented here.
 The version tracks the `google-antigravity` release whose harness the crate was
 generated from and tested against.
 
+## [0.1.20] - 2026-09-28
+
+Re-baseline against `google-antigravity` 0.1.20: types regenerated from the
+0.1.20 wheel's descriptors (176 messages, 31 enums — unchanged counts). Regen
+against the committed 0.1.19 descriptors was verified as a byte-identical
+no-op first, so nothing hand-maintained was clobbered. Purely additive.
+
+### Added
+
+- `TrajectoryStateUpdate.error_code: Option<String>` (proto field 8, wire
+  `errorCode`), a machine-readable companion to the existing free-text
+  `error`.
+
 ## [0.1.19] - 2026-09-26
 
 Re-baseline against `google-antigravity` 0.1.19: types regenerated from the
