@@ -5562,6 +5562,8 @@ pub struct TrajectoryStateUpdate {
     pub state: Option<TrajectoryStateUpdateState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    #[serde(alias = "error_code", default, skip_serializing_if = "Option::is_none")]
+    pub error_code: Option<String>,
     #[serde(
         alias = "stop_reason",
         default,
