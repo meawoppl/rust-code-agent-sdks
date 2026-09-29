@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2026-09-29
+
+### Changed
+
+- Re-baseline the tested pin to Muse Code **1.4.1 (1.4.1-R4503.1)** (from
+  1.4.0-R4302.1). No wire drift: the echo-provider stream fingerprint
+  matches the committed snapshot, `muse exec --help`, `muse auth --help`
+  and `muse resume --help` are byte-identical, and the live suite passes
+  unmodified. The CLI gained a `muse voice transcribe` subcommand (audio
+  clip to text), which is outside the `exec --json` stream this crate
+  drives and is not modeled. The MSP schema
+  (`muse schema generate-json-schema`, served by `muse serve`) gained
+  `workspaceRoots` on `session/start` and `turn/start` and
+  `defaultReasoningEffort` / `reasoningEffortVariants` on `model/list`
+  rows; this crate does not model MSP.
+
 ## [1.4.1] - 2026-09-27
 
 ### Added
