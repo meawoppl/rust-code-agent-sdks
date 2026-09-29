@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.159.0] - 2026-09-29
+
+### Changed
+
+- Re-baseline the tested pin to Codex CLI **0.159.0** (from 0.158.0). No
+  type work: the 0.159.0 release's app-server schema
+  (`codex app-server generate-json-schema`) is structurally identical to the
+  tracked `openai/codex@main` snapshot, which itself has not moved. The
+  release's delta against 0.158.0 (`tooManyDenials`,
+  `ListMcpServerStatusParams.serverName`, the `ThreadItemsListCursor` /
+  `ThreadItemsListAnchor` cursor shape) was already modeled from main in
+  0.157.1 and 0.158.0, so the pinned CLI now emits and accepts everything
+  those releases added.
+
 ## [0.158.0] - 2026-09-28
 
 Re-baseline the tested pin to Codex CLI **0.158.0** (from 0.157.1) and model
