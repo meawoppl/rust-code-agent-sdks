@@ -163,6 +163,15 @@ pub enum PiMessage {
         /// (harness-v2) `deferred`. Left open for forward compat.
         #[serde(rename = "stopReason", default)]
         stop_reason: String,
+        /// The pi thinking level the agent loop requested for this
+        /// response (pi ≥ 0.99.0). Absent outside the agent loop and on
+        /// messages from older sessions.
+        #[serde(
+            rename = "thinkingLevel",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        thinking_level: Option<String>,
         #[serde(default)]
         timestamp: f64,
         #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
@@ -242,10 +251,17 @@ pub enum PiEvent {
     /// `message_end`
     MessageEnd { message: Box<PiMessage> },
     /// `tool_execution_start`
+    ///
+    /// On all three tool events, `parent_tool_call_id` is set when another
+    /// tool made the call (pi ≥ 0.99.0: `ctx.executeTool()`, e.g. from a
+    /// `codemode` script). Such nested calls get a `<parent id>/<n>`
+    /// `tool_call_id` and never appear as tool calls or tool results in
+    /// the transcript.
     ToolExecutionStart {
         tool_call_id: String,
         tool_name: String,
         args: Value,
+        parent_tool_call_id: Option<String>,
     },
     /// `tool_execution_update`
     ToolExecutionUpdate {
@@ -253,6 +269,7 @@ pub enum PiEvent {
         tool_name: String,
         args: Value,
         partial_result: Value,
+        parent_tool_call_id: Option<String>,
     },
     /// `tool_execution_end`
     ToolExecutionEnd {
@@ -260,6 +277,7 @@ pub enum PiEvent {
         tool_name: String,
         result: Value,
         is_error: bool,
+        parent_tool_call_id: Option<String>,
     },
     /// Any other `type` (session events like `queue_update`,
     /// `compaction_start`/`compaction_end`, `bash_execution_update`,
@@ -333,12 +351,14 @@ impl PiEvent {
                 tool_call_id: str_field(&v, "toolCallId"),
                 tool_name: str_field(&v, "toolName"),
                 args: v.get("args").cloned().unwrap_or(Value::Null),
+                parent_tool_call_id: opt_str_field(&v, "parentToolCallId"),
             },
             "tool_execution_update" => PiEvent::ToolExecutionUpdate {
                 tool_call_id: str_field(&v, "toolCallId"),
                 tool_name: str_field(&v, "toolName"),
                 args: v.get("args").cloned().unwrap_or(Value::Null),
                 partial_result: v.get("partialResult").cloned().unwrap_or(Value::Null),
+                parent_tool_call_id: opt_str_field(&v, "parentToolCallId"),
             },
             "tool_execution_end" => PiEvent::ToolExecutionEnd {
                 tool_call_id: str_field(&v, "toolCallId"),
@@ -348,6 +368,7 @@ impl PiEvent {
                     .get("isError")
                     .and_then(Value::as_bool)
                     .unwrap_or_default(),
+                parent_tool_call_id: opt_str_field(&v, "parentToolCallId"),
             },
             _ => PiEvent::Unknown {
                 event_type: t,
@@ -362,6 +383,10 @@ fn str_field(v: &Value, k: &str) -> String {
         .and_then(Value::as_str)
         .unwrap_or_default()
         .to_string()
+}
+
+fn opt_str_field(v: &Value, k: &str) -> Option<String> {
+    v.get(k).and_then(Value::as_str).map(str::to_string)
 }
 
 #[cfg(test)]
@@ -492,6 +517,7 @@ mod tests {
             tool_call_id,
             tool_name,
             is_error,
+            parent_tool_call_id,
             ..
         } = e
         else {
@@ -502,5 +528,71 @@ mod tests {
             ("call_9", "bash")
         );
         assert!(!is_error);
+        assert_eq!(parent_tool_call_id, None);
+    }
+
+    #[test]
+    fn nested_tool_execution_events_carry_parent_id() {
+        for (event_type, extra_key) in [
+            ("tool_execution_start", "args"),
+            ("tool_execution_update", "partialResult"),
+            ("tool_execution_end", "result"),
+        ] {
+            let e = PiEvent::from_value(serde_json::json!({
+                "type": event_type,
+                "toolCallId": "call_9/1", "toolName": "read",
+                extra_key: {}, "parentToolCallId": "call_9"
+            }))
+            .unwrap();
+            let parent = match e {
+                PiEvent::ToolExecutionStart {
+                    parent_tool_call_id,
+                    ..
+                }
+                | PiEvent::ToolExecutionUpdate {
+                    parent_tool_call_id,
+                    ..
+                }
+                | PiEvent::ToolExecutionEnd {
+                    parent_tool_call_id,
+                    ..
+                } => parent_tool_call_id,
+                other => panic!("wrong variant: {other:?}"),
+            };
+            assert_eq!(parent.as_deref(), Some("call_9"), "{event_type}");
+        }
+    }
+
+    #[test]
+    fn assistant_thinking_level_is_typed_and_optional() {
+        let with: PiMessage = serde_json::from_value(serde_json::json!({
+            "role": "assistant", "content": [], "stopReason": "stop",
+            "thinkingLevel": "off", "timestamp": 1790756884219i64
+        }))
+        .unwrap();
+        let PiMessage::Assistant {
+            thinking_level,
+            extra,
+            ..
+        } = &with
+        else {
+            panic!("wrong role")
+        };
+        assert_eq!(thinking_level.as_deref(), Some("off"));
+        assert!(!extra.contains_key("thinkingLevel"));
+        assert_eq!(serde_json::to_value(&with).unwrap()["thinkingLevel"], "off");
+
+        let without: PiMessage = serde_json::from_value(serde_json::json!({
+            "role": "assistant", "content": [], "stopReason": "stop"
+        }))
+        .unwrap();
+        let PiMessage::Assistant { thinking_level, .. } = &without else {
+            panic!("wrong role")
+        };
+        assert_eq!(*thinking_level, None);
+        assert!(serde_json::to_value(&without)
+            .unwrap()
+            .get("thinkingLevel")
+            .is_none());
     }
 }

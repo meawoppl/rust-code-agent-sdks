@@ -140,6 +140,11 @@ async fn model_turn_streams_typed_events() {
         .await
         .expect("prompt accepted");
     assert!(resp.success);
+    assert_eq!(
+        resp.disposition(),
+        Some(pi_codes::InputDisposition::Started),
+        "an idle session starts a run for the prompt"
+    );
 
     let mut kinds = Vec::new();
     let mut answer = String::new();

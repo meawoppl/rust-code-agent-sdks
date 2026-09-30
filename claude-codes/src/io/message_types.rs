@@ -50,6 +50,14 @@ pub enum SystemSubtype {
     TurnPreempted,
     PeerMessageHold,
     PerTurnEffortChanged,
+    SessionTitleChanged,
+    UiFocus,
+    UiInvalidate,
+    UiLog,
+    UiPanes,
+    UiScroll,
+    UiStatus,
+    UiToast,
     /// A subtype not yet known to this version of the crate.
     Unknown(String),
 }
@@ -94,6 +102,14 @@ impl SystemSubtype {
             Self::TurnPreempted => "turn_preempted",
             Self::PeerMessageHold => "peer_message_hold",
             Self::PerTurnEffortChanged => "per_turn_effort_changed",
+            Self::SessionTitleChanged => "session_title_changed",
+            Self::UiFocus => "ui_focus",
+            Self::UiInvalidate => "ui_invalidate",
+            Self::UiLog => "ui_log",
+            Self::UiPanes => "ui_panes",
+            Self::UiScroll => "ui_scroll",
+            Self::UiStatus => "ui_status",
+            Self::UiToast => "ui_toast",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -145,6 +161,14 @@ impl From<&str> for SystemSubtype {
             "turn_preempted" => Self::TurnPreempted,
             "peer_message_hold" => Self::PeerMessageHold,
             "per_turn_effort_changed" => Self::PerTurnEffortChanged,
+            "session_title_changed" => Self::SessionTitleChanged,
+            "ui_focus" => Self::UiFocus,
+            "ui_invalidate" => Self::UiInvalidate,
+            "ui_log" => Self::UiLog,
+            "ui_panes" => Self::UiPanes,
+            "ui_scroll" => Self::UiScroll,
+            "ui_status" => Self::UiStatus,
+            "ui_toast" => Self::UiToast,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -1517,6 +1541,110 @@ impl SystemMessage {
         serde_json::from_value(self.data.clone()).ok()
     }
 
+    /// Check if this is a session_title_changed message.
+    pub fn is_session_title_changed(&self) -> bool {
+        self.subtype == SystemSubtype::SessionTitleChanged
+    }
+
+    /// Try to parse as a session_title_changed message.
+    pub fn as_session_title_changed(&self) -> Option<SessionTitleChangedMessage> {
+        if self.subtype != SystemSubtype::SessionTitleChanged {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
+    /// Check if this is a ui_focus message.
+    pub fn is_ui_focus(&self) -> bool {
+        self.subtype == SystemSubtype::UiFocus
+    }
+
+    /// Try to parse as a ui_focus message.
+    pub fn as_ui_focus(&self) -> Option<UiFocusMessage> {
+        if self.subtype != SystemSubtype::UiFocus {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
+    /// Check if this is a ui_invalidate message.
+    pub fn is_ui_invalidate(&self) -> bool {
+        self.subtype == SystemSubtype::UiInvalidate
+    }
+
+    /// Try to parse as a ui_invalidate message.
+    pub fn as_ui_invalidate(&self) -> Option<UiInvalidateMessage> {
+        if self.subtype != SystemSubtype::UiInvalidate {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
+    /// Check if this is a ui_log message.
+    pub fn is_ui_log(&self) -> bool {
+        self.subtype == SystemSubtype::UiLog
+    }
+
+    /// Try to parse as a ui_log message.
+    pub fn as_ui_log(&self) -> Option<UiLogMessage> {
+        if self.subtype != SystemSubtype::UiLog {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
+    /// Check if this is a ui_panes message.
+    pub fn is_ui_panes(&self) -> bool {
+        self.subtype == SystemSubtype::UiPanes
+    }
+
+    /// Try to parse as a ui_panes message.
+    pub fn as_ui_panes(&self) -> Option<UiPanesMessage> {
+        if self.subtype != SystemSubtype::UiPanes {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
+    /// Check if this is a ui_scroll message.
+    pub fn is_ui_scroll(&self) -> bool {
+        self.subtype == SystemSubtype::UiScroll
+    }
+
+    /// Try to parse as a ui_scroll message.
+    pub fn as_ui_scroll(&self) -> Option<UiScrollMessage> {
+        if self.subtype != SystemSubtype::UiScroll {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
+    /// Check if this is a ui_status message.
+    pub fn is_ui_status(&self) -> bool {
+        self.subtype == SystemSubtype::UiStatus
+    }
+
+    /// Try to parse as a ui_status message.
+    pub fn as_ui_status(&self) -> Option<UiStatusMessage> {
+        if self.subtype != SystemSubtype::UiStatus {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
+    /// Check if this is a ui_toast message.
+    pub fn is_ui_toast(&self) -> bool {
+        self.subtype == SystemSubtype::UiToast
+    }
+
+    /// Try to parse as a ui_toast message.
+    pub fn as_ui_toast(&self) -> Option<UiToastMessage> {
+        if self.subtype != SystemSubtype::UiToast {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
     /// Parse any typed system subtype known to this crate version.
     pub fn as_known_system_event(&self) -> Option<KnownSystemEvent> {
         macro_rules! parse {
@@ -1591,6 +1719,16 @@ impl SystemMessage {
             SystemSubtype::PerTurnEffortChanged => {
                 parse!(PerTurnEffortChanged, PerTurnEffortChangedMessage)
             }
+            SystemSubtype::SessionTitleChanged => {
+                parse!(SessionTitleChanged, SessionTitleChangedMessage)
+            }
+            SystemSubtype::UiFocus => parse!(UiFocus, UiFocusMessage),
+            SystemSubtype::UiInvalidate => parse!(UiInvalidate, UiInvalidateMessage),
+            SystemSubtype::UiLog => parse!(UiLog, UiLogMessage),
+            SystemSubtype::UiPanes => parse!(UiPanes, UiPanesMessage),
+            SystemSubtype::UiScroll => parse!(UiScroll, UiScrollMessage),
+            SystemSubtype::UiStatus => parse!(UiStatus, UiStatusMessage),
+            SystemSubtype::UiToast => parse!(UiToast, UiToastMessage),
             SystemSubtype::Unknown(_) => None,
         }
     }
@@ -1681,6 +1819,16 @@ impl SystemMessage {
             SystemSubtype::PerTurnEffortChanged => {
                 reserialize(parse_system::<PerTurnEffortChangedMessage>(self))
             }
+            SystemSubtype::SessionTitleChanged => {
+                reserialize(parse_system::<SessionTitleChangedMessage>(self))
+            }
+            SystemSubtype::UiFocus => reserialize(parse_system::<UiFocusMessage>(self)),
+            SystemSubtype::UiInvalidate => reserialize(parse_system::<UiInvalidateMessage>(self)),
+            SystemSubtype::UiLog => reserialize(parse_system::<UiLogMessage>(self)),
+            SystemSubtype::UiPanes => reserialize(parse_system::<UiPanesMessage>(self)),
+            SystemSubtype::UiScroll => reserialize(parse_system::<UiScrollMessage>(self)),
+            SystemSubtype::UiStatus => reserialize(parse_system::<UiStatusMessage>(self)),
+            SystemSubtype::UiToast => reserialize(parse_system::<UiToastMessage>(self)),
             SystemSubtype::Unknown(_) => None,
         }
     }
@@ -1735,6 +1883,14 @@ pub enum KnownSystemEvent {
     TurnPreempted(TurnPreemptedMessage),
     PeerMessageHold(PeerMessageHoldMessage),
     PerTurnEffortChanged(PerTurnEffortChangedMessage),
+    SessionTitleChanged(SessionTitleChangedMessage),
+    UiFocus(UiFocusMessage),
+    UiInvalidate(UiInvalidateMessage),
+    UiLog(UiLogMessage),
+    UiPanes(UiPanesMessage),
+    UiScroll(UiScrollMessage),
+    UiStatus(UiStatusMessage),
+    UiToast(UiToastMessage),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2553,10 +2709,26 @@ pub struct CompactMetadata {
     pub precomputed: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pre_compact_discovered_tools: Option<Vec<String>>,
+    /// The artifact versions the conversation held before this compaction,
+    /// most recently changed first; empty when it held none. A resumed
+    /// session replays these so it can update those artifacts without
+    /// reading them again (CLI 2.1.285+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pre_compact_artifact_read_versions: Option<Vec<ArtifactReadVersion>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preserved_segment: Option<PreservedSegment>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preserved_messages: Option<PreservedMessages>,
+}
+
+/// One artifact version a conversation held before a compaction, carried in
+/// [`CompactMetadata::pre_compact_artifact_read_versions`].
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ArtifactReadVersion {
+    /// The artifact id.
+    pub slug: String,
+    /// The version read or published.
+    pub ver: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -3697,6 +3869,248 @@ pub struct PerTurnEffortChangedMessage {
     pub session_id: String,
 }
 
+/// `system/session_title_changed` — the session's name, for a host that
+/// shows it (an IDE editor tab, say). A headless session sends it at startup
+/// when the session already has a name, and again after each change to the
+/// name (not an AI-generated title), including a rename the host itself sent
+/// with `rename_session`. A cleared name is not sent. The same name can
+/// arrive more than once, so treat a repeated name as no change. The frame
+/// can arrive before the `system/init` that first names its `session_id`
+/// (at startup or after `/clear`); a host that learns the session id from
+/// init can hold the name until then (CLI 2.1.285+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionTitleChangedMessage {
+    /// The session's current name: control, bidirectional and zero-width
+    /// characters replaced with single spaces, ends trimmed, at most 200
+    /// Unicode code points. A suffix can make it unique when another session
+    /// already has the name.
+    pub title: String,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// `system/ui_log` — one `$.ui.log(text)` line from a plugin in a headless
+/// session: what the REPL appends to its transcript as a dim notice under
+/// the plugin's name. Not sent to the model (CLI 2.1.285+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UiLogMessage {
+    /// The calling plugin's registry name, as the hooks engine knows it.
+    pub plugin: String,
+    /// The line as the plugin gave it, at most 4096 characters. Plain text:
+    /// draw it as a text node, never as markup.
+    pub text: String,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// `system/ui_toast` — one `$.ui.toast(text)` from a plugin in a headless
+/// session: what the REPL shows on the notification bar under the prompt
+/// for a few seconds, under the plugin's name (CLI 2.1.285+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UiToastMessage {
+    /// The calling plugin's registry name, as the hooks engine knows it.
+    pub plugin: String,
+    /// The line as the plugin gave it, at most 4096 characters. Plain text:
+    /// draw it as a text node, never as markup.
+    pub text: String,
+    /// How long the REPL would keep it on the notification bar: the plugin's
+    /// `timeoutMs`, or the engine's default (4000).
+    pub timeout_ms: u64,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// `system/ui_status` — one `$.ui.status(text)` from a plugin in a headless
+/// session: the line the REPL pins under the prompt until the plugin's next
+/// call replaces or clears it. One status line per plugin (CLI 2.1.285+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UiStatusMessage {
+    /// The calling plugin's registry name, as the hooks engine knows it.
+    pub plugin: String,
+    /// The plugin's pinned line, at most 4096 characters, replacing its
+    /// previous one; `None` (wire `null`) removes it. Plain text: draw it as
+    /// a text node, never as markup.
+    pub text: Option<String>,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// `system/ui_invalidate` — a plugin called `$.ui.invalidate("ui.render")`,
+/// or a plugin loaded or reloaded: every tree a remote surface drew through
+/// `ui_render` may be stale, and the surface re-asks each mounted instance.
+/// Bumps from one plugin fold to at most one per 100 ms (CLI 2.1.285+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UiInvalidateMessage {
+    /// The render event whose version moved — `"ui.render"`; the engine
+    /// versions it as one event, so no component or instance is named.
+    pub event: String,
+    /// Present when a plugin state write made only these instances stale,
+    /// so the surface may re-ask them alone. Absent, every mounted instance
+    /// may be stale.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instances: Option<Vec<UiInvalidatedInstance>>,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// One stale instance named by [`UiInvalidateMessage::instances`].
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct UiInvalidatedInstance {
+    /// The surface that drew the instance.
+    pub surface: String,
+    /// The component of the instance.
+    pub component: String,
+    /// The engine's requestId of the instance, as the `ui_render` that drew
+    /// it named it.
+    pub instance_id: String,
+}
+
+/// `system/ui_panes` — the pane roster a remote surface draws changed: a
+/// plugin opened, retitled or closed a pane, the person showed, focused or
+/// closed one, or a placing client attached. Deduplicated: an unchanged
+/// roster is not pushed. A pane opened before the stream armed produces
+/// none, so read the roster with a `ui_panes` request on mount
+/// (CLI 2.1.285+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UiPanesMessage {
+    /// The placed open panes in open order (an open appends, a close
+    /// removes); a pane waiting unplaced is not listed.
+    pub panes: Vec<UiPane>,
+    /// The pane the surface shows: the last opened or focused, never
+    /// displacing one the person holds; `None` with none open.
+    pub shown_id: Option<String>,
+    /// The pane the person gave the keyboard; `None` while the composer has
+    /// it.
+    pub focused_id: Option<String>,
+    /// A standing `$.ui.open({ focus: true })` the surface has yet to judge:
+    /// honour it only while the composer is empty and idle and no dialog is
+    /// up, else refuse it.
+    pub focus_requested_id: Option<String>,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// One placed pane in a [`UiPanesMessage`] roster.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct UiPane {
+    /// The pane's id as the plugin opened it: 1 to 64 of letters, digits,
+    /// `_`, `-`.
+    pub id: String,
+    /// The pane's tab label: the `title` its latest open gave, else its id.
+    /// Plugin-authored text: draw it as a text node, never as markup.
+    pub title: String,
+    /// The registry name of the plugin that opened it.
+    pub plugin: String,
+    /// `true`: Escape while the pane holds the keyboard, or at an idle empty
+    /// composer, closes it. Absent, Escape only returns the keyboard.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub close_on_escape: Option<bool>,
+    /// `true`: the surface holds its transient toasts while this pane is
+    /// the one shown, and shows them once it closes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hold_toasts: Option<bool>,
+    /// The body rows its content asked for while seated inline; a request
+    /// the person's own sizing overrides.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rows: Option<u64>,
+    /// The body columns its content asked for while docked; a request the
+    /// person's own sizing overrides.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub columns: Option<u64>,
+}
+
+/// `system/ui_scroll` — a plugin's `$.ui.scroll` moved the window of a site
+/// a remote surface draws: the surface scrolls the site's body there. The
+/// person's own scrolls are never pushed back (CLI 2.1.285+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UiScrollMessage {
+    /// The client drawing the site, as it attached.
+    pub client_id: String,
+    /// Which site: a pane's body or the band above the prompt.
+    pub component: UiSiteComponent,
+    /// The pane's id, or `above-prompt` for the band.
+    pub instance_id: String,
+    /// The first content row the window is to show, 0 at the top, clamped
+    /// to the tree as the surface last reported it.
+    pub offset: u64,
+    /// `true`: keep the window on the tree's last rows through the draws to
+    /// come, until the person or a plugin next moves it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub follow_end: Option<bool>,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// `system/ui_focus` — a plugin's `$.ui.focus` moved the focus ring of a
+/// site a remote surface draws onto one of its Buttons, Inputs or Selects:
+/// the surface focuses that element if it still draws it. The person's own
+/// moves are never pushed back (CLI 2.1.285+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UiFocusMessage {
+    /// The client drawing the site, as it attached.
+    pub client_id: String,
+    /// Which site: a pane's body or the band above the prompt.
+    pub component: UiSiteComponent,
+    /// The pane's id, or `above-prompt` for the band.
+    pub instance_id: String,
+    /// Whose element takes the ring: its `press.plugin`.
+    pub plugin: String,
+    /// The element's `props.key`, as `ui.press` names it.
+    pub key: String,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// The site a [`UiScrollMessage`] or [`UiFocusMessage`] addresses.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum UiSiteComponent {
+    /// A pane's body.
+    Pane,
+    /// The band above the prompt.
+    AbovePrompt,
+    /// A site not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl UiSiteComponent {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Pane => "Pane",
+            Self::AbovePrompt => "AbovePrompt",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for UiSiteComponent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for UiSiteComponent {
+    fn from(s: &str) -> Self {
+        match s {
+            "Pane" => Self::Pane,
+            "AbovePrompt" => Self::AbovePrompt,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for UiSiteComponent {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for UiSiteComponent {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
 /// The run that printed a local-command row, carried as
 /// [`AssistantMessage::local_command_run`].
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -4394,6 +4808,11 @@ pub struct AssistantUsage {
     /// Inference geography (e.g., "not_available")
     #[serde(skip_serializing_if = "Option::is_none")]
     pub inference_geo: Option<String>,
+
+    /// Outcome of a fallback-credit token the request presented; `null` on
+    /// the wire when it presented none (CLI 2.1.285+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fallback_credit: Option<Value>,
 }
 
 /// Detailed cache creation information
