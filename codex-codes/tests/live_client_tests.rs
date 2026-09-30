@@ -649,6 +649,7 @@ async fn test_typed_message_audit_strict() {
                     Notification::ThreadProjectUpdated(_) => "ThreadProjectUpdated",
                     Notification::ThreadQueueChanged(_) => "ThreadQueueChanged",
                     Notification::ThreadReverted(_) => "ThreadReverted",
+                    Notification::ThreadPredictionUpdated(_) => "ThreadPredictionUpdated",
                     Notification::McpServerEventStream(_) => "McpServerEventStream",
                     Notification::ThreadRealtimeClosed(_) => "ThreadRealtimeClosed",
                     Notification::ThreadRealtimeError(_) => "ThreadRealtimeError",

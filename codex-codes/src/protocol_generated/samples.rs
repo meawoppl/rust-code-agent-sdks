@@ -185,6 +185,10 @@ pub fn server_notification_samples() -> Vec<(&'static str, Value)> {
         ),
         ("thread/name/updated", json!({"threadId": "x"})),
         (
+            "thread/prediction/updated",
+            json!({"result": {"type": "completed"}, "sourceTurnId": "x", "threadId": "x"}),
+        ),
+        (
             "thread/project/updated",
             json!({"projectId": "x", "threadId": "x"}),
         ),

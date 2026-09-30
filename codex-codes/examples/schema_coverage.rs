@@ -480,6 +480,7 @@ mod samples {
             methods::THREAD_REALTIME_ITEM_STARTED,
             methods::THREAD_REALTIME_ITEM_TRANSCRIPT_DELTA,
             methods::THREAD_REVERTED,
+            methods::THREAD_PREDICTION_UPDATED,
         ]
         .into_iter()
         .collect()
