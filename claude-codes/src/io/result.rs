@@ -22,6 +22,59 @@ pub struct ResultMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time_to_request_ms: Option<u64>,
 
+    /// How [`time_to_request_ms`](Self::time_to_request_ms) was spent, in
+    /// integer milliseconds per phase, summing to it exactly (CLI 2.1.285+):
+    /// `system_prompt`, `turn_start_resume` (a tool call parked from an
+    /// earlier run, re-executed before the first model request),
+    /// `process_user_input`, `transcript_persist`, `init_message`,
+    /// `engine_pickup`, `memory_recall_wait`, `memory_context_wait`,
+    /// `autocompact`, `query_setup`, `tool_schema_build`,
+    /// `message_normalization`, `client_creation` and `other` (the remainder
+    /// no phase covers). A phase that did not run is absent; `other` is
+    /// always present. Open set — keep unrecognized phase names. Present
+    /// where `time_to_request_ms` is, on `CLAUDE_CODE_REMOTE` sessions and
+    /// hosts that set `CLAUDE_CODE_EMIT_STARTUP_TIMING`; absent elsewhere.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_to_request_phases_ms: Option<std::collections::BTreeMap<String, u64>>,
+
+    /// Number of earlier turns of this CLI process that sent a
+    /// main-conversation model request: 0 is the process's first turn to
+    /// reach the model, not the conversation's first. Turns stopped or
+    /// failed after sending count but carry no value, so values can skip.
+    /// Where one process hosts several sessions, each has its own count.
+    /// Present where
+    /// [`time_to_request_phases_ms`](Self::time_to_request_phases_ms) is
+    /// (CLI 2.1.285+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_turn_index: Option<u64>,
+
+    /// CPU time (user plus system) the CLI process used from turn start
+    /// until it sent the turn's first main-conversation model request, in
+    /// milliseconds (CLI 2.1.285+). Near `time_to_request_ms`, the window
+    /// was mostly computing; near 0, mostly waiting. It adds up all threads,
+    /// so it can exceed the window, and leaves out child processes. Present
+    /// where `time_to_request_phases_ms` is, unless the runtime reports no
+    /// resource usage or the process hosts other sessions too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_to_request_cpu_ms: Option<u64>,
+
+    /// The longest single stall of the session's thread between turn start
+    /// and the turn's first main-conversation model request, in
+    /// milliseconds, measured as how late a 50 ms timer fired (CLI
+    /// 2.1.285+): the real stall can be up to 50 ms longer, and a few ms is
+    /// timer noise. Only the first two minutes are measured. Present where
+    /// `time_to_request_phases_ms` is.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_to_request_loop_lag_ms: Option<u64>,
+
+    /// Major page faults (waits for memory to be read from disk) by the
+    /// process in the
+    /// [`time_to_request_cpu_ms`](Self::time_to_request_cpu_ms) window;
+    /// Windows also counts faults needing no disk read. Present where
+    /// `time_to_request_cpu_ms` is (CLI 2.1.285+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_to_request_major_faults: Option<u64>,
+
     /// Time from spawning a worker/spare until the first request was issued, in milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time_to_request_from_spawn_ms: Option<u64>,
@@ -115,6 +168,34 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub turn_started_wall_ms: Option<f64>,
 
+    /// How the time from
+    /// [`frame_enqueued_wall_ms`](Self::frame_enqueued_wall_ms) to
+    /// [`turn_started_wall_ms`](Self::turn_started_wall_ms) was spent, in
+    /// integer milliseconds per step of the host's work through its message
+    /// queue (CLI 2.1.285+): `idle`, `earlier_turn`, `after_turn`,
+    /// `background_wait`, `entry_joins`, `sdk_mcp_update`, `loop_top`,
+    /// `session_start_wait`, `first_command`, `mcp_prewait`, `repo_wait`,
+    /// `turn_joins`, `tool_pool`, `commit`, `after_arm`, `turn_gate`,
+    /// `turn_open`, `engine_setup`, `tool_reread`, `cwd` and `other`. Each
+    /// step is where the host was at the time, which for part of the stretch
+    /// may be an earlier message's turn. A step that rounds to 0 is absent;
+    /// `other` is always present. The values sum to the started-minus-enqueued
+    /// gap, except that they can exceed it (usually by 1 ms from rounding).
+    /// Open set — keep unrecognized step names. Present only when
+    /// `frame_received_wall_ms` is, and absent from older producers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub turn_start_phases_ms: Option<std::collections::BTreeMap<String, u64>>,
+
+    /// Of the time from `frame_enqueued_wall_ms` to `turn_started_wall_ms`,
+    /// the integer milliseconds in which the `claude -p` host's message
+    /// reader was held by control requests (such as `mcp_set_servers` or
+    /// `set_permission_mode`) instead of reading the next message (CLI
+    /// 2.1.285+). It overlaps
+    /// [`turn_start_phases_ms`](Self::turn_start_phases_ms) and is not part
+    /// of its sum. Absent when 0.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub turn_start_control_requests_ms: Option<u64>,
+
     /// Time until the first text POST was issued, in milliseconds
     /// (CLI 2.1.278+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -200,6 +281,13 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_error_code: Option<String>,
 
+    /// The typed kind of the API error that ended the turn (see
+    /// `AssistantMessage::api_error`). Absent when the turn did not end on
+    /// an API error, when the error has no typed kind, and from CLIs before
+    /// 2.1.285; treat an unknown value as absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_error: Option<String>,
+
     /// Why generation stopped (e.g., end_turn, max_tokens)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_reason: Option<String>,
@@ -275,13 +363,19 @@ pub enum StartupFailureReason {
     /// Managed settings pin a first-party or Cloud gateway sign-in, and an
     /// Anthropic API key or auth token is configured instead.
     OrgPinApiKeyConflict,
+    /// Managed settings list the API providers this machine may use
+    /// (`allowedProviders`), and the session is set up for one that is not
+    /// listed (CLI 2.1.285+).
+    ProviderNotAllowed,
     /// The sign-in's organization could not be verified against the pin
     /// (network, or a revoked token).
     OrgVerifyFailed,
     /// The sign-in belongs to an organization the pin does not allow.
     OrgPinMismatch,
-    /// Managed policy settings could not be read, or the pin names no
-    /// organization.
+    /// Managed policy settings could not be read, the pin names no
+    /// organization, or managed model settings (`deniedModels`, or an
+    /// `availableModels` list matched exactly) block the default model and
+    /// leave no allowed model to use instead.
     ManagedSettingsInvalid,
     /// Managed settings the organization requires could not be loaded.
     RemoteSettingsRequiredUnavailable,
@@ -320,6 +414,7 @@ impl StartupFailureReason {
     pub fn as_str(&self) -> &str {
         match self {
             Self::OrgPinApiKeyConflict => "org_pin_api_key_conflict",
+            Self::ProviderNotAllowed => "provider_not_allowed",
             Self::OrgVerifyFailed => "org_verify_failed",
             Self::OrgPinMismatch => "org_pin_mismatch",
             Self::ManagedSettingsInvalid => "managed_settings_invalid",
@@ -350,6 +445,7 @@ impl From<&str> for StartupFailureReason {
     fn from(s: &str) -> Self {
         match s {
             "org_pin_api_key_conflict" => Self::OrgPinApiKeyConflict,
+            "provider_not_allowed" => Self::ProviderNotAllowed,
             "org_verify_failed" => Self::OrgVerifyFailed,
             "org_pin_mismatch" => Self::OrgPinMismatch,
             "managed_settings_invalid" => Self::ManagedSettingsInvalid,
@@ -829,6 +925,11 @@ pub struct UsageInfo {
     /// share of `output_tokens`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output_tokens_details: Option<OutputTokensDetails>,
+
+    /// Outcome of a fallback-credit token the request presented; `null` on
+    /// the wire when it presented none (CLI 2.1.285+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fallback_credit: Option<Value>,
 }
 
 /// Breakdown of a turn's output tokens, carried in
