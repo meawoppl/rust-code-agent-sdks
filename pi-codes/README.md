@@ -5,7 +5,7 @@ Typed Rust SDK for the [pi coding agent](https://github.com/earendil-works/pi)
 `pi --mode json` JSONL event stream and the `pi --mode rpc` stdin/stdout
 command protocol, plus an async (Tokio) RPC client.
 
-Tested against pi 0.87.1. The crate version may carry a patch offset
+Tested against pi 0.99.1. The crate version may carry a patch offset
 above the CLI release for crate-side additions.
 
 ## What's covered
@@ -14,8 +14,9 @@ above the CLI release for crate-side additions.
   [`RpcCommand`]s (prompt/steer/follow-up, state, model, thinking,
   compaction, bash, session), the `{"type":"response"}` envelope with id
   correlation, and typed views of the important payloads
-  ([`AgentState`], [`BashResult`], messages). Unmodeled commands pass
-  through via `RpcCommand::Raw`.
+  ([`AgentState`], [`BashResult`], messages, and the
+  [`InputDisposition`] a `prompt`/`steer`/`follow_up` ack reports on
+  pi ≥ 0.99.0). Unmodeled commands pass through via `RpcCommand::Raw`.
 - **`--mode json`** — the one-shot event stream: `PiEvent` with typed
   lifecycle/tool events and an `Unknown` fallback that preserves the
   payload, so newer CLIs degrade soft.
@@ -42,7 +43,24 @@ the model reads a planted nonce file, writes a requested nonce to a
 requested path, and runs a shell command with a disk-visible side
 effect — write/bash verified on disk, never from the transcript.
 
-## Measured wire notes (pi 0.84.4 → 0.86.0)
+## Measured wire notes (pi 0.84.4 → 0.99.1)
+
+- **Input acks report a disposition (0.99.0).** A successful `prompt`,
+  `steer` or `follow_up` response carries `data.disposition`:
+  `started` (a run began; `prompt` only), `queued` (held during a run)
+  or `handled` (an extension consumed it — no run started, so don't
+  wait for `agent_settled`). Read it with `RpcResponse::disposition()`.
+  Earlier CLIs sent a bare success envelope. Pinned by the 0.99.1
+  corpus.
+- **Nested tool calls are events only (0.99.0).** A tool that runs
+  other tools (`ctx.executeTool()`, e.g. a `codemode` script) emits
+  `tool_execution_*` events carrying `parentToolCallId`, with a
+  `<parent id>/<n>` `toolCallId`. They never appear as tool calls or
+  tool results in the transcript.
+- **Assistant messages carry `thinkingLevel` (0.99.0)**, and built-in
+  `bash` results add a `structuredContent` twin (`output`, `exit_code`,
+  `truncated`) beside the model-facing `content`. Pinned by the 0.99.1
+  corpus.
 
 - **Every turn opens with a `system` message (0.86.0).** It streams as
   `message_start` / `message_end` before the user message and leads

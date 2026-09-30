@@ -48,7 +48,9 @@ pub use error::{Error, Result};
 #[cfg(feature = "types")]
 pub use io::{ContentBlock, Model, PiEvent, PiMessage, Usage};
 #[cfg(feature = "types")]
-pub use rpc::{AgentState, BashResult, RpcCommand, RpcResponse, StreamingBehavior};
+pub use rpc::{
+    AgentState, BashResult, InputDisposition, RpcCommand, RpcResponse, StreamingBehavior,
+};
 
 #[cfg(feature = "async-client")]
 pub use client_async::PiRpcClient;
