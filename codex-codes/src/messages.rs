@@ -50,17 +50,18 @@ use crate::protocol::{
     TerminalInteractionNotification, ThreadArchivedNotification,
     ThreadAttachmentUpdatedNotification, ThreadClosedNotification, ThreadDeletedNotification,
     ThreadGoalClearedNotification, ThreadGoalUpdatedNotification, ThreadNameUpdatedNotification,
-    ThreadProjectUpdatedNotification, ThreadQueueChangedNotification,
-    ThreadRealtimeClosedNotification, ThreadRealtimeErrorNotification,
-    ThreadRealtimeItemAddedNotification, ThreadRealtimeItemCompletedNotification,
-    ThreadRealtimeItemStartedNotification, ThreadRealtimeItemTranscriptDeltaNotification,
-    ThreadRealtimeOutputAudioDeltaNotification, ThreadRealtimeSdpNotification,
-    ThreadRealtimeStartedNotification, ThreadRealtimeTranscriptDeltaNotification,
-    ThreadRealtimeTranscriptDoneNotification, ThreadRevertedNotification,
-    ThreadSettingsUpdatedNotification, ThreadStartedNotification, ThreadStatusChangedNotification,
-    ThreadTokenUsageUpdatedNotification, ThreadUnarchivedNotification, TurnCompletedNotification,
-    TurnDiffUpdatedNotification, TurnModerationMetadataNotification, TurnPlanUpdatedNotification,
-    TurnStartedNotification, WarningNotification, WindowsSandboxSetupCompletedNotification,
+    ThreadPredictionUpdatedNotification, ThreadProjectUpdatedNotification,
+    ThreadQueueChangedNotification, ThreadRealtimeClosedNotification,
+    ThreadRealtimeErrorNotification, ThreadRealtimeItemAddedNotification,
+    ThreadRealtimeItemCompletedNotification, ThreadRealtimeItemStartedNotification,
+    ThreadRealtimeItemTranscriptDeltaNotification, ThreadRealtimeOutputAudioDeltaNotification,
+    ThreadRealtimeSdpNotification, ThreadRealtimeStartedNotification,
+    ThreadRealtimeTranscriptDeltaNotification, ThreadRealtimeTranscriptDoneNotification,
+    ThreadRevertedNotification, ThreadSettingsUpdatedNotification, ThreadStartedNotification,
+    ThreadStatusChangedNotification, ThreadTokenUsageUpdatedNotification,
+    ThreadUnarchivedNotification, TurnCompletedNotification, TurnDiffUpdatedNotification,
+    TurnModerationMetadataNotification, TurnPlanUpdatedNotification, TurnStartedNotification,
+    WarningNotification, WindowsSandboxSetupCompletedNotification,
     WindowsWorldWritableWarningNotification,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -240,6 +241,8 @@ pub enum Notification {
     ModelProviderAuthRecoveryStarted(AuthRecoveryNotification),
     /// `modelProvider/authRecoveryCompleted` (0.148 upstream)
     ModelProviderAuthRecoveryCompleted(AuthRecoveryNotification),
+    /// `thread/prediction/updated` (0.159 upstream, experimental)
+    ThreadPredictionUpdated(ThreadPredictionUpdatedNotification),
     /// A method this crate version does not yet model. The raw params are
     /// preserved for caller inspection. Encountering this typically means
     /// the installed codex CLI is newer than the bindings.
@@ -259,6 +262,7 @@ impl Notification {
             Self::ThreadProjectUpdated(_) => methods::THREAD_PROJECT_UPDATED,
             Self::ThreadQueueChanged(_) => methods::THREAD_QUEUE_CHANGED,
             Self::ThreadReverted(_) => methods::THREAD_REVERTED,
+            Self::ThreadPredictionUpdated(_) => methods::THREAD_PREDICTION_UPDATED,
             Self::McpServerEventStream(_) => methods::MCP_SERVER_EVENT_STREAM,
             Self::ThreadRealtimeItemStarted(_) => methods::THREAD_REALTIME_ITEM_STARTED,
             Self::ThreadRealtimeItemCompleted(_) => methods::THREAD_REALTIME_ITEM_COMPLETED,
@@ -442,6 +446,9 @@ impl Notification {
             }
             methods::THREAD_REVERTED => {
                 serde_json::from_value(params_value).map(Self::ThreadReverted)
+            }
+            methods::THREAD_PREDICTION_UPDATED => {
+                serde_json::from_value(params_value).map(Self::ThreadPredictionUpdated)
             }
             methods::MCP_SERVER_EVENT_STREAM => {
                 serde_json::from_value(params_value).map(Self::McpServerEventStream)
@@ -680,6 +687,7 @@ impl Notification {
             Self::ThreadProjectUpdated(v) => pack(methods::THREAD_PROJECT_UPDATED, v),
             Self::ThreadQueueChanged(v) => pack(methods::THREAD_QUEUE_CHANGED, v),
             Self::ThreadReverted(v) => pack(methods::THREAD_REVERTED, v),
+            Self::ThreadPredictionUpdated(v) => pack(methods::THREAD_PREDICTION_UPDATED, v),
             Self::McpServerEventStream(v) => pack(methods::MCP_SERVER_EVENT_STREAM, v),
             Self::ThreadRealtimeItemStarted(v) => pack(methods::THREAD_REALTIME_ITEM_STARTED, v),
             Self::ThreadRealtimeItemCompleted(v) => {
@@ -1044,6 +1052,40 @@ mod tests {
         assert!(matches!(n, Notification::AgentMessageDelta(_)));
         let back = serde_json::to_value(&n).unwrap();
         assert_eq!(back, wire);
+    }
+
+    #[test]
+    fn test_thread_prediction_updated_round_trips_both_results() {
+        use crate::protocol_generated::types::ThreadPredictionResult;
+
+        for (result, expected) in [
+            (
+                serde_json::json!({"type": "completed", "text": "next prompt"}),
+                ThreadPredictionResult::Completed {
+                    text: Some("next prompt".into()),
+                },
+            ),
+            (
+                serde_json::json!({"type": "completed"}),
+                ThreadPredictionResult::Completed { text: None },
+            ),
+            (
+                serde_json::json!({"type": "failed"}),
+                ThreadPredictionResult::Failed,
+            ),
+        ] {
+            let wire = serde_json::json!({
+                "method": "thread/prediction/updated",
+                "params": {"result": result, "sourceTurnId": "u1", "threadId": "t1"},
+            });
+            let n: Notification = serde_json::from_value(wire.clone()).unwrap();
+            let Notification::ThreadPredictionUpdated(p) = &n else {
+                panic!("expected ThreadPredictionUpdated, got {:?}", n);
+            };
+            assert_eq!(p.result, expected);
+            assert_eq!(p.source_turn_id, "u1");
+            assert_eq!(serde_json::to_value(&n).unwrap(), wire);
+        }
     }
 
     #[test]

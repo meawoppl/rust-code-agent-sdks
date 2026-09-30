@@ -915,8 +915,8 @@ pub enum CollabAgentToolCallStatus {
     Interrupted,
 }
 
-/// Requested cyber treatment for a ChatGPT-authenticated turn; authorization
-/// and model-tier restrictions stay server-owned (0.148 upstream).
+/// Requested cyber treatment for an OpenAI model turn; authorization and
+/// model-tier restrictions stay server-owned (0.148 upstream).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CyberAccessProgram {
     #[serde(rename = "standard")]
@@ -4274,6 +4274,9 @@ pub struct McpServerMigration {
 pub struct McpServerOauthLoginCompletedNotification {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// Identifies the explicit login attempt. Older servers omit this field.
+    #[serde(rename = "loginId", default, skip_serializing_if = "Option::is_none")]
+    pub login_id: Option<String>,
     #[serde(default)]
     pub name: String,
     #[serde(default)]
@@ -4310,6 +4313,11 @@ pub struct McpServerOauthLoginParams {
 pub struct McpServerOauthLoginResponse {
     #[serde(rename = "authorizationUrl", default)]
     pub authorization_url: String,
+    /// Identifies this login attempt across the response and completion
+    /// notification. Older servers omit this field; current servers always
+    /// return it.
+    #[serde(rename = "loginId", default, skip_serializing_if = "Option::is_none")]
+    pub login_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -6497,6 +6505,29 @@ pub struct ThreadQueueChangedNotification {
 pub struct ThreadRevertedNotification {
     #[serde(rename = "threadId", default)]
     pub thread_id: String,
+}
+
+/// `thread/prediction/updated` — a prediction requested for a turn finished
+/// (`openai/codex@main` 90abcfac, experimental).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadPredictionUpdatedNotification {
+    pub result: ThreadPredictionResult,
+    #[serde(rename = "sourceTurnId", default)]
+    pub source_turn_id: String,
+    #[serde(rename = "threadId", default)]
+    pub thread_id: String,
+}
+
+/// Outcome of a thread prediction (`openai/codex@main` 90abcfac).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ThreadPredictionResult {
+    Completed {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        text: Option<String>,
+    },
+    Failed,
 }
 
 /// In-app browser requirements (0.148 upstream).

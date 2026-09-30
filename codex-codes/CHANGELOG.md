@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.159.2] - 2026-09-30
+
+Re-baseline the tested pin to Codex CLI **0.159.2** (from 0.159.0) and model
+the `openai/codex@main` (`90abcfac0`) app-server schema drift. The 0.159.2
+release's `codex app-server generate-json-schema` output is byte-identical to
+0.159.0's, so the re-pin itself needs no type work. Everything below is
+main-only and additive on the wire; the pinned CLI neither emits the new
+notification nor returns the new field.
+
+### Added
+
+- `Notification::ThreadPredictionUpdated` (wire `thread/prediction/updated`)
+  with `ThreadPredictionUpdatedNotification` and the `ThreadPredictionResult`
+  tagged enum (`completed` with an optional `text`, or `failed`),
+  openai/codex#49480. Experimental upstream. The matching
+  `thread/prediction/request` client request is `#[experimental]` and
+  stripped from the published schema, so it is not modeled.
+- `McpServerOauthLoginResponse.login_id` and
+  `McpServerOauthLoginCompletedNotification.login_id` (wire `loginId`),
+  openai/codex#49276. Identifies one login attempt across the response and
+  its completion notification; older servers omit it.
+
+### Changed
+
+- `CyberAccessProgram` doc: the treatment now applies to any OpenAI model
+  turn, not only ChatGPT-authenticated ones (openai/codex#49406). No wire
+  change.
+
 ## [0.159.0] - 2026-09-29
 
 ### Changed
