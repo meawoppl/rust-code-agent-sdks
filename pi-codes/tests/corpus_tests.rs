@@ -2,7 +2,7 @@
 //! event (or a response envelope), and the captures pin measured wire
 //! behaviors the docs get wrong or don't state.
 
-use pi_codes::{PiEvent, PiMessage, RpcResponse};
+use pi_codes::{InputDisposition, PiEvent, PiMessage, RpcResponse};
 use std::path::PathBuf;
 
 fn corpus_lines(name: &str) -> Vec<serde_json::Value> {
@@ -17,9 +17,13 @@ fn corpus_lines(name: &str) -> Vec<serde_json::Value> {
         .collect()
 }
 
-const CAPTURES: [&str; 2] = ["rpc_tool_use_0_84_4.jsonl", "rpc_tool_use_0_86_0.jsonl"];
+const CAPTURES: [&str; 3] = [
+    "rpc_tool_use_0_84_4.jsonl",
+    "rpc_tool_use_0_86_0.jsonl",
+    "rpc_tool_use_0_99_1.jsonl",
+];
 
-/// Every line of both tool-use captures parses as a typed event or a response envelope; known lifecycle/tool types never fall back to Unknown.
+/// Every line of every tool-use capture parses as a typed event or a response envelope; known lifecycle/tool types never fall back to Unknown.
 #[test]
 fn every_capture_line_is_typed() {
     let known = [
@@ -77,7 +81,7 @@ fn capture_reaches_terminal_with_all_tools() {
     }
 }
 
-/// Measured wire quirk: RPC-mode tool_execution_end carries NO `args` field (the docs' AgentEvent type says it does) — our decoder must tolerate the absence. Still true on 0.86.0.
+/// Measured wire quirk: RPC-mode tool_execution_end carries NO `args` field (the docs' AgentEvent type says it does) — our decoder must tolerate the absence. Still true on 0.99.1.
 #[test]
 fn tool_execution_end_omits_args_on_the_wire() {
     for name in CAPTURES {
@@ -199,5 +203,79 @@ fn system_message_leads_the_turn_on_0_86_0() {
             .iter()
             .any(|v| v["message"]["role"] == "system"),
         "0.84.4 predates system messages"
+    );
+}
+
+/// pi 0.99 acknowledges `prompt` with `data.disposition` ("started" for an idle session); earlier CLIs sent a bare success envelope with no data.
+#[test]
+fn prompt_response_carries_disposition_on_0_99_1() {
+    let ack = |name: &str| -> RpcResponse {
+        let first = corpus_lines(name).remove(0);
+        assert_eq!(first["type"], "response", "{name} opens with the ack");
+        serde_json::from_value(first).expect("response envelope")
+    };
+    let new = ack("rpc_tool_use_0_99_1.jsonl");
+    assert_eq!(new.command, "prompt");
+    assert_eq!(new.disposition(), Some(InputDisposition::Started));
+
+    let old = ack("rpc_tool_use_0_86_0.jsonl");
+    assert!(old.data.is_none(), "0.86.0 ack carried no data");
+    assert_eq!(old.disposition(), None);
+}
+
+/// pi 0.99 stamps every agent-loop assistant message with the requested `thinkingLevel`, and built-in `bash` results add a `structuredContent` twin (`output`, `exit_code`, `truncated`) next to the model-facing `content`. Neither existed on 0.86.0.
+#[test]
+fn assistant_thinking_level_and_structured_bash_result_on_0_99_1() {
+    let lines = corpus_lines("rpc_tool_use_0_99_1.jsonl");
+
+    let levels: Vec<Option<String>> = lines
+        .iter()
+        .filter(|v| v["type"] == "message_end" && v["message"]["role"] == "assistant")
+        .map(|v| {
+            let PiEvent::MessageEnd { message } = PiEvent::from_value(v.clone()).unwrap() else {
+                panic!("wrong variant")
+            };
+            let PiMessage::Assistant {
+                thinking_level,
+                extra,
+                ..
+            } = *message
+            else {
+                panic!("wrong role")
+            };
+            assert!(!extra.contains_key("thinkingLevel"), "typed, not in extra");
+            thinking_level
+        })
+        .collect();
+    assert!(!levels.is_empty());
+    assert!(
+        levels.iter().all(|l| l.as_deref() == Some("off")),
+        "gpt-4.1-mini runs with thinking off: {levels:?}"
+    );
+
+    let bash_end = lines
+        .iter()
+        .find(|v| v["type"] == "tool_execution_end" && v["toolName"] == "bash")
+        .expect("bash ran");
+    let PiEvent::ToolExecutionEnd {
+        result,
+        is_error,
+        parent_tool_call_id,
+        ..
+    } = PiEvent::from_value(bash_end.clone()).unwrap()
+    else {
+        panic!("wrong variant")
+    };
+    assert!(!is_error);
+    assert_eq!(parent_tool_call_id, None, "model-issued, not nested");
+    assert_eq!(result["structuredContent"]["exit_code"], 0);
+    assert!(result["structuredContent"]["output"].is_string());
+
+    assert!(
+        !corpus_lines("rpc_tool_use_0_86_0.jsonl").iter().any(|v| {
+            v["message"].get("thinkingLevel").is_some()
+                || v["result"].get("structuredContent").is_some()
+        }),
+        "0.86.0 predates both fields"
     );
 }

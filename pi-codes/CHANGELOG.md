@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.99.1] - 2026-09-30
+
+Re-baseline the tested pin to pi **0.99.1** (from 0.87.1; upstream jumped
+0.87.1 → 0.99.0 → 0.99.1 with no releases in between) and model the RPC
+wire drift. The RPC command set (`dist/modes/rpc/rpc-types.d.ts`) and the
+event name set in the packaged docs are unchanged; everything below is
+additive on the wire. The unmodified 0.87.1 crate still passes its live
+tier against 0.99.1.
+
+### Added
+
+- `InputDisposition` (`handled` / `queued` / `started`, open set) and
+  `RpcResponse::disposition()`. pi 0.99.0 acknowledges a successful
+  `prompt`, `steer` or `follow_up` with `data.disposition`
+  (earendil-works/pi#9098, #9803): `started` when the prompt began a run,
+  `queued` when pi held the input during a run, `handled` when an
+  extension command or input handler consumed it — in which case no run
+  started and there is no `agent_settled` to wait for. Earlier CLIs sent a
+  bare success envelope, for which the accessor returns `None`.
+- `PiMessage::Assistant::thinking_level` (wire `thinkingLevel`): the pi
+  thinking level the agent loop requested for the response. Previously the
+  key would have landed in `extra`.
+- A fresh RPC tool-use corpus captured against 0.99.1
+  (`test_cases/rpc_tool_use_0_99_1.jsonl`); the corpus tests run over all
+  three captures and pin the prompt disposition, the typed thinking level
+  and the `structuredContent` twin on built-in `bash` results.
+
+### Changed
+
+- **Breaking:** `PiEvent::ToolExecutionStart`, `::ToolExecutionUpdate` and
+  `::ToolExecutionEnd` gain `parent_tool_call_id: Option<String>` (wire
+  `parentToolCallId`). pi 0.99.0 lets a tool run other tools
+  (`ctx.executeTool()`, used by the new `codemode` tool and MCP calls made
+  from its scripts); those nested calls emit tool-execution events with
+  the calling tool's id as parent and a `<parent id>/<n>` `toolCallId`,
+  and never appear as tool calls or tool results in the transcript.
+  Patterns that list every field need a `..`.
+
+### Not modeled
+
+- The new `pi mcp add|remove|list|login|logout` management subcommand, the
+  `-e builtin:<name>` extension form and `--no-extensions` now also
+  disabling built-in extensions: `PiCliBuilder` has no extension flags;
+  pass them through `extra_args`.
+- `nestedCalls` on a calling tool's `toolResult` message and the new
+  `type` discriminator (`chat` / `image` / `classifier`) on catalog models
+  stay reachable through the `extra` maps.
+- `docs/session-format.md` additions (`thinkingLevel` on stored assistant
+  messages, `pi.virtual-model-state` custom entries): this crate does not
+  parse session files.
+
 ## [0.87.1] - 2026-09-23
 
 ### Changed

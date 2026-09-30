@@ -196,6 +196,78 @@ pub struct RpcResponse {
     pub error: Option<String>,
 }
 
+impl RpcResponse {
+    /// What pi did with the input a successful `prompt`, `steer` or
+    /// `follow_up` submitted (`data.disposition`, pi ≥ 0.99.0). `None` on
+    /// other commands, on failures, and from older CLIs.
+    pub fn disposition(&self) -> Option<InputDisposition> {
+        self.data
+            .as_ref()?
+            .get("disposition")?
+            .as_str()
+            .map(InputDisposition::from)
+    }
+}
+
+/// What pi did with a submitted `prompt`/`steer`/`follow_up` input
+/// ([`RpcResponse::disposition`], pi ≥ 0.99.0). It describes the submitted
+/// input only — not independent work an extension started, and not a
+/// guarantee of completion or that a queued message stays queued.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum InputDisposition {
+    /// An extension command or input handler consumed the input. No run
+    /// started for it, so don't wait for `agent_settled`.
+    Handled,
+    /// Pi queued the input during a run (including after an input handler
+    /// transformed it).
+    Queued,
+    /// Pi accepted the prompt to start a run. `prompt` only.
+    Started,
+    /// A disposition not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl InputDisposition {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Handled => "handled",
+            Self::Queued => "queued",
+            Self::Started => "started",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl std::fmt::Display for InputDisposition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for InputDisposition {
+    fn from(s: &str) -> Self {
+        match s {
+            "handled" => Self::Handled,
+            "queued" => Self::Queued,
+            "started" => Self::Started,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for InputDisposition {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for InputDisposition {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
 /// Typed view of `get_state` response data.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct AgentState {
@@ -303,6 +375,37 @@ mod tests {
         .unwrap();
         assert!(!r.success);
         assert!(r.error.unwrap().contains("Model not found"));
+    }
+
+    #[test]
+    fn input_disposition_reads_from_response_data() {
+        for (command, wire, expected) in [
+            ("prompt", "started", InputDisposition::Started),
+            ("prompt", "handled", InputDisposition::Handled),
+            ("steer", "queued", InputDisposition::Queued),
+            (
+                "follow_up",
+                "deferred",
+                InputDisposition::Unknown("deferred".into()),
+            ),
+        ] {
+            let r: RpcResponse = serde_json::from_value(serde_json::json!({
+                "id": "r1", "type": "response", "command": command,
+                "success": true, "data": {"disposition": wire}
+            }))
+            .unwrap();
+            let got = r.disposition().expect("disposition present");
+            assert_eq!(got, expected);
+            assert_eq!(got.to_string(), wire);
+            assert_eq!(serde_json::to_value(&got).unwrap(), wire);
+        }
+
+        // pi < 0.99.0 acknowledged these commands with no data at all.
+        let legacy: RpcResponse = serde_json::from_str(
+            r#"{"id":"r1","type":"response","command":"prompt","success":true}"#,
+        )
+        .unwrap();
+        assert_eq!(legacy.disposition(), None);
     }
 
     #[test]
