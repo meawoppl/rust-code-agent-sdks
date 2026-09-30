@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.286] - 2026-09-30
+
+Re-baseline against Claude CLI **2.1.285**. Models the 2.1.284 → 2.1.285
+stream-json drift, all additive: eight new `system` subtypes (the SDK output
+union grew 49 → 57 members), eight optional fields on `result`, one on usage,
+one on the compaction metadata and one new startup failure reason. No
+removals. The set of model ids in the bundle is unchanged from 2.1.284.
+
+### Added
+
+- `system/session_title_changed` — `SessionTitleChangedMessage`
+  (`SystemSubtype::SessionTitleChanged`, `KnownSystemEvent` variant,
+  `is_`/`as_` accessors). The session's name for a host that shows it: sent
+  at startup when the session already has one and after each rename. It can
+  arrive before the `system/init` that first names its `session_id`.
+- Seven plugin-UI pushes a headless session sends for a remote surface to
+  draw, each with its `SystemSubtype` / `KnownSystemEvent` variant and
+  `is_`/`as_` accessors:
+  - `system/ui_log` (`UiLogMessage`), `system/ui_toast` (`UiToastMessage`)
+    and `system/ui_status` (`UiStatusMessage`, whose `text` is `None` when
+    the plugin clears its pinned line) — the plugin's `$.ui.log` /
+    `$.ui.toast` / `$.ui.status` text.
+  - `system/ui_invalidate` (`UiInvalidateMessage`, with the optional
+    `UiInvalidatedInstance` list) — drawn trees may be stale.
+  - `system/ui_panes` (`UiPanesMessage` / `UiPane`) — the placed-pane roster
+    with its shown, focused and focus-requested pane ids.
+  - `system/ui_scroll` (`UiScrollMessage`) and `system/ui_focus`
+    (`UiFocusMessage`) — a plugin moved a site's window or focus ring; the
+    site is named by the open-set `UiSiteComponent` (`Pane`, `AbovePrompt`).
+- `ResultMessage` request-timing fields, present on `CLAUDE_CODE_REMOTE`
+  sessions and hosts that set `CLAUDE_CODE_EMIT_STARTUP_TIMING`:
+  `time_to_request_phases_ms` (open-set phase → ms map summing to
+  `time_to_request_ms`), `process_turn_index`, `time_to_request_cpu_ms`,
+  `time_to_request_loop_lag_ms` and `time_to_request_major_faults`.
+- `ResultMessage::turn_start_phases_ms` (open-set step → ms map covering
+  `frame_enqueued_wall_ms` → `turn_started_wall_ms`) and
+  `::turn_start_control_requests_ms`.
+- `ResultMessage::api_error` — the typed kind of the API error that ended
+  the turn, mirroring `AssistantMessage::api_error`.
+- `UsageInfo::fallback_credit` and `AssistantUsage::fallback_credit` — the
+  outcome of a fallback-credit token the request presented (opaque JSON;
+  `null` on the wire when none was presented, which a live 2.1.285 result
+  does emit).
+- `CompactMetadata::pre_compact_artifact_read_versions`
+  (`ArtifactReadVersion { slug, ver }`) — the artifact versions the
+  conversation held before the compaction.
+- `StartupFailureReason::ProviderNotAllowed` (`provider_not_allowed`):
+  managed settings' `allowedProviders` does not list the session's API
+  provider.
+
+### Changed
+
+- `StartupFailureReason::ManagedSettingsInvalid` doc: also reported when
+  managed model settings block the default model and leave none allowed.
+- `lib.rs` tested-version doc line caught up (was stuck at 2.1.283).
+
+### Not modeled
+
+- 2.1.285 also added a family of host → CLI control request subtypes for the
+  same plugin-UI surface (`ui_attach`, `ui_detach`, `ui_render`, `ui_press`,
+  `ui_input`, `ui_select`, `ui_close`, `ui_copy`, `ui_message`,
+  `ui_pane_show`, `ui_pane_focus`, `ui_prompt_*`, `ui_client_*`) plus
+  `list_directory`. `ControlRequestPayload` covers only tool permission,
+  hook, MCP, initialize and interrupt requests, so these stay out.
+- `claude --help` gained `--desktop` (open the session in the Claude Desktop
+  app). Interactive-only, like `--cloud` and `--tmux`; not mirrored on
+  `CliFlag`.
+
 ## [2.1.285] - 2026-09-28
 
 ### Added
