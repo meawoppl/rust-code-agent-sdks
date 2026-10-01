@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2026-10-01
+
+### Changed
+
+- Re-baseline the tested pin to Muse Code **1.4.2 (1.4.2-R4684.1)** (from
+  1.4.1-R4503.1). The stream fingerprint is unchanged, `muse exec --help` is
+  byte-identical and the live suite passes unmodified — pin-only release.
+- Upstream surface the crate does not model: a new top-level
+  `muse model-profile` subcommand (shows what a model resolves to per knob
+  and effort tier), and MSP (`muse serve`) additions — a `feedback/submit`
+  method with `FeedbackClassification`, plus `cacheReadTokens`,
+  `cacheWriteTokens` and a server-computed `cost` on cumulative token usage.
+
 ## [1.4.2] - 2026-09-29
 
 ### Changed
