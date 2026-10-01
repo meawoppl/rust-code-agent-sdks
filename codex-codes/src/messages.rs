@@ -1055,6 +1055,79 @@ mod tests {
     }
 
     #[test]
+    fn test_codex_error_info_other_accepts_unknown_codes() {
+        use crate::protocol_generated::types::CodexErrorInfo;
+
+        // Known codes still decode to their typed variants, tagged or not.
+        assert_eq!(
+            serde_json::from_value::<CodexErrorInfo>(serde_json::json!("contextWindowExceeded"))
+                .unwrap(),
+            CodexErrorInfo::ContextWindowExceeded
+        );
+        assert_eq!(
+            serde_json::from_value::<CodexErrorInfo>(
+                serde_json::json!({"httpConnectionFailed": {"httpStatusCode": 502}})
+            )
+            .unwrap(),
+            CodexErrorInfo::HttpConnectionFailed {
+                http_status_code: Some(502)
+            }
+        );
+
+        // Unknown strings and objects fall through to `Other` instead of erroring.
+        for unknown in [
+            serde_json::json!("other"),
+            serde_json::json!("bioPolicy"),
+            serde_json::json!({"someFutureVariant": {"detail": 1}}),
+        ] {
+            assert_eq!(
+                serde_json::from_value::<CodexErrorInfo>(unknown).unwrap(),
+                CodexErrorInfo::Other
+            );
+        }
+        assert!(serde_json::from_value::<CodexErrorInfo>(serde_json::json!(42)).is_err());
+        assert!(serde_json::from_value::<CodexErrorInfo>(serde_json::Value::Null).is_err());
+
+        // `Other` always serializes back to the canonical string.
+        assert_eq!(
+            serde_json::to_value(CodexErrorInfo::Other).unwrap(),
+            serde_json::json!("other")
+        );
+    }
+
+    #[test]
+    fn test_thread_goal_params_round_trip_origin() {
+        use crate::protocol_generated::types::{
+            ThreadGoalClearParams, ThreadGoalMutationOrigin, ThreadGoalSetParams,
+        };
+
+        let set = ThreadGoalSetParams {
+            thread_id: "t1".into(),
+            objective: Some("ship it".into()),
+            origin: Some(ThreadGoalMutationOrigin::User),
+            ..Default::default()
+        };
+        assert_eq!(
+            serde_json::to_value(&set).unwrap(),
+            serde_json::json!({"threadId": "t1", "objective": "ship it", "origin": "user"})
+        );
+
+        let clear: ThreadGoalClearParams =
+            serde_json::from_value(serde_json::json!({"threadId": "t1", "origin": "automatic"}))
+                .unwrap();
+        assert_eq!(clear.origin, Some(ThreadGoalMutationOrigin::Automatic));
+
+        // Older callers omit `origin`; it must stay optional and absent on the wire.
+        let bare: ThreadGoalClearParams =
+            serde_json::from_value(serde_json::json!({"threadId": "t1"})).unwrap();
+        assert_eq!(bare.origin, None);
+        assert_eq!(
+            serde_json::to_value(&bare).unwrap(),
+            serde_json::json!({"threadId": "t1"})
+        );
+    }
+
+    #[test]
     fn test_thread_prediction_updated_round_trips_both_results() {
         use crate::protocol_generated::types::ThreadPredictionResult;
 

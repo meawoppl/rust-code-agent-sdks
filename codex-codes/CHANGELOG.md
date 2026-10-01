@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.159.3] - 2026-10-01
+
+Re-baseline the tested pin to Codex CLI **0.159.3** (from 0.159.2) and model
+the `openai/codex@main` (`444da310e`) app-server schema drift reported in
+#424. The 0.159.3 release's `codex app-server generate-json-schema` output
+is structurally identical to 0.159.2's, so the re-pin itself needs no type
+work. Everything below is main-only; the pinned CLI neither reads the new
+field nor emits unknown error codes.
+
+### Added
+
+- `ThreadGoalMutationOrigin` (`user` | `automatic`) and an optional `origin`
+  on `ThreadGoalSetParams` and `ThreadGoalClearParams`, openai/codex#49598.
+  Tells the server whether a goal edit came from an explicit user action or
+  an automatic lifecycle mutation; omitting it does not imply user
+  authorization.
+
+### Changed
+
+- `CodexErrorInfo::Other` is now an untagged catch-all, openai/codex#49806.
+  It still serializes as `"other"`, but deserializes from any unrecognized
+  error string or object instead of failing typed decoding. A server newer
+  than this crate can introduce an error code without breaking `error`
+  notifications or `turn/completed` payloads. Numbers, booleans and `null`
+  still fail. No change for callers matching on the typed variants.
+
 ## [0.159.2] - 2026-09-30
 
 Re-baseline the tested pin to Codex CLI **0.159.2** (from 0.159.0) and model

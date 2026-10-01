@@ -809,8 +809,6 @@ pub enum CodexErrorInfo {
     ThreadRollbackFailed,
     #[serde(rename = "sandboxError")]
     SandboxError,
-    #[serde(rename = "other")]
-    Other,
     #[serde(rename = "httpConnectionFailed")]
     HttpConnectionFailed {
         #[serde(
@@ -852,6 +850,36 @@ pub enum CodexErrorInfo {
         #[serde(rename = "turnKind")]
         turn_kind: NonSteerableTurnKind,
     },
+    /// Catch-all for error codes this crate does not model. Serializes as the
+    /// string `"other"`; deserializes from any unrecognized string or object so
+    /// a newer server's error code never breaks typed decoding
+    /// (openai/codex#49806). Must stay the last variant: serde tries the
+    /// tagged variants above first and only then falls back to this one.
+    #[serde(
+        untagged,
+        serialize_with = "serialize_other_codex_error_info",
+        deserialize_with = "deserialize_other_codex_error_info"
+    )]
+    Other,
+}
+
+fn serialize_other_codex_error_info<S>(serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_str("other")
+}
+
+fn deserialize_other_codex_error_info<'de, D>(deserializer: D) -> Result<(), D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    match Value::deserialize(deserializer)? {
+        Value::String(_) | Value::Object(_) => Ok(()),
+        _ => Err(serde::de::Error::custom(
+            "expected an error string or object",
+        )),
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -7682,6 +7710,9 @@ pub struct ThreadGoal {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreadGoalClearParams {
+    /// Missing provenance does not supply user authorization.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<ThreadGoalMutationOrigin>,
     #[serde(rename = "threadId", default)]
     pub thread_id: String,
 }
@@ -7714,11 +7745,23 @@ pub struct ThreadGoalGetResponse {
     pub goal: Option<ThreadGoal>,
 }
 
+/// Distinguishes explicit user actions from automatic goal lifecycle mutations.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ThreadGoalMutationOrigin {
+    #[serde(rename = "user")]
+    User,
+    #[serde(rename = "automatic")]
+    Automatic,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreadGoalSetParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub objective: Option<String>,
+    /// Missing provenance does not supply user authorization.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<ThreadGoalMutationOrigin>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<ThreadGoalStatus>,
     #[serde(rename = "threadId", default)]
