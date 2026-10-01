@@ -5,12 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.1.287] - 2026-10-01
 
-Models the Claude CLI 2.1.285 → 2.1.286 stream-json drift: three optional
-timing fields, all additive. No removals, no new subtypes, and `--help` is
-unchanged. The bundle's model-id set lost only a stray `claude-haiku-3-55`
-string that the crate never modeled.
+Re-baseline against Claude CLI **2.1.286**. Models the 2.1.285 → 2.1.286
+stream-json drift: three optional timing fields, all additive. No removals,
+no new subtypes, and `--help` is unchanged. The bundle's model-id set lost
+only a stray `claude-haiku-3-55` string that the crate never modeled.
 
 ### Added
 

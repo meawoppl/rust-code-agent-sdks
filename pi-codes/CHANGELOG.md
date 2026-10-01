@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.99.2] - 2026-10-01
+
+### Changed
+
+- Re-baseline the tested pin to pi **0.99.2** (from 0.99.1). `pi --help` and
+  the RPC docs are unchanged (doc edits cover codemode deferred tools,
+  `pi mcp add --oauth-client-name/--description`, `/reload` of
+  `defaultTools`, and Anthropic workload identity federation); the live
+  suite passes unmodified — pin-only release.
+
 ## [0.99.1] - 2026-09-30
 
 Re-baseline the tested pin to pi **0.99.1** (from 0.87.1; upstream jumped
