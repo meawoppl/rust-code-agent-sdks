@@ -1113,6 +1113,13 @@ pub struct UserMessage {
     /// which also stamps it on deliveries it replays (CLI 2.1.266+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub historical: Option<bool>,
+    /// Epoch milliseconds on the session server's clock when it received the
+    /// HTTP request that delivered this message. Written by the session
+    /// server; the CLI copies it to the turn's result as
+    /// [`user_message_server_received_wall_ms`](crate::io::ResultMessage::user_message_server_received_wall_ms)
+    /// (CLI 2.1.286+). Not settable by clients.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_received_wall_ms: Option<f64>,
 }
 
 impl UserMessage {
