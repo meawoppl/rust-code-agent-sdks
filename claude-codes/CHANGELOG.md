@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Models the Claude CLI 2.1.285 → 2.1.286 stream-json drift: three optional
+timing fields, all additive. No removals, no new subtypes, and `--help` is
+unchanged. The bundle's model-id set lost only a stray `claude-haiku-3-55`
+string that the crate never modeled.
+
+### Added
+
+- `UserMessage::server_received_wall_ms` — epoch ms on the session server's
+  clock when it received the HTTP request that delivered the message. Stamped
+  by the session server, not settable by clients.
+- `ResultMessage::first_request_input_tokens` — input + cache-read +
+  cache-creation tokens of the model call sent at `request_sent_wall_ms`, for
+  grouping turn latency by prompt size.
+- `ResultMessage::user_message_server_received_wall_ms` — the triggering user
+  message's `server_received_wall_ms`, copied onto the result so the session
+  server can measure from its own receipt to `request_sent_wall_ms`.
+
+### Changed
+
+- `tests/schemas/claude_stream_json_snapshot.txt` re-snapshotted against CLI
+  2.1.286.
+
 ## [2.1.286] - 2026-09-30
 
 Re-baseline against Claude CLI **2.1.285**. Models the 2.1.284 → 2.1.285

@@ -78,6 +78,7 @@ impl ClaudeInput {
             initiator: None,
             pasted_content: None,
             historical: None,
+            server_received_wall_ms: None,
         })
     }
 
@@ -118,6 +119,7 @@ impl ClaudeInput {
             initiator: None,
             pasted_content: None,
             historical: None,
+            server_received_wall_ms: None,
         })
     }
 

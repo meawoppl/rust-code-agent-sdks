@@ -92,6 +92,15 @@ pub struct ResultMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub request_sent_wall_ms: Option<f64>,
 
+    /// Input tokens of the model call whose send time is
+    /// [`request_sent_wall_ms`](Self::request_sent_wall_ms): `input_tokens +
+    /// cache_read_input_tokens + cache_creation_input_tokens` from that call's
+    /// `message_start`, so a consumer can group turn latency by prompt size
+    /// (CLI 2.1.286+). Present only with `request_sent_wall_ms`, and only
+    /// when the sum is above zero.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_request_input_tokens: Option<u64>,
+
     /// Time until the first content frame of the stream arrived, in
     /// milliseconds (CLI 2.1.260+ timing instrumentation).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -209,6 +218,15 @@ pub struct ResultMessage {
     /// Wire uuid of the user message this result answers.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user_message_uuid: Option<String>,
+
+    /// The [`server_received_wall_ms`](crate::io::UserMessage::server_received_wall_ms)
+    /// of the user message [`user_message_uuid`](Self::user_message_uuid)
+    /// names, copied unchanged, so the session server can measure from its
+    /// own receipt to `request_sent_wall_ms` (CLI 2.1.286+). Present only with
+    /// `request_sent_wall_ms`, and only when that message carried a positive
+    /// finite number there.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_message_server_received_wall_ms: Option<f64>,
 
     /// Client uuids of every user message whose prompt this turn consumed, in
     /// consumption order — all members of a prompt batch the host merged into
