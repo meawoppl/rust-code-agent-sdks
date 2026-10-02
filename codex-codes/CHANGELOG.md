@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.160.0] - 2026-10-02
+
+Re-baseline the tested pin to Codex CLI **0.160.0** (from 0.159.3) and model
+the `openai/codex@main` (`2635431ed`) app-server schema drift. The 0.160.0
+release's `codex app-server generate-json-schema` output is byte-identical to
+0.159.3's and remains a strict subset of the tracked main snapshot, so the
+re-pin itself needs no type work. Everything below is main-only and additive;
+the pinned CLI does not serve the new request yet.
+
+### Added
+
+- `thread/attachmentOwner/list` client request
+  (`methods::THREAD_ATTACHMENT_OWNER_LIST`) with
+  `ThreadAttachmentOwnerListParams` (`attachmentType`, `identityKey`, optional
+  `archived` filter, `cursor`, `limit`), `ThreadAttachmentOwnerListResponse`
+  (`data`, `nextCursor`) and `ThreadAttachmentOwner` (`threadId`,
+  `archived`), openai/codex#50094. Reverse lookup of the threads that own an
+  attachment with a given identity within the server's store.
+
+### Changed
+
+- `tests/schemas/*.json` re-snapshotted against `openai/codex@main`
+  `2635431ed`.
+
 ## [0.159.3] - 2026-10-01
 
 Re-baseline the tested pin to Codex CLI **0.159.3** (from 0.159.2) and model

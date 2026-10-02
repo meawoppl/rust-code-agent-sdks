@@ -43,6 +43,7 @@ pub mod methods {
     pub const THREAD_ATTACHMENT_ADD: &str = "thread/attachment/add";
     pub const THREAD_ATTACHMENT_LIST: &str = "thread/attachment/list";
     pub const THREAD_ATTACHMENT_REMOVE: &str = "thread/attachment/remove";
+    pub const THREAD_ATTACHMENT_OWNER_LIST: &str = "thread/attachmentOwner/list";
     pub const THREAD_UNARCHIVE: &str = "thread/unarchive";
     pub const THREAD_COMPACT_START: &str = "thread/compact/start";
     pub const THREAD_SHELLCOMMAND: &str = "thread/shellCommand";
