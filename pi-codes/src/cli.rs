@@ -73,6 +73,9 @@ impl PiCliBuilder {
         self
     }
 
+    /// Restrict `--model` lookup to one provider. pi 1.0.0+ rejects
+    /// `--provider` without `--model` (`Error: --provider requires --model`,
+    /// exit 1), so pair this with [`model`](Self::model).
     pub fn provider(mut self, provider: impl Into<String>) -> Self {
         self.provider = Some(provider.into());
         self
