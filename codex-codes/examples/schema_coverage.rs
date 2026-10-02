@@ -506,6 +506,7 @@ mod samples {
             methods::THREAD_ATTACHMENT_ADD,
             methods::THREAD_ATTACHMENT_LIST,
             methods::THREAD_ATTACHMENT_REMOVE,
+            methods::THREAD_ATTACHMENT_OWNER_LIST,
             methods::THREAD_UNARCHIVE,
             methods::THREAD_COMPACT_START,
             methods::THREAD_SHELLCOMMAND,

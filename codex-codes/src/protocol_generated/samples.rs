@@ -406,6 +406,10 @@ pub fn client_request_samples() -> Vec<(&'static str, Value)> {
             "thread/attachment/remove",
             json!({"attachmentType": "x", "identityKey": "x", "threadId": "x"}),
         ),
+        (
+            "thread/attachmentOwner/list",
+            json!({"attachmentType": "x", "identityKey": "x"}),
+        ),
         ("thread/compact/start", json!({"threadId": "x"})),
         ("thread/delete", json!({"threadId": "x"})),
         ("thread/fork", json!({"threadId": "x"})),
