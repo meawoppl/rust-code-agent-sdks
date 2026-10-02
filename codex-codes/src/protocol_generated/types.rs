@@ -7493,6 +7493,48 @@ pub enum ThreadAttachmentOperation {
     Deleted,
 }
 
+/// A thread that currently owns an attachment with the requested identity.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadAttachmentOwner {
+    /// Whether the owning thread is archived, not whether it is currently executing a turn.
+    #[serde(default)]
+    pub archived: bool,
+    #[serde(rename = "threadId", default)]
+    pub thread_id: String,
+}
+
+/// Parameters for reverse lookup by attachment identity within this server's store.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadAttachmentOwnerListParams {
+    /// Omitted or null returns all matches; false returns non-archived threads only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archived: Option<bool>,
+    #[serde(rename = "attachmentType", default)]
+    pub attachment_type: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+    #[serde(rename = "identityKey", default)]
+    pub identity_key: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<i64>,
+}
+
+/// One page of matching owners, including threads without their own user messages.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadAttachmentOwnerListResponse {
+    #[serde(default)]
+    pub data: Vec<ThreadAttachmentOwner>,
+    #[serde(
+        rename = "nextCursor",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub next_cursor: Option<String>,
+}
+
 /// Parameters for deleting an attachment by its stable thread-local identity.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
