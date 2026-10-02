@@ -438,21 +438,34 @@ impl LoginFlow {
 
     /// Paste the authorization code back into the flow.
     ///
-    /// The code is written wrapped in **bracketed-paste framing**
-    /// (`ESC[200~ … ESC[201~`), then — after a short beat — a single
-    /// carriage return (`0x0D`, the Enter keycode; LF does not submit) as
-    /// its own write.
+    /// The trimmed code is written as one burst, then — after a short beat —
+    /// a single carriage return (`0x0D`, the Enter keycode; LF does not
+    /// submit) as its own write. The burst is wrapped in bracketed-paste
+    /// framing (`ESC[200~ … ESC[201~`) **only when the TUI has switched
+    /// bracketed-paste mode on** (`ESC[?2004h` seen, not since cancelled by
+    /// `ESC[?2004l`); otherwise the bare code is written.
     ///
-    /// Both parts are load-bearing. The TUI classifies any single write of
-    /// **≥ 64 bytes** as a paste and absorbs a trailing CR into the paste
-    /// payload instead of treating it as Enter — measured live on CLI
-    /// 2.1.220: a 62-char code + CR (63 bytes) submits, a 63-char code + CR
-    /// (64 bytes) sits silently at the prompt forever. Every real
-    /// authorization code (~90+ chars) is over the threshold, so an unframed
-    /// single-chunk write can never submit in production. The CLI enables
-    /// bracketed paste (`ESC[?2004h`), so explicit framing is the paste path
-    /// it is actually expecting; the separated, delayed CR then lands
-    /// outside the paste boundary as a genuine keypress.
+    /// Why conditional — two measured CLI generations disagree:
+    ///
+    /// - **2.1.220** enabled bracketed paste on the login screen and
+    ///   classified any single write of **≥ 64 bytes** as a paste, absorbing
+    ///   a trailing CR into the payload instead of treating it as Enter (a
+    ///   62-char code + CR submitted; 63 + CR sat silently forever). Explicit
+    ///   framing was the paste path that TUI expected.
+    /// - **2.1.280** never emits `ESC[?2004h` on the login screen and does
+    ///   not strip the markers: the opening `ESC[200~` was accepted as
+    ///   literal input and sent to the token endpoint as the first seven
+    ///   characters of the code (`"code":"\u001b[200~<real code>"`,
+    ///   intercepted live), which the server rejects with `invalid_grant`
+    ///   and the CLI reports as `Login failed: … 400`. Every well-formed
+    ///   code failed. The same CLI accepts a bare 92-byte burst followed by
+    ///   a delayed CR.
+    ///
+    /// Keying the framing on the TUI's own advertisement serves both: a TUI
+    /// that asks for bracketed paste gets it; one that never asked never
+    /// sees the markers. The delayed lone CR is sent in both cases — it is
+    /// the mechanism that defeats the 64-byte swallow independently of
+    /// framing, so an unframed burst still submits on either generation.
     ///
     /// A code that is empty after trimming is rejected here: pressing Enter
     /// on an empty field produces no detectable outcome, only a silent hang.
@@ -468,15 +481,19 @@ impl LoginFlow {
                     .to_string(),
             ));
         }
-        self.writer.write_all(&prepare_code_paste(code)?)?;
+        let paste_mode = {
+            let (lock, _) = &*self.buf;
+            let g = lock.lock().unwrap();
+            paste_mode_at(&g.0, g.0.len())
+        };
+        self.writer
+            .write_all(&prepare_code_paste(code, paste_mode == PasteMode::On)?)?;
         self.writer.flush()?;
-        // REDUNDANT ON PURPOSE — do not "optimise away". The framing alone
-        // is sufficient (verified in-container: framed burst + CR in the
-        // SAME write submits at 92 bytes), and the delayed lone CR is
-        // sufficient alone too. Keeping both means a future change must
-        // break two independent mechanisms to reintroduce the 64-byte
-        // swallow, and either can quietly save us if the CLI's paste
-        // handling shifts.
+        // The delayed lone CR is load-bearing on its own: a CR inside a
+        // ≥ 64-byte burst is swallowed as paste payload on CLIs that
+        // classify by burst size, and the burst is unframed whenever the TUI
+        // did not ask for bracketed paste — so Enter must always travel as a
+        // separate, later keypress.
         std::thread::sleep(SUBMIT_ENTER_DELAY);
         self.writer.write_all(b"\r")?;
         self.writer.flush()?;
@@ -995,24 +1012,47 @@ fn extract_osc52_token(raw: &[u8]) -> Osc52Scan {
 /// builds inline the frame bytes into immediates, so byte-grepping a binary
 /// for `ESC[200~` proves nothing in either direction.
 pub const SUBMIT_PATH: &str =
-    "bracketed-paste+lone-cr-150ms+term-forced+env-scrubbed+exit-aware+paste-probe/v6";
+    "paste-frame-if-advertised+lone-cr-150ms+term-forced+env-scrubbed+exit-aware+paste-probe/v7";
 
-/// Pause between the paste frame and the Enter keypress in
+/// Pause between the code burst and the Enter keypress in
 /// [`LoginFlow::submit_code`].
 const SUBMIT_ENTER_DELAY: Duration = Duration::from_millis(150);
 
+/// Bracketed-paste mode as advertised by the TUI at a point in the raw
+/// stream. Decides whether [`LoginFlow::submit_code`] frames the code (see
+/// there for the two CLI generations that disagree) and is recorded in the
+/// [`Error::LoginTimeout`] / [`Error::LoginChildExited`] channel line.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PasteMode {
+    /// `ESC[?2004h` seen and not since cancelled — the TUI wants framing.
+    On,
+    /// `ESC[?2004l` was the last word — framing would arrive as raw input.
+    Off,
+    /// Neither sequence ever appeared (CLI 2.1.280 login screen) — framing
+    /// would arrive as raw input.
+    NeverAdvertised,
+}
+
+impl std::fmt::Display for PasteMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            PasteMode::On => "on",
+            PasteMode::Off => "off",
+            PasteMode::NeverAdvertised => "never-advertised",
+        })
+    }
+}
+
 /// Bracketed-paste mode advertised by the TUI at a given point in the raw
 /// stream: the last `ESC[?2004h` (enable) or `ESC[?2004l` (disable) before
-/// `upto` wins. Telemetry for the late-write hypothesis — if the TUI drops
-/// paste mode while a user is off authorizing in a browser, a frame written
-/// on return would arrive as raw ESC keypresses.
-fn paste_mode_at(raw: &[u8], upto: usize) -> &'static str {
+/// `upto` wins.
+fn paste_mode_at(raw: &[u8], upto: usize) -> PasteMode {
     let hay = String::from_utf8_lossy(&raw[..upto.min(raw.len())]);
     match (hay.rfind("\x1b[?2004h"), hay.rfind("\x1b[?2004l")) {
-        (Some(h), Some(l)) if l > h => "off",
-        (Some(_), _) => "on",
-        (None, Some(_)) => "off",
-        (None, None) => "never-advertised",
+        (Some(h), Some(l)) if l > h => PasteMode::Off,
+        (Some(_), _) => PasteMode::On,
+        (None, Some(_)) => PasteMode::Off,
+        (None, None) => PasteMode::NeverAdvertised,
     }
 }
 
@@ -1032,15 +1072,16 @@ fn reap_exit_code(child: &mut Box<dyn portable_pty::Child + Send + Sync>) -> Opt
     }
 }
 
-/// The paste frame a code submission writes to the PTY: the trimmed code
-/// wrapped in bracketed-paste markers (`ESC[200~ … ESC[201~`), NO trailing
-/// CR — Enter is sent separately after [`SUBMIT_ENTER_DELAY`]. See
-/// [`LoginFlow::submit_code`] for why: single writes of ≥ 64 bytes are
-/// classified as pastes and a trailing CR inside the burst is swallowed, so
-/// the frame declares the paste explicitly and the keypress travels alone.
-/// An empty-after-trim code is refused: pressing Enter on an empty field
-/// produces no detectable outcome, only a silent hang.
-fn prepare_code_paste(code: &str) -> Result<Vec<u8>> {
+/// The burst a code submission writes to the PTY: the trimmed code, wrapped
+/// in bracketed-paste markers (`ESC[200~ … ESC[201~`) only when `framed`,
+/// and NEVER carrying a trailing CR — Enter is sent separately after
+/// [`SUBMIT_ENTER_DELAY`]. See [`LoginFlow::submit_code`] for why framing is
+/// conditional (a TUI that never enabled bracketed paste takes the markers
+/// as literal code characters) and why the CR travels alone (a CR inside a
+/// ≥ 64-byte burst is swallowed as paste payload). An empty-after-trim code
+/// is refused: pressing Enter on an empty field produces no detectable
+/// outcome, only a silent hang.
+fn prepare_code_paste(code: &str, framed: bool) -> Result<Vec<u8>> {
     let code = code.trim();
     if code.is_empty() {
         return Err(Error::Protocol(
@@ -1048,9 +1089,13 @@ fn prepare_code_paste(code: &str) -> Result<Vec<u8>> {
         ));
     }
     let mut buf = Vec::with_capacity(code.len() + 12);
-    buf.extend_from_slice(b"\x1b[200~");
+    if framed {
+        buf.extend_from_slice(b"\x1b[200~");
+    }
     buf.extend_from_slice(code.as_bytes());
-    buf.extend_from_slice(b"\x1b[201~");
+    if framed {
+        buf.extend_from_slice(b"\x1b[201~");
+    }
     Ok(buf)
 }
 
@@ -1391,31 +1436,74 @@ mod tests {
     }
 
     #[test]
-    fn code_paste_is_bracketed_trimmed_and_cr_free() {
+    fn code_paste_is_trimmed_cr_free_and_framed_only_on_request() {
         // Fixtures at PRODUCTION lengths. The 64-byte paste-classification
         // bug was invisible to every sub-64-byte fixture; codes under 64
         // bytes are a different input class from real ones (~92 observed,
         // 108 = credentials-token length).
         for len in [64usize, 92, 108, 120] {
             let code: String = "x".repeat(len - 6) + "#state";
-            let frame = prepare_code_paste(&format!("{code}\n")).unwrap();
+            let framed = prepare_code_paste(&format!("{code}\n"), true).unwrap();
             let mut expected = b"\x1b[200~".to_vec();
             expected.extend_from_slice(code.as_bytes());
             expected.extend_from_slice(b"\x1b[201~");
-            assert_eq!(frame, expected, "len {len}");
-            // The frame itself must never carry the Enter keypress: a CR
-            // inside a ≥64-byte burst is swallowed as paste payload.
-            assert!(!frame.contains(&b'\r'), "len {len}: CR must travel alone");
+            assert_eq!(framed, expected, "len {len}");
+            // Unframed: the bare code and nothing else. CLI 2.1.280 takes
+            // the markers as literal input and ships `ESC[200~` to the
+            // token endpoint as part of the code (intercepted live).
+            let bare = prepare_code_paste(&format!("{code}\n"), false).unwrap();
+            assert_eq!(bare, code.as_bytes(), "len {len}");
+            assert!(!bare.contains(&0x1b), "len {len}: no escapes when unframed");
+            // Neither burst may carry the Enter keypress: a CR inside a
+            // ≥64-byte burst is swallowed as paste payload.
+            for burst in [&framed, &bare] {
+                assert!(!burst.contains(&b'\r'), "len {len}: CR must travel alone");
+            }
         }
         assert_eq!(
-            prepare_code_paste(" abc \r\n").unwrap(),
+            prepare_code_paste(" abc \r\n", true).unwrap(),
             b"\x1b[200~abc\x1b[201~"
         );
+        assert_eq!(prepare_code_paste(" abc \r\n", false).unwrap(), b"abc");
         for empty in ["", "  ", "\n", "\r\n", "\t"] {
-            assert!(
-                prepare_code_paste(empty).is_err(),
-                "empty guard must fire for {empty:?}"
-            );
+            for framed in [true, false] {
+                assert!(
+                    prepare_code_paste(empty, framed).is_err(),
+                    "empty guard must fire for {empty:?} (framed={framed})"
+                );
+            }
         }
+    }
+
+    /// The framing decision follows the TUI's own advertisement, so a login
+    /// screen that never enabled bracketed paste (2.1.280, captured live:
+    /// OSC 8 URL, prompt, no `?2004h` anywhere) gets a bare burst, while one
+    /// that did (2.1.220) gets the frame it asked for — and a later
+    /// `?2004l` withdraws it.
+    #[test]
+    fn paste_framing_tracks_tui_bracketed_paste_advertisement() {
+        let login_2_1_280 = b"\x1b[?25l\x1b[2J\x1b[HOpening browser to sign in\xe2\x80\xa6\r\n\
+            If the browser didn't open, visit: \x1b]8;;https://claude.com/cai/oauth/authorize?code=true&state=s\x07link\x1b]8;;\x07\r\n\
+            Paste code here if prompted > ";
+        assert_eq!(
+            paste_mode_at(login_2_1_280, login_2_1_280.len()),
+            PasteMode::NeverAdvertised
+        );
+        assert_eq!(PasteMode::NeverAdvertised.to_string(), "never-advertised");
+
+        let enabled = b"\x1b[?2004hPaste code here if prompted > ";
+        assert_eq!(paste_mode_at(enabled, enabled.len()), PasteMode::On);
+
+        let withdrawn = b"\x1b[?2004hPaste code here > \x1b[?2004l";
+        assert_eq!(paste_mode_at(withdrawn, withdrawn.len()), PasteMode::Off);
+        // ...but only output up to the probe point counts.
+        assert_eq!(
+            paste_mode_at(withdrawn, withdrawn.len() - b"\x1b[?2004l".len()),
+            PasteMode::On,
+            "a later disable must not retroactively unframe an earlier submission"
+        );
+
+        let re_enabled = b"\x1b[?2004h\x1b[?2004l\x1b[?2004h> ";
+        assert_eq!(paste_mode_at(re_enabled, re_enabled.len()), PasteMode::On);
     }
 }
