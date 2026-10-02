@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.289] - 2026-10-02
+
+### Fixed
+
+- `LoginFlow::submit_code` no longer wraps the authorization code in
+  bracketed-paste markers unless the CLI's login screen has actually switched
+  bracketed-paste mode on (`ESC[?2004h`). Claude CLI 2.1.280 never enables it
+  there and does not strip the markers, so the opening `ESC[200~` was accepted
+  as literal input and sent to the token endpoint as the first seven
+  characters of the code (`"code":"\u001b[200~<real code>"`, intercepted
+  live). The server answered `invalid_grant` and the CLI printed
+  `Login failed: Request failed with status code 400` for every well-formed
+  code, surfacing as `Error::CodeRejected`. The framing is still applied when
+  the TUI advertises bracketed paste (2.1.220 behaviour), and the delayed lone
+  CR that defeats the 64-byte paste-classification swallow is sent in both
+  cases. `SUBMIT_PATH` is now `.../v7` so deployed builds are identifiable
+  from the timeout channel line.
+
 ## [2.1.288] - 2026-10-02
 
 Re-baseline against Claude CLI **2.1.287**. Models the 2.1.286 → 2.1.287
