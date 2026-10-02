@@ -3522,8 +3522,11 @@ pub struct TurnHandoffAvailableMessage {
     pub relay_marker: Option<bool>,
     /// Present, and true, when this worker starts a handed-off turn's calls
     /// only after every `stage_file` control request it received earlier has
-    /// finished or failed (or a wait limit has passed); a worker that omits
+    /// finished or failed, or a wait limit has passed; a worker that omits
     /// it may start them while files are still downloading (CLI 2.1.278+).
+    /// Exception: a request with `filestore_path` set (a synced file) is not
+    /// waited for, so a call that names that file may start before it is
+    /// synced (CLI 2.1.287+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub staged_files: Option<bool>,
     /// True when user messages with `shouldQuery` false that reach this
@@ -3534,6 +3537,19 @@ pub struct TurnHandoffAvailableMessage {
     /// it may run the turn first (CLI 2.1.278+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub no_query_first: Option<bool>,
+    /// Present, and true, only on a worker that takes a `stage_file` control
+    /// request whose `mount_path` is `/uploads/.home/<path>` as a file for
+    /// `/home/claude/<path>`: it writes the file there, answers ok with a
+    /// noop (`already_present`, `path_occupied`, `refused_name`,
+    /// `home_files_off`) and writes nothing, or answers an error. Any other
+    /// worker treats that path as an ordinary upload (CLI 2.1.287+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub home_files: Option<bool>,
+    /// Present, and true, only when this worker uses the `file_names` member
+    /// of a `turn_handoff` request; a client sends that member to no other
+    /// worker (CLI 2.1.287+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_names: Option<bool>,
     pub uuid: String,
     pub session_id: String,
     #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
@@ -4529,6 +4545,16 @@ pub struct AssistantMessage {
     /// values). Omitted when the CLI expresses no preference.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub narration_hint: Option<String>,
+    /// How long the thinking block in this frame took to stream, in whole
+    /// milliseconds (at least 1): from its `content_block_start` to its
+    /// `content_block_stop`, so the wait for the response's first token is
+    /// not counted. For display only. Sent only on a frame whose one content
+    /// block is a thinking block that was streamed; absent from CLIs before
+    /// 2.1.287 and from a CLI replaying history it rebuilt from SDK frames,
+    /// so be ready to show the block without a duration. Wrapper-level
+    /// sibling — never inside `message.content`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thinking_duration_ms: Option<u64>,
     /// Structured twin of the `/context` report, carried on the synthetic
     /// assistant message that delivers the markdown table. Present only on
     /// `/context` results from CLIs new enough to attach it (2.1.239+).

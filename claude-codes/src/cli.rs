@@ -114,7 +114,8 @@ pub enum CliFlag {
     /// URL of a signed configuration document; the CLI exits if it cannot
     /// load it or it does not cover the selected model. Setting
     /// `CLAUDE_CODE_CLIENT_DATA_URL` instead keeps the URL out of the
-    /// process list (CLI 2.1.283+)
+    /// process list (CLI 2.1.283+; hidden from `--help` since 2.1.287 but
+    /// still accepted)
     ClientDataUrl(String),
     /// Continue the most recent conversation
     Continue,

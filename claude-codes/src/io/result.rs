@@ -24,18 +24,38 @@ pub struct ResultMessage {
 
     /// How [`time_to_request_ms`](Self::time_to_request_ms) was spent, in
     /// integer milliseconds per phase, summing to it exactly (CLI 2.1.285+):
-    /// `system_prompt`, `turn_start_resume` (a tool call parked from an
-    /// earlier run, re-executed before the first model request),
-    /// `process_user_input`, `transcript_persist`, `init_message`,
-    /// `engine_pickup`, `memory_recall_wait`, `memory_context_wait`,
-    /// `autocompact`, `query_setup`, `tool_schema_build`,
-    /// `message_normalization`, `client_creation` and `other` (the remainder
-    /// no phase covers). A phase that did not run is absent; `other` is
-    /// always present. Open set — keep unrecognized phase names. Present
-    /// where `time_to_request_ms` is, on `CLAUDE_CODE_REMOTE` sessions and
-    /// hosts that set `CLAUDE_CODE_EMIT_STARTUP_TIMING`; absent elsewhere.
+    /// `system_prompt`, `system_prompt_rebuild` (a second assembly of the
+    /// system prompt, run when the tool pool re-read after the message was
+    /// handled differs from the turn-start pool; CLIs before 2.1.287 report
+    /// it inside `system_prompt`), `resume_other` (settling, before the
+    /// turn's own prompt, tool calls that an earlier run left open or the
+    /// session's client handed over — see
+    /// [`turn_start_resume_kind`](Self::turn_start_resume_kind) — excluding
+    /// four parts that have keys of their own: `resume_store_confirm`,
+    /// `resume_staged_files_wait`, `resume_connector_wait` and
+    /// `turn_start_tool_run`; CLIs before 2.1.287 report these five as one
+    /// `turn_start_resume` key), `process_user_input` (excluding
+    /// `input_images`, `input_attachments`, `input_command` and
+    /// `input_hooks`, which have keys of their own on 2.1.287+),
+    /// `transcript_persist`, `init_message`, `engine_pickup`,
+    /// `memory_recall_wait`, `memory_context_wait`, `autocompact`,
+    /// `query_setup`, `tool_schema_build`, `message_normalization`,
+    /// `client_creation` and `other` (the remainder no phase covers). A phase
+    /// that did not run is absent; `other` is always present. Open set —
+    /// keep unrecognized phase names. Present where `time_to_request_ms` is,
+    /// on `CLAUDE_CODE_REMOTE` sessions and hosts that set
+    /// `CLAUDE_CODE_EMIT_STARTUP_TIMING`; absent elsewhere.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub time_to_request_phases_ms: Option<std::collections::BTreeMap<String, u64>>,
+
+    /// What the turn was given to settle before its own prompt; the
+    /// `resume_*` phases and `turn_start_tool_run` in
+    /// [`time_to_request_phases_ms`](Self::time_to_request_phases_ms) say how
+    /// long that took (CLI 2.1.287+). A turn given more than one kind reports
+    /// the first in [`TurnStartResumeKind`] order. Present where
+    /// `time_to_request_phases_ms` is.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub turn_start_resume_kind: Option<TurnStartResumeKind>,
 
     /// Number of earlier turns of this CLI process that sent a
     /// main-conversation model request: 0 is the process's first turn to
@@ -209,6 +229,17 @@ pub struct ResultMessage {
     /// (CLI 2.1.278+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub first_text_post_ms: Option<u64>,
+
+    /// Time the first text POST spent waiting in the outbound queue, in
+    /// milliseconds (CLI 2.1.287+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_text_post_queue_wait_ms: Option<u64>,
+
+    /// What the first text POST was queued behind (CLI 2.1.287+); the same
+    /// value set as
+    /// [`first_stream_post_queued_behind`](Self::first_stream_post_queued_behind).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_text_post_queued_behind: Option<StreamPostQueuedBehind>,
 
     /// Wall-clock epoch milliseconds when the first text POST was issued
     /// (fractional; CLI 2.1.278+).
@@ -738,6 +769,70 @@ impl Serialize for StreamPostQueuedBehind {
 }
 
 impl<'de> Deserialize<'de> for StreamPostQueuedBehind {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// What a turn was given to settle before its own prompt, carried as
+/// [`ResultMessage::turn_start_resume_kind`] (CLI 2.1.287+). A turn given
+/// more than one reports the first in this order.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TurnStartResumeKind {
+    /// `orphaned_permission` — a permission answer whose pending request was
+    /// lost (as when a worker restarts), so the tool call is settled with
+    /// that answer.
+    OrphanedPermission,
+    /// `turn_handoff` — a turn in progress that the session's client handed
+    /// over.
+    TurnHandoff,
+    /// `deferred_tool_use` — a call a `PreToolUse` hook deferred.
+    DeferredToolUse,
+    /// `none` — nothing to settle (`resume_other` is still reported, at
+    /// about 0).
+    None,
+    /// A value not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl TurnStartResumeKind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::OrphanedPermission => "orphaned_permission",
+            Self::TurnHandoff => "turn_handoff",
+            Self::DeferredToolUse => "deferred_tool_use",
+            Self::None => "none",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for TurnStartResumeKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for TurnStartResumeKind {
+    fn from(s: &str) -> Self {
+        match s {
+            "orphaned_permission" => Self::OrphanedPermission,
+            "turn_handoff" => Self::TurnHandoff,
+            "deferred_tool_use" => Self::DeferredToolUse,
+            "none" => Self::None,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for TurnStartResumeKind {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for TurnStartResumeKind {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let s = String::deserialize(deserializer)?;
         Ok(Self::from(s.as_str()))
