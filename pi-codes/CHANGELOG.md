@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-10-02
+
+### Changed
+
+- Re-baseline the tested pin to pi **1.0.0** (from 0.99.2). The RPC wire
+  surface is unchanged: `dist/modes/rpc/rpc-types.d.ts`, `json-event.d.ts`
+  and the packaged `rpc.md`/`json.md`/`message-types.md` docs are
+  byte-identical to 0.99.2, and the live suite passes unmodified. Upstream
+  1.0.0 is a TUI/login/codemode release (fullscreen by default, Radius
+  `/login`, `models.generateImages()`, MCP OAuth hardening).
+- pi 1.0.0 rejects `--provider` without `--model` (`Error: --provider
+  requires --model`, exit 1) instead of silently running the default model
+  from another provider (earendil-works/pi#10236). `PiCliBuilder::provider`
+  now documents that it must be paired with `PiCliBuilder::model`; the crate
+  passes both flags through unchanged, so a builder that set only
+  `provider` fails at spawn with pi's own error.
+
 ## [0.99.2] - 2026-10-01
 
 ### Changed
