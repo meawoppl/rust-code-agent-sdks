@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.288] - 2026-10-02
+
+Re-baseline against Claude CLI **2.1.287**. Models the 2.1.286 → 2.1.287
+stream-json drift: six optional fields on three frames, all additive. No new
+subtypes. The bundle dropped the internal `set_expanded_view` side-panel hint
+(never modeled) and hid `--client-data-url` from `--help` while still
+accepting it. The model-id set gained only three internal strings
+(`claude-code-tools`, `claude-code-gh-standin`, `claude-mods`).
+
+### Added
+
+- `AssistantMessage::thinking_duration_ms` — how long a thinking-only frame's
+  block took to stream, from `content_block_start` to `content_block_stop`,
+  for display.
+- `ResultMessage::first_text_post_queue_wait_ms` and
+  `ResultMessage::first_text_post_queued_behind` (reusing
+  `StreamPostQueuedBehind`) — the text POST twins of the stream POST queue
+  timing added in 2.1.278.
+- `ResultMessage::turn_start_resume_kind` and `TurnStartResumeKind`
+  (`orphaned_permission` / `turn_handoff` / `deferred_tool_use` / `none`,
+  open set) — what the turn had to settle before its own prompt.
+- `TurnHandoffAvailableMessage::home_files` and `::file_names` — two more
+  capability markers a cloud worker announces on
+  `system/turn_handoff_available`.
+
+### Changed
+
+- `ResultMessage::time_to_request_phases_ms` docs follow the 2.1.287 phase
+  split: `turn_start_resume` became `resume_other`, `resume_store_confirm`,
+  `resume_staged_files_wait`, `resume_connector_wait` and
+  `turn_start_tool_run`; `process_user_input` now excludes `input_images`,
+  `input_attachments`, `input_command` and `input_hooks`; and
+  `system_prompt_rebuild` is split out of `system_prompt`. The map was
+  already an open set, so no type change.
+- `TurnHandoffAvailableMessage::staged_files` docs note the `filestore_path`
+  exception (a synced file is not waited for).
+- `CliFlag::ClientDataUrl` docs note the flag is hidden from `--help` on
+  2.1.287+ but still accepted.
+- `tests/schemas/claude_stream_json_snapshot.txt` re-snapshotted against CLI
+  2.1.287.
+
 ## [2.1.287] - 2026-10-01
 
 Re-baseline against Claude CLI **2.1.286**. Models the 2.1.285 → 2.1.286
