@@ -4815,8 +4815,6 @@ pub struct ModelProviderCapabilitiesReadParams {
 pub struct ModelProviderCapabilitiesReadResponse {
     #[serde(rename = "imageGeneration", default)]
     pub image_generation: bool,
-    #[serde(rename = "namespaceTools", default)]
-    pub namespace_tools: bool,
     #[serde(rename = "webSearch", default)]
     pub web_search: bool,
 }
