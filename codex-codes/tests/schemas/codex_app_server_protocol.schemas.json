@@ -15676,16 +15676,12 @@
           "imageGeneration": {
             "type": "boolean"
           },
-          "namespaceTools": {
-            "type": "boolean"
-          },
           "webSearch": {
             "type": "boolean"
           }
         },
         "required": [
           "imageGeneration",
-          "namespaceTools",
           "webSearch"
         ],
         "title": "ModelProviderCapabilitiesReadResponse",
@@ -18691,6 +18687,37 @@
       },
       "ResponseItem": {
         "oneOf": [
+          {
+            "properties": {
+              "id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "role": {
+                "type": "string"
+              },
+              "tools": {
+                "items": true,
+                "type": "array"
+              },
+              "type": {
+                "enum": [
+                  "additional_tools"
+                ],
+                "title": "AdditionalToolsResponseItemType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "role",
+              "tools",
+              "type"
+            ],
+            "title": "AdditionalToolsResponseItem",
+            "type": "object"
+          },
           {
             "properties": {
               "content": {
