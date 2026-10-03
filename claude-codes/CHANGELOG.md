@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.290] - 2026-10-03
+
+Re-baseline against Claude CLI **2.1.288**. Models the 2.1.287 → 2.1.288
+stream-json drift: one new `system` subtype and seven optional fields, all
+additive. The model-id set is unchanged. `--help` only swapped the
+`project` management subcommand for `purge [path]` (neither is modeled).
+
+### Added
+
+- `system/instruction_size_warning` (`SystemSubtype::InstructionSizeWarning`,
+  `InstructionSizeWarningMessage`, `SystemMessage::as_instruction_size_warning`,
+  `KnownSystemEvent::InstructionSizeWarning`) — the session's instruction
+  files add up to more than the recommended limit (`total_chars`,
+  `total_limit_chars`, `file_count`, optional `largest_chars`). Sent to
+  Claude Desktop's Code tab only; safe to ignore.
+- `ResultMessage::input_attachments_detail` and `InputAttachmentsDetail`
+  (`slowest_producer`, `slowest_producer_ms`, `cpu_ms`, `major_faults`,
+  `changed_files_reread`) — what the `input_attachments` phase did on the
+  turn.
+- `ResultMessage::flag_fetch_kick` — whether start-up kicked off the
+  feature-flag fetch early, or why not (open string set).
+- `InformationalMessage::tag` — opaque feature tag on a line a host may treat
+  specially.
+- `TurnHandoffAvailableMessage::carried_writes` — the worker writes the files
+  of already-answered Write calls a `turn_handoff` request carries.
+- `ApiErrorParams::media` / `ApiErrorParams::media_reason` with the open-set
+  `ApiErrorMedia` (`image` / `document`) and `ApiErrorMediaReason`
+  (`unprocessable` / `unsupported_by_model` / `media_budget`), the parameters
+  of the new `media_removed` value of `AssistantMessage::api_error`.
+
+### Changed
+
+- `tests/schemas/claude_stream_json_snapshot.txt` re-snapshotted against
+  CLI 2.1.288 (57 → 58 SDK output union members).
+
 ## [2.1.289] - 2026-10-02
 
 ### Fixed

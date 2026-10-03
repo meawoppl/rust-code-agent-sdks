@@ -95,6 +95,13 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub time_to_request_major_faults: Option<u64>,
 
+    /// What the `input_attachments` phase of `time_to_request_phases_ms` did
+    /// on the turn, to tell a wait inside one attachment producer from a
+    /// process that was busy. Present on turns where the phase started,
+    /// unless nothing of it is known (CLI 2.1.288+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_attachments_detail: Option<InputAttachmentsDetail>,
+
     /// Time from spawning a worker/spare until the first request was issued, in milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time_to_request_from_spawn_ms: Option<u64>,
@@ -102,6 +109,17 @@ pub struct ResultMessage {
     /// Whether a warm spare process was claimed for this request.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub warm_spare_claimed: Option<bool>,
+
+    /// Whether this process started its start-up feature-flag fetch before
+    /// the wait for it, or why not: the same value as `system/init`'s
+    /// `startup_timing.flag_fetch_kick`. An open string set
+    /// (`started_in_init_*`, `started_after_init_*`, `not_asked_warm`,
+    /// `settings_pending_*`, `launch_excluded`, `not_eligible`; an `_empty`
+    /// or `_warm` ending is the flag cache at that moment). Present only
+    /// where `time_to_request_from_spawn_ms` is, and only when start-up
+    /// judged it (CLI 2.1.288+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flag_fetch_kick: Option<String>,
 
     /// Epoch-ish timestamp origin used by CLI timing instrumentation.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -407,6 +425,36 @@ pub struct ResultMessage {
 /// Why Claude Code refused to start, carried as
 /// [`ResultMessage::startup_failure_reason`] so a host can offer the fix
 /// instead of a retry (CLI 2.1.274+).
+/// [`ResultMessage::input_attachments_detail`] — what the
+/// `input_attachments` phase did on the turn (CLI 2.1.288+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct InputAttachmentsDetail {
+    /// Label of the attachment producer that took longest from its start to
+    /// its result, among those that began within the phase.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slowest_producer: Option<String>,
+    /// How long [`Self::slowest_producer`] took. Well above
+    /// [`Self::cpu_ms`], that producer most likely waited (on a file, the
+    /// network or a child process).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slowest_producer_ms: Option<u64>,
+    /// `time_to_request_cpu_ms`'s counter over this phase alone. Absent
+    /// wherever `time_to_request_cpu_ms` is absent, and when the turn's
+    /// first model request went out before the phase ended.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cpu_ms: Option<u64>,
+    /// `time_to_request_major_faults`'s counter over this phase alone.
+    /// Absent where [`Self::cpu_ms`] is.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub major_faults: Option<u64>,
+    /// How many files the `changed_files` producer set out to read again in
+    /// full because their modification time was later than the one recorded
+    /// when the conversation last wrote or edited them. Absent when the
+    /// conversation's record of files was empty or the producer did not run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub changed_files_reread: Option<u64>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum StartupFailureReason {
     /// Managed settings pin a first-party or Cloud gateway sign-in, and an
