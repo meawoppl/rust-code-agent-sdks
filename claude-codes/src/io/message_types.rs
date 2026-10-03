@@ -51,6 +51,7 @@ pub enum SystemSubtype {
     PeerMessageHold,
     PerTurnEffortChanged,
     SessionTitleChanged,
+    InstructionSizeWarning,
     UiFocus,
     UiInvalidate,
     UiLog,
@@ -103,6 +104,7 @@ impl SystemSubtype {
             Self::PeerMessageHold => "peer_message_hold",
             Self::PerTurnEffortChanged => "per_turn_effort_changed",
             Self::SessionTitleChanged => "session_title_changed",
+            Self::InstructionSizeWarning => "instruction_size_warning",
             Self::UiFocus => "ui_focus",
             Self::UiInvalidate => "ui_invalidate",
             Self::UiLog => "ui_log",
@@ -162,6 +164,7 @@ impl From<&str> for SystemSubtype {
             "peer_message_hold" => Self::PeerMessageHold,
             "per_turn_effort_changed" => Self::PerTurnEffortChanged,
             "session_title_changed" => Self::SessionTitleChanged,
+            "instruction_size_warning" => Self::InstructionSizeWarning,
             "ui_focus" => Self::UiFocus,
             "ui_invalidate" => Self::UiInvalidate,
             "ui_log" => Self::UiLog,
@@ -1561,6 +1564,19 @@ impl SystemMessage {
         serde_json::from_value(self.data.clone()).ok()
     }
 
+    /// Check if this is an instruction_size_warning message.
+    pub fn is_instruction_size_warning(&self) -> bool {
+        self.subtype == SystemSubtype::InstructionSizeWarning
+    }
+
+    /// Try to parse as an instruction_size_warning message.
+    pub fn as_instruction_size_warning(&self) -> Option<InstructionSizeWarningMessage> {
+        if self.subtype != SystemSubtype::InstructionSizeWarning {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
     /// Check if this is a ui_focus message.
     pub fn is_ui_focus(&self) -> bool {
         self.subtype == SystemSubtype::UiFocus
@@ -1729,6 +1745,9 @@ impl SystemMessage {
             SystemSubtype::SessionTitleChanged => {
                 parse!(SessionTitleChanged, SessionTitleChangedMessage)
             }
+            SystemSubtype::InstructionSizeWarning => {
+                parse!(InstructionSizeWarning, InstructionSizeWarningMessage)
+            }
             SystemSubtype::UiFocus => parse!(UiFocus, UiFocusMessage),
             SystemSubtype::UiInvalidate => parse!(UiInvalidate, UiInvalidateMessage),
             SystemSubtype::UiLog => parse!(UiLog, UiLogMessage),
@@ -1829,6 +1848,9 @@ impl SystemMessage {
             SystemSubtype::SessionTitleChanged => {
                 reserialize(parse_system::<SessionTitleChangedMessage>(self))
             }
+            SystemSubtype::InstructionSizeWarning => {
+                reserialize(parse_system::<InstructionSizeWarningMessage>(self))
+            }
             SystemSubtype::UiFocus => reserialize(parse_system::<UiFocusMessage>(self)),
             SystemSubtype::UiInvalidate => reserialize(parse_system::<UiInvalidateMessage>(self)),
             SystemSubtype::UiLog => reserialize(parse_system::<UiLogMessage>(self)),
@@ -1891,6 +1913,7 @@ pub enum KnownSystemEvent {
     PeerMessageHold(PeerMessageHoldMessage),
     PerTurnEffortChanged(PerTurnEffortChangedMessage),
     SessionTitleChanged(SessionTitleChangedMessage),
+    InstructionSizeWarning(InstructionSizeWarningMessage),
     UiFocus(UiFocusMessage),
     UiInvalidate(UiInvalidateMessage),
     UiLog(UiLogMessage),
@@ -2357,6 +2380,10 @@ pub struct InformationalMessage {
     pub tool_use_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prevent_continuation: Option<bool>,
+    /// Opaque feature tag on a line a host may treat specially; absent on
+    /// ordinary lines. Hosts ignore values they do not know (CLI 2.1.288+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3550,6 +3577,17 @@ pub struct TurnHandoffAvailableMessage {
     /// worker (CLI 2.1.287+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file_names: Option<bool>,
+    /// Present, and true, only on a worker that writes the files of the
+    /// Write calls a `turn_handoff` request brings already answered, where
+    /// their paths are under `/home/claude`. Before it appends a turn that
+    /// has calls to run, it writes each such call's content to its path,
+    /// replacing nothing. If it cannot write them all, it appends and runs
+    /// nothing: the request is refused with an error that starts
+    /// `invalid_handoff: carried_writes_`, or it is accepted and the turn
+    /// ends in a result with `num_turns` 0. Any other worker writes no file
+    /// for these calls (CLI 2.1.288+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub carried_writes: Option<bool>,
     pub uuid: String,
     pub session_id: String,
     #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
@@ -3888,6 +3926,32 @@ impl<'de> Deserialize<'de> for PeerMessageHoldOutcome {
 pub struct PerTurnEffortChangedMessage {
     /// Always `false`: a change to `true` is reported only by `system/init`.
     pub per_turn_effort_active: bool,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// `system/instruction_size_warning` — the session's instruction files
+/// (CLAUDE.md files, rules files and the files they import) add up to more
+/// than the recommended limit. Numbers only: the host words the warning in
+/// the person's language. Sent to Claude Desktop's Code tab alone, at most
+/// once per process, on a conversation's first turn after `system/init`;
+/// never stored in the transcript. Safe to ignore (CLI 2.1.288+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstructionSizeWarningMessage {
+    /// Combined length, in characters, of the instruction files in the
+    /// session prompt. Always over [`Self::total_limit_chars`].
+    pub total_chars: u64,
+    /// The recommended limit for `total_chars` on the turn's model, in
+    /// characters.
+    pub total_limit_chars: u64,
+    /// Number of files counted in `total_chars`. When it is 1, word the
+    /// warning for a single file rather than a total.
+    pub file_count: u64,
+    /// Length of the largest file, in characters. Present only when the
+    /// warning should mention it: there are several files and this one by
+    /// itself is over `total_limit_chars`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub largest_chars: Option<u64>,
     pub uuid: String,
     pub session_id: String,
 }
@@ -4598,6 +4662,8 @@ pub struct AssistantMessage {
     /// `claude_code_version_too_old` with `effort_requires_thinking`,
     /// `advisor_incompatible`, `tool_history_mismatch`,
     /// `autocompact_thrashing`, `pdf_too_large`, `pdf_password_protected`,
+    /// `media_removed` (CLI 2.1.288+: the API refused an image or a
+    /// document, so Claude Code leaves it out of the requests that follow),
     /// `no_response`, `tls_untrusted_ca`, `gateway_content_type`,
     /// `provider_credentials`, `gateway_signin_required`,
     /// `gateway_session_expired`, `api_key_auth_disabled`,
@@ -4652,6 +4718,118 @@ pub struct ApiErrorParams {
     /// `gateway_session_expired`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub remedy: Option<ApiErrorRemedy>,
+    /// The kind of block the API refused (`media_removed`); absent for
+    /// [`ApiErrorMediaReason::MediaBudget`] (CLI 2.1.288+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub media: Option<ApiErrorMedia>,
+    /// Why the API refused the block (`media_removed`, CLI 2.1.288+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub media_reason: Option<ApiErrorMediaReason>,
+}
+
+/// The kind of block the API refused ([`ApiErrorParams::media`]).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ApiErrorMedia {
+    Image,
+    Document,
+    /// A kind not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl ApiErrorMedia {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Image => "image",
+            Self::Document => "document",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for ApiErrorMedia {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for ApiErrorMedia {
+    fn from(s: &str) -> Self {
+        match s {
+            "image" => Self::Image,
+            "document" => Self::Document,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for ApiErrorMedia {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ApiErrorMedia {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// Why the API refused an image or document
+/// ([`ApiErrorParams::media_reason`]).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ApiErrorMediaReason {
+    /// Every other refusal, a gateway's report of a model's refusal among
+    /// them.
+    Unprocessable,
+    /// The API said that the model does not accept PDF documents.
+    UnsupportedByModel,
+    /// The request's images and documents together exceed the API's limit,
+    /// and the requests that follow may leave out blocks of either kind.
+    MediaBudget,
+    /// A reason not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl ApiErrorMediaReason {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Unprocessable => "unprocessable",
+            Self::UnsupportedByModel => "unsupported_by_model",
+            Self::MediaBudget => "media_budget",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for ApiErrorMediaReason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for ApiErrorMediaReason {
+    fn from(s: &str) -> Self {
+        match s {
+            "unprocessable" => Self::Unprocessable,
+            "unsupported_by_model" => Self::UnsupportedByModel,
+            "media_budget" => Self::MediaBudget,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for ApiErrorMediaReason {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ApiErrorMediaReason {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// The API provider whose credentials failed ([`ApiErrorParams::provider`]).
