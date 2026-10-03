@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.160.1] - 2026-10-03
+
+Model the `openai/codex@main` (`fd75aa116`) app-server schema drift. The
+tested pin stays at Codex CLI **0.160.0** (still the latest release).
+
+### Removed
+
+- **Breaking:** `ModelProviderCapabilitiesReadResponse.namespace_tools`
+  (`namespaceTools`), openai/codex#50447. Upstream dropped the provider
+  capability gate for tool namespaces. The pinned 0.160.0 CLI still sends the
+  key; it is now ignored on deserialize.
+
+### Changed
+
+- `tests/schemas/*.json` re-snapshotted against `openai/codex@main`
+  `fd75aa116`. Besides the removal above, `ResponseItem` gained an
+  `additional_tools` variant (`role`, `tools`, optional `id`),
+  openai/codex#50435. The crate carries `ResponseItem` payloads as raw JSON,
+  so no type work is needed.
+
 ## [0.160.0] - 2026-10-02
 
 Re-baseline the tested pin to Codex CLI **0.160.0** (from 0.159.3) and model
