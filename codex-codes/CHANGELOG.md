@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.160.2] - 2026-10-04
+
+### Added
+
+- `CodexModel::Gpt61Sol` for `gpt-6.1-sol`, including the known-model catalog,
+  display label, string conversions, and serde support. Verified against the
+  [official model documentation](https://developers.openai.com/api/docs/models/gpt-6.1-sol).
+  The tested Codex CLI pin remains **0.160.0**.
+
 ## [0.160.1] - 2026-10-03
 
 Model the `openai/codex@main` (`fd75aa116`) app-server schema drift. The

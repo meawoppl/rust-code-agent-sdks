@@ -7,7 +7,8 @@
 //!
 //! The catalog was taken from `openai/codex@main`'s bundled
 //! `models-manager/models.json` (2026-07-11). The server catalog evolves
-//! faster than this crate; unknown slugs round-trip through
+//! faster than this crate; GPT-6.1 Sol was verified against the live Codex
+//! catalog and official model documentation (2026-10-04). Unknown slugs round-trip through
 //! [`CodexModel::Custom`].
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -16,6 +17,8 @@ use std::fmt;
 /// A model slug accepted by the Codex CLI and app-server.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CodexModel {
+    /// GPT-6.1 Sol (`gpt-6.1-sol`). Availability depends on the server/account.
+    Gpt61Sol,
     /// GPT-6-Astra (`gpt-6-astra`) — first GPT-6-family model in the
     /// catalog (272k context). Live-probed 2026-09-04: the backend
     /// recognizes the slug but rejects it for ChatGPT-plan auth
@@ -53,6 +56,7 @@ impl CodexModel {
     /// The slug to pass to `codex -m` / `ThreadStartParams.model`.
     pub fn cli_arg(&self) -> &str {
         match self {
+            Self::Gpt61Sol => "gpt-6.1-sol",
             Self::Gpt6Astra => "gpt-6-astra",
             Self::DaybreakBlue => "gpt-daybreak-blue-latest",
             Self::DaybreakRed => "gpt-daybreak-red-latest",
@@ -77,6 +81,7 @@ impl CodexModel {
     /// Human-friendly display name, matching the catalog's `display_name`.
     pub fn display_name(&self) -> &str {
         match self {
+            Self::Gpt61Sol => "GPT-6.1-Sol",
             Self::Gpt6Astra => "GPT-6-Astra",
             Self::DaybreakBlue => "Daybreak Blue",
             Self::DaybreakRed => "Daybreak Red",
@@ -95,6 +100,7 @@ impl CodexModel {
     /// Every model known to this version of the crate.
     pub fn known() -> &'static [CodexModel] {
         &[
+            Self::Gpt61Sol,
             Self::Gpt6Astra,
             Self::DaybreakBlue,
             Self::DaybreakRed,
@@ -119,6 +125,7 @@ impl fmt::Display for CodexModel {
 impl From<&str> for CodexModel {
     fn from(s: &str) -> Self {
         match s {
+            "gpt-6.1-sol" => Self::Gpt61Sol,
             "gpt-6-astra" => Self::Gpt6Astra,
             "gpt-daybreak-blue-latest" => Self::DaybreakBlue,
             "gpt-daybreak-red-latest" => Self::DaybreakRed,
@@ -157,6 +164,20 @@ impl<'de> Deserialize<'de> for CodexModel {
 #[cfg(test)]
 mod tests {
     use super::CodexModel;
+
+    #[test]
+    fn test_gpt61_sol_catalog_and_wire_round_trip() {
+        let model = CodexModel::from("gpt-6.1-sol");
+        assert_eq!(model, CodexModel::Gpt61Sol);
+        assert!(CodexModel::known().contains(&model));
+        assert_eq!(model.display_name(), "GPT-6.1-Sol");
+        assert_eq!(model.to_string(), "gpt-6.1-sol");
+        let json = serde_json::to_string(&model).unwrap();
+        assert_eq!(json, "\"gpt-6.1-sol\"");
+        assert_eq!(serde_json::from_str::<CodexModel>(&json).unwrap(), model);
+        let slug: String = model.into();
+        assert_eq!(slug, "gpt-6.1-sol");
+    }
 
     #[test]
     fn test_cli_arg_round_trip() {
