@@ -3983,8 +3983,9 @@ pub struct SessionTitleChangedMessage {
 pub struct UiLogMessage {
     /// The calling plugin's registry name, as the hooks engine knows it.
     pub plugin: String,
-    /// The line as the plugin gave it, at most 4096 characters. Plain text:
-    /// draw it as a text node, never as markup.
+    /// The line the plugin gave: be ready for up to 10000 characters of it
+    /// and then an ellipsis (4096 before CLI 2.1.289). Plain text: draw it
+    /// as a text node, never as markup.
     pub text: String,
     pub uuid: String,
     pub session_id: String,
@@ -3992,13 +3993,15 @@ pub struct UiLogMessage {
 
 /// `system/ui_toast` — one `$.ui.toast(text)` from a plugin in a headless
 /// session: what the REPL shows on the notification bar under the prompt
-/// for a few seconds, under the plugin's name (CLI 2.1.285+).
+/// for a few seconds, under the plugin's name. Toasts arrive at no fixed
+/// rate: CLI 2.1.289 dropped the hooks host's 2 s spacing (CLI 2.1.285+).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UiToastMessage {
     /// The calling plugin's registry name, as the hooks engine knows it.
     pub plugin: String,
-    /// The line as the plugin gave it, at most 4096 characters. Plain text:
-    /// draw it as a text node, never as markup.
+    /// The line the plugin gave: be ready for up to 10000 characters of it
+    /// and then an ellipsis (4096 before CLI 2.1.289). Plain text: draw it
+    /// as a text node, never as markup.
     pub text: String,
     /// How long the REPL would keep it on the notification bar: the plugin's
     /// `timeoutMs`, or the engine's default (4000).
@@ -4014,9 +4017,10 @@ pub struct UiToastMessage {
 pub struct UiStatusMessage {
     /// The calling plugin's registry name, as the hooks engine knows it.
     pub plugin: String,
-    /// The plugin's pinned line, at most 4096 characters, replacing its
-    /// previous one; `None` (wire `null`) removes it. Plain text: draw it as
-    /// a text node, never as markup.
+    /// The plugin's pinned line, replacing its previous one; `None` (wire
+    /// `null`) removes it. Be ready for up to 10000 characters of it and
+    /// then an ellipsis (4096 before CLI 2.1.289). Plain text: draw it as a
+    /// text node, never as markup.
     pub text: Option<String>,
     pub uuid: String,
     pub session_id: String,
@@ -4031,9 +4035,10 @@ pub struct UiInvalidateMessage {
     /// The render event whose version moved — `"ui.render"`; the engine
     /// versions it as one event, so no component or instance is named.
     pub event: String,
-    /// Present when a plugin state write made only these instances stale,
-    /// so the surface may re-ask them alone. Absent, every mounted instance
-    /// may be stale.
+    /// Present when a plugin state write, or (CLI 2.1.289+) a `Client`
+    /// drawn in them that failed and whose plugin heard it (`ui.fault`),
+    /// made only these instances stale, so the surface may re-ask them
+    /// alone. Absent, every mounted instance may be stale.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instances: Option<Vec<UiInvalidatedInstance>>,
     pub uuid: String,

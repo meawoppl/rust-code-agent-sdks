@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.291] - 2026-10-04
+
+Re-baseline against Claude CLI **2.1.289**. No wire drift: the 128 extracted
+schema blocks have identical labels, object keys, enum bodies and literals
+to 2.1.288, `--help` is byte-identical and the model-id set is unchanged.
+
+### Changed
+
+- Re-pin the tested CLI version to 2.1.289.
+- Rustdoc refresh for the upstream description changes: `system/ui_log`,
+  `system/ui_toast` and `system/ui_status` text can now run to 10000
+  characters plus an ellipsis (was 4096), `ui_toast` frames are no longer
+  spaced 2 s apart by the hooks host, and `UiInvalidateMessage::instances`
+  is also sent when a `Client` drawn in those instances failed
+  (`ui.fault`).
+
 ## [2.1.290] - 2026-10-03
 
 Re-baseline against Claude CLI **2.1.288**. Models the 2.1.287 → 2.1.288
