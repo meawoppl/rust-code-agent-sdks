@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.4] - 2026-10-05
+
+### Added
+
+- `MuseCommand::disable_reminders(bool)` for the new `muse exec
+  --disable-reminders` flag (disables reminder agents for the run).
+
+### Changed
+
+- Re-baseline the tested pin to Muse Code **1.4.3 (1.4.3-R5018.1)** (from
+  1.4.2-R4684.1). The stream fingerprint is unchanged. `muse exec --help`
+  gained `--disable-reminders` and a third built-in preset,
+  `openai-apply-patch`; the `preset` builder doc now lists it.
+- Upstream surface the crate does not model: a new top-level
+  `muse plugins` subcommand, and MSP (`muse serve`) changes — new
+  `hook/list`, `plugin/list` and `userInput/interrupt` methods, new
+  `turn/foregroundCompleted` and `userInput/engaged` notifications,
+  `decidedAt` on `approval/resolved`, and removal of `session/delete` /
+  `session/deleteCompleted`.
+
 ## [1.4.3] - 2026-10-01
 
 ### Changed
