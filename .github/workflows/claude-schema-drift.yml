@@ -75,6 +75,13 @@ jobs:
           esac
           exit 0  # don't fail the job on drift; we open an issue instead
 
+      - name: Include required model-catalog follow-up
+        run: |
+          # Model IDs can change without wire-schema drift. Show the requirement
+          # on every run, and include it in any issue opened/updated below.
+          cat .github/model-catalog-drift.md >> /tmp/claude_drift_report.md
+          cat .github/model-catalog-drift.md >> "$GITHUB_STEP_SUMMARY"
+
       - name: Open or update drift issue
         if: steps.check.outputs.result == 'drift'
         env:

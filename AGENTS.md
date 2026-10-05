@@ -35,6 +35,16 @@ Full procedure — where the bundle lives, how to map schemas to crate types,
 what counts as drift, manual spelunking recipes — is in
 **`claude-codes/RESNAPSHOTTING.md`**.
 
+### Required model-catalog reconciliation during drift checks
+
+For every Codex or Claude drift remediation, complete the checklist in
+**[.github/model-catalog-drift.md](.github/model-catalog-drift.md)** and record
+the results in the issue or PR. The nightly workflows include it in their job
+summaries and drift reports. Wire-schema checks do not automatically inspect
+model catalogs: report unchecked sources explicitly, even when schemas match.
+The checklist also records the requirements for future automatic detection,
+compatible SDK releases, and downstream agent-portal updates.
+
 ## Git Workflow Requirements
 
 **CRITICAL: This repository enforces a strict PR-based workflow**
