@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-10-05
+
+### Changed
+
+- Re-baseline the tested pin to pi **1.0.3** (from 1.0.2). The RPC wire
+  surface is unchanged: `dist/modes/rpc/` and `json-event.d.ts` are
+  byte-identical to 1.0.2, `pi --help` is byte-identical, and the live
+  suite passes unmodified. Upstream 1.0.3 renames the Azure provider
+  `azure-openai-responses` → `azure` (pass `--provider azure` now), adds
+  Azure Foundry Chat Completions, and makes codemode `image()` save each
+  image to a temp file.
+
 ## [1.0.2] - 2026-10-04
 
 ### Changed
