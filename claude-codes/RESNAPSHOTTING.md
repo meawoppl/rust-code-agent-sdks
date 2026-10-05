@@ -43,6 +43,13 @@ field-by-field walk below.
 
 ## Step 1 — extract the SDK output schemas
 
+As part of this sequence, also complete the
+[model-catalog reconciliation checklist](../.github/model-catalog-drift.md).
+The wire fingerprint does not cover model identifiers, display labels, or
+floating alias targets. Record catalog changes (or unchecked sources) in the
+drift issue/PR and follow accepted additions through publication and the
+agent-portal dependency update.
+
 ```bash
 python3 scripts/extract_claude_sdk_schemas.py -o /tmp/claude_sdk_schemas.txt
 ```
