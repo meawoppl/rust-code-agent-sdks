@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.160.3] - 2026-10-05
+
+### Changed
+
+- Re-pin to Codex CLI **0.160.1** (from 0.160.0). The release's
+  `codex app-server generate-json-schema` output is byte-identical to
+  0.160.0, so no type changes were needed.
+- Refresh the schema snapshot to `openai/codex@main` (`42312d4f`).
+  openai/codex#51157 adds an experimental `skills` field
+  (`EnvironmentSkillsParams { required }`) on `environment/add` params. The
+  field is stripped from the stable schema and this crate does not model
+  `environment/add`, so this is a snapshot-only update.
+
 ## [0.160.2] - 2026-10-04
 
 ### Added
