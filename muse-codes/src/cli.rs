@@ -108,6 +108,7 @@ pub struct MuseExecBuilder {
     user_input_auto_resolve: bool,
     subagent_worktree_isolation: bool,
     disable_web_tools: bool,
+    disable_reminders: bool,
     no_foreign_personal_context: bool,
     no_session_log: bool,
     yolo: bool,
@@ -156,6 +157,7 @@ impl Default for MuseExecBuilder {
             user_input_auto_resolve: false,
             subagent_worktree_isolation: false,
             disable_web_tools: false,
+            disable_reminders: false,
             no_foreign_personal_context: false,
             no_session_log: false,
             yolo: false,
@@ -192,7 +194,7 @@ impl MuseExecBuilder {
         self
     }
 
-    /// Built-in preset (`native-basic`, `miniswe`).
+    /// Built-in preset (`native-basic`, `miniswe`, `openai-apply-patch`).
     pub fn preset(mut self, preset: impl Into<String>) -> Self {
         self.preset = Some(preset.into());
         self
@@ -371,6 +373,12 @@ impl MuseExecBuilder {
         self
     }
 
+    /// Disable reminder agents for this run (`--disable-reminders`).
+    pub fn disable_reminders(mut self, disabled: bool) -> Self {
+        self.disable_reminders = disabled;
+        self
+    }
+
     /// Exclude foreign personal rules and skills
     /// (`--no-foreign-personal-context`).
     pub fn no_foreign_personal_context(mut self, excluded: bool) -> Self {
@@ -546,6 +554,9 @@ impl MuseExecBuilder {
         if self.disable_web_tools {
             cmd.arg("--disable-web-tools");
         }
+        if self.disable_reminders {
+            cmd.arg("--disable-reminders");
+        }
         if self.no_foreign_personal_context {
             cmd.arg("--no-foreign-personal-context");
         }
@@ -661,6 +672,7 @@ mod tests {
             .user_input_auto_resolve(true)
             .subagent_worktree_isolation(true)
             .disable_web_tools(true)
+            .disable_reminders(true)
             .no_foreign_personal_context(true)
             .no_session_log(true)
             .yolo(true)
@@ -719,6 +731,7 @@ mod tests {
             "--user-input-auto-resolve",
             "--subagent-worktree-isolation",
             "--disable-web-tools",
+            "--disable-reminders",
             "--no-foreign-personal-context",
             "--no-session-log",
             "--yolo",
