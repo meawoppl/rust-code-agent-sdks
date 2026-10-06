@@ -8192,6 +8192,20 @@
         },
         "type": "object"
       },
+      "BrowserUseExtensionRequirements": {
+        "properties": {
+          "requestHeaders": {
+            "items": {
+              "$ref": "#/definitions/v2/RequestHeader"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
       "BrowserUseOriginPolicy": {
         "properties": {
           "access": {
@@ -8342,6 +8356,16 @@
             "type": [
               "boolean",
               "null"
+            ]
+          },
+          "extension": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/v2/BrowserUseExtensionRequirements"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "origins": {
@@ -15337,7 +15361,7 @@
         "type": "string"
       },
       "MessagePhase": {
-        "description": "Classifies an assistant message as interim commentary or final answer text.\n\nProviders do not emit this consistently, so callers must treat `None` as \"phase unknown\" and keep compatibility behavior for legacy models.",
+        "description": "Classifies assistant text as commentary, a partial answer, or a terminal answer.\n\nProviders do not emit this consistently, so callers must treat `None` as \"phase unknown\" and keep compatibility behavior for legacy models.",
         "oneOf": [
           {
             "description": "Mid-turn assistant text (for example preamble/progress narration).\n\nAdditional tool calls or assistant output may follow before turn completion.",
@@ -15347,7 +15371,14 @@
             "type": "string"
           },
           {
-            "description": "The assistant's terminal answer text for the current turn.",
+            "description": "Stable answer text that may be followed by more assistant output or tools.",
+            "enum": [
+              "partial_answer"
+            ],
+            "type": "string"
+          },
+          {
+            "description": "The assistant's declared terminal answer text for the current turn.",
             "enum": [
               "final_answer"
             ],
@@ -15426,6 +15457,13 @@
           },
           "errorType": {
             "description": "Open-ended classification; clients must accept categories added by Responses.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewTarget": {
+            "description": "Opaque server-issued block target. Presence alone does not enable target-based continuation.",
             "type": [
               "string",
               "null"
@@ -18519,6 +18557,21 @@
           "status"
         ],
         "title": "RemoteControlStatusChangedNotification",
+        "type": "object"
+      },
+      "RequestHeader": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ],
         "type": "object"
       },
       "RequestId": {

@@ -7,12 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.160.3] - 2026-10-05
 
+### Added
+
+- `BrowserUseRequirements::extension` with the new
+  `BrowserUseExtensionRequirements { request_headers }` and `RequestHeader
+  { name, value }` (openai/codex#51194).
+- `MisalignmentErrorDetails::review_target`, an opaque server-issued block
+  target (openai/codex#51217).
+- `MessagePhase::PartialAnswer` (`partial_answer`): stable answer text that
+  may be followed by more output or tools (openai/codex#51241). **Breaking**
+  for exhaustive matches on `MessagePhase`.
+
 ### Changed
 
 - Re-pin to Codex CLI **0.160.1** (from 0.160.0). The release's
   `codex app-server generate-json-schema` output is byte-identical to
   0.160.0, so no type changes were needed.
-- Refresh the schema snapshot to `openai/codex@main` (`42312d4f`).
+- Refresh the schema snapshot to `openai/codex@main` (`8b6bb1c7`).
   openai/codex#51157 adds an experimental `skills` field
   (`EnvironmentSkillsParams { required }`) on `environment/add` params. The
   field is stripped from the stable schema and this crate does not model

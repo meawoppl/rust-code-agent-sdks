@@ -974,3 +974,32 @@ fn thread_resume_response_reads_collaboration_mode() {
     let wire = serde_json::to_value(&older).unwrap();
     assert!(wire.get("collaborationMode").is_none());
 }
+
+/// openai/codex#51194/#51217/#51241: browser-extension request headers,
+/// misalignment review targets, and the `partial_answer` message phase.
+#[test]
+fn main_drift_2026_10_05_fields_round_trip() {
+    use codex_codes::protocol::{BrowserUseRequirements, MessagePhase, MisalignmentErrorDetails};
+
+    let browser = serde_json::json!({
+        "allowWebmcp": true,
+        "extension": {"requestHeaders": [{"name": "X-Org", "value": "acme"}]}
+    });
+    let parsed: BrowserUseRequirements = serde_json::from_value(browser.clone()).unwrap();
+    let headers = parsed
+        .extension
+        .as_ref()
+        .and_then(|e| e.request_headers.as_ref())
+        .expect("requestHeaders");
+    assert_eq!(headers[0].name, "X-Org");
+    assert_eq!(headers[0].value, "acme");
+    assert_eq!(serde_json::to_value(&parsed).unwrap(), browser);
+
+    let details = serde_json::json!({"errorType": "x", "reviewTarget": "blk_1"});
+    let parsed: MisalignmentErrorDetails = serde_json::from_value(details.clone()).unwrap();
+    assert_eq!(parsed.review_target.as_deref(), Some("blk_1"));
+    assert_eq!(serde_json::to_value(&parsed).unwrap(), details);
+
+    let phase: MessagePhase = serde_json::from_value(serde_json::json!("partial_answer")).unwrap();
+    assert_eq!(phase, MessagePhase::PartialAnswer);
+}
