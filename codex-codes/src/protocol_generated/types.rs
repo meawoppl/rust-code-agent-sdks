@@ -699,6 +699,34 @@ pub struct BrowserUseRequirements {
         skip_serializing_if = "Option::is_none"
     )]
     pub disable_auto_review: Option<bool>,
+    /// Managed requirements for the browser extension (openai/codex#51194).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extension: Option<BrowserUseExtensionRequirements>,
+}
+
+/// Managed browser-extension requirements inside
+/// [`BrowserUseRequirements`].
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct BrowserUseExtensionRequirements {
+    /// Headers the extension attaches to its requests.
+    #[serde(
+        rename = "requestHeaders",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub request_headers: Option<Vec<RequestHeader>>,
+}
+
+/// One name/value header in
+/// [`BrowserUseExtensionRequirements::request_headers`].
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct RequestHeader {
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub value: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -4608,6 +4636,10 @@ pub enum MergeStrategy {
 pub enum MessagePhase {
     #[serde(rename = "commentary")]
     Commentary,
+    /// Stable answer text that may be followed by more assistant output or
+    /// tools (openai/codex#51241).
+    #[serde(rename = "partial_answer")]
+    PartialAnswer,
     #[serde(rename = "final_answer")]
     FinalAnswer,
 }
@@ -4651,6 +4683,14 @@ pub struct MisalignmentErrorDetails {
     /// Open-ended classification; accept categories added upstream.
     #[serde(rename = "errorType", default, skip_serializing_if = "Option::is_none")]
     pub error_type: Option<String>,
+    /// Opaque server-issued block target. Presence alone does not enable
+    /// target-based continuation (openai/codex#51217).
+    #[serde(
+        rename = "reviewTarget",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub review_target: Option<String>,
     /// Instruction to submit as the next turn's user input if continuation
     /// is confirmed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
