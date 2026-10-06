@@ -8097,6 +8097,17 @@ pub enum ThreadItem {
         agent_thread_id: String,
         id: String,
         kind: SubAgentActivityKind,
+        /// Resolved model at sub-agent creation; absent from older records
+        /// and other activities.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        model: Option<String>,
+        /// Resolved reasoning effort at sub-agent creation, when known.
+        #[serde(
+            rename = "reasoningEffort",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        reasoning_effort: Option<ReasoningEffort>,
     },
     #[serde(rename = "webSearch")]
     WebSearch {
@@ -9462,6 +9473,15 @@ pub struct Turn {
     pub items: Vec<ThreadItem>,
     #[serde(rename = "itemsView", default, skip_serializing_if = "Option::is_none")]
     pub items_view: Option<Value>,
+    /// ID of the first turn in the chain of work that led to this turn. Pass
+    /// this as `rootTurnId` when starting work on behalf of this turn. May be
+    /// null in older history or a `review/start` response.
+    #[serde(
+        rename = "rootTurnId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub root_turn_id: Option<String>,
     #[serde(rename = "startedAt", default, skip_serializing_if = "Option::is_none")]
     pub started_at: Option<i64>,
     #[serde()]
@@ -9623,8 +9643,27 @@ pub struct TurnStartParams {
         skip_serializing_if = "Option::is_none"
     )]
     pub output_schema: Option<Value>,
+    /// ID of the turn that caused this new turn to start. Set this when
+    /// starting work on behalf of another turn; leave unset for work started
+    /// directly by the user. Ignored when adding input to an active turn.
+    #[serde(
+        rename = "parentTurnId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub parent_turn_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub personality: Option<Personality>,
+    /// ID of the first turn in the chain of work that led to this new turn.
+    /// When setting `parent_turn_id`, set this to the parent turn's
+    /// `root_turn_id` when known; if omitted, the new turn becomes its own
+    /// root. Ignored when adding input to an active turn.
+    #[serde(
+        rename = "rootTurnId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub root_turn_id: Option<String>,
     #[serde(
         rename = "sandboxPolicy",
         default,
