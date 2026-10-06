@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.160.4] - 2026-10-06
+
+### Added
+
+- `ConfigRequirementsReadResponse::supports_independent_speed_modes`
+  (`supportsIndependentSpeedModes`): whether Fast and Ultra Fast requirements
+  are enforced independently; older servers omit it (openai/codex#51253).
+- `CodexModel::Gpt6Sol` (`gpt-6-sol`) and `CodexModel::Gpt6Luna`
+  (`gpt-6-luna`), listed in the bundled `models-manager/models.json` but
+  missing from the enum. **Breaking** for exhaustive matches on `CodexModel`.
+
+### Changed
+
+- Refresh the schema snapshot to `openai/codex@main` (`7ac954ea`). Still
+  tested against Codex CLI **0.160.1**, the latest release.
+
 ## [0.160.3] - 2026-10-05
 
 ### Added

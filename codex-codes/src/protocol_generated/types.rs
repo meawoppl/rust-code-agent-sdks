@@ -1689,6 +1689,14 @@ pub struct ConfigRequirements {
 pub struct ConfigRequirementsReadResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub requirements: Option<ConfigRequirements>,
+    /// Whether Fast and Ultra Fast requirements are enforced independently.
+    /// Older servers omit this field and use Fast mode as a shared speed gate.
+    #[serde(
+        rename = "supportsIndependentSpeedModes",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub supports_independent_speed_modes: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
