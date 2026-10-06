@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use super::claude_output::ClaudeOutput;
 use super::content_blocks::{deserialize_content_blocks, ContentBlock};
+use super::rate_limit::RateLimitInfo;
 
 /// Known system message subtypes.
 ///
@@ -53,6 +54,7 @@ pub enum SystemSubtype {
     SessionTitleChanged,
     InstructionSizeWarning,
     FileAttachmentsMissing,
+    PermissionCheckStatus,
     UiFocus,
     UiInvalidate,
     UiLog,
@@ -107,6 +109,7 @@ impl SystemSubtype {
             Self::SessionTitleChanged => "session_title_changed",
             Self::InstructionSizeWarning => "instruction_size_warning",
             Self::FileAttachmentsMissing => "file_attachments_missing",
+            Self::PermissionCheckStatus => "permission_check_status",
             Self::UiFocus => "ui_focus",
             Self::UiInvalidate => "ui_invalidate",
             Self::UiLog => "ui_log",
@@ -168,6 +171,7 @@ impl From<&str> for SystemSubtype {
             "session_title_changed" => Self::SessionTitleChanged,
             "instruction_size_warning" => Self::InstructionSizeWarning,
             "file_attachments_missing" => Self::FileAttachmentsMissing,
+            "permission_check_status" => Self::PermissionCheckStatus,
             "ui_focus" => Self::UiFocus,
             "ui_invalidate" => Self::UiInvalidate,
             "ui_log" => Self::UiLog,
@@ -1049,6 +1053,12 @@ pub struct UserMessage {
     /// typed shape when you know which tool was invoked.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_use_result: Option<serde_json::Value>,
+    /// ID of the subagent this user message belongs to (the `task_id` of its
+    /// task events), on the prompt echoed into a `local_agent` subagent.
+    /// Seen on the wire from CLI 2.1.292, where it is not part of the
+    /// published user-message schema. Not settable by clients.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
     /// Subagent type, when this user message is the prompt echoed into a
     /// `local_agent` subagent (e.g. `general-purpose`).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1585,6 +1595,19 @@ impl SystemMessage {
         serde_json::from_value(self.data.clone()).ok()
     }
 
+    /// Check if this is a permission_check_status message.
+    pub fn is_permission_check_status(&self) -> bool {
+        self.subtype == SystemSubtype::PermissionCheckStatus
+    }
+
+    /// Try to parse as a permission_check_status message.
+    pub fn as_permission_check_status(&self) -> Option<PermissionCheckStatusMessage> {
+        if self.subtype != SystemSubtype::PermissionCheckStatus {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
     /// Check if this is a file_attachments_missing message.
     pub fn is_file_attachments_missing(&self) -> bool {
         self.subtype == SystemSubtype::FileAttachmentsMissing
@@ -1772,6 +1795,9 @@ impl SystemMessage {
             SystemSubtype::FileAttachmentsMissing => {
                 parse!(FileAttachmentsMissing, FileAttachmentsMissingMessage)
             }
+            SystemSubtype::PermissionCheckStatus => {
+                parse!(PermissionCheckStatus, PermissionCheckStatusMessage)
+            }
             SystemSubtype::UiFocus => parse!(UiFocus, UiFocusMessage),
             SystemSubtype::UiInvalidate => parse!(UiInvalidate, UiInvalidateMessage),
             SystemSubtype::UiLog => parse!(UiLog, UiLogMessage),
@@ -1878,6 +1904,9 @@ impl SystemMessage {
             SystemSubtype::FileAttachmentsMissing => {
                 reserialize(parse_system::<FileAttachmentsMissingMessage>(self))
             }
+            SystemSubtype::PermissionCheckStatus => {
+                reserialize(parse_system::<PermissionCheckStatusMessage>(self))
+            }
             SystemSubtype::UiFocus => reserialize(parse_system::<UiFocusMessage>(self)),
             SystemSubtype::UiInvalidate => reserialize(parse_system::<UiInvalidateMessage>(self)),
             SystemSubtype::UiLog => reserialize(parse_system::<UiLogMessage>(self)),
@@ -1942,6 +1971,7 @@ pub enum KnownSystemEvent {
     SessionTitleChanged(SessionTitleChangedMessage),
     InstructionSizeWarning(InstructionSizeWarningMessage),
     FileAttachmentsMissing(FileAttachmentsMissingMessage),
+    PermissionCheckStatus(PermissionCheckStatusMessage),
     UiFocus(UiFocusMessage),
     UiInvalidate(UiInvalidateMessage),
     UiLog(UiLogMessage),
@@ -2185,8 +2215,16 @@ pub struct BackgroundTasksChangedMessage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BackgroundTaskInfo {
     pub task_id: String,
+    /// Id of the task's current run; see [`TaskStartedMessage::run_id`]
+    /// (CLI 2.1.292+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_id: Option<String>,
     pub task_type: String,
     pub description: String,
+    /// `task_id` of the subagent task that launched this one; see
+    /// [`TaskStartedMessage::parent_task_id`] (CLI 2.1.292+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_task_id: Option<String>,
     /// True for housekeeping tasks the CLI does not surface as user work;
     /// hosts should exclude them from activity indicators (CLI 2.1.259+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2944,6 +2982,20 @@ impl<'de> Deserialize<'de> for TaskStatus {
 pub struct TaskStartedMessage {
     pub session_id: String,
     pub task_id: String,
+    /// Id of one run of the task: equal on every `task_*` event and
+    /// `background_tasks_changed` entry of that run. A resumed task keeps its
+    /// `task_id` and gets a new `run_id`; the run ids of one task sort, by
+    /// plain string comparison, in the order the runs opened. Absent for a
+    /// task this process did not register (CLI 2.1.292+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_id: Option<String>,
+    /// `task_id` of the subagent (`local_agent`) task whose agent launched
+    /// this task. Absent when the launcher is the main thread, has no
+    /// `task_id` of its own, or is no longer tracked. The parent may be a
+    /// foreground or already-ended task, so treat an unknown id as no parent
+    /// (CLI 2.1.292+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_task_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub task_type: Option<TaskType>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2988,6 +3040,10 @@ pub struct TaskStartedMessage {
 pub struct TaskUpdatedMessage {
     pub session_id: String,
     pub task_id: String,
+    /// Id of the task run this update belongs to; see
+    /// [`TaskStartedMessage::run_id`] (CLI 2.1.292+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_id: Option<String>,
     pub patch: TaskPatch,
     pub uuid: String,
 }
@@ -3038,6 +3094,10 @@ pub struct ThinkingTokensMessage {
 pub struct TaskProgressMessage {
     pub session_id: String,
     pub task_id: String,
+    /// Id of the task run this progress belongs to; see
+    /// [`TaskStartedMessage::run_id`] (CLI 2.1.292+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_use_id: Option<String>,
     pub description: String,
@@ -3058,6 +3118,10 @@ pub struct TaskProgressMessage {
 pub struct TaskNotificationMessage {
     pub session_id: String,
     pub task_id: String,
+    /// Id of the task run this notification closes; see
+    /// [`TaskStartedMessage::run_id`] (CLI 2.1.292+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_id: Option<String>,
     pub status: TaskStatus,
     /// Machine-readable cause, set only when the task did not end through an
     /// ordinary completion, failure, or stop (CLI 2.1.273+).
@@ -3076,6 +3140,19 @@ pub struct TaskNotificationMessage {
     /// the result had none or the task is any other type (CLI 2.1.259+).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub resource_links: Vec<ResourceLink>,
+    /// On a `completed` notification of a subagent that reports through the
+    /// SubagentHandback tool: how its report reached its caller. Left out
+    /// when the subagent failed, was stopped, or is still waiting on work;
+    /// `summary` is then not a report. When present, `summary` holds harness
+    /// notes written for the model. A later notification for the same
+    /// `task_id` replaces what an earlier one showed (CLI 2.1.292+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub handback: Option<TaskHandback>,
+    /// The report a `send` or `flagged` hand-back delivered: when present,
+    /// render it instead of `summary`, with its `warning`, if any, above its
+    /// `text`. Absent for `withheld` (CLI 2.1.292+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub handback_report: Option<HandbackReport>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub skip_transcript: Option<bool>,
     /// True for housekeeping tasks the CLI does not surface as user work;
@@ -3084,6 +3161,74 @@ pub struct TaskNotificationMessage {
     pub ambient: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
+}
+
+/// How a subagent's hand-back report reached its caller
+/// ([`TaskNotificationMessage::handback`]).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TaskHandback {
+    /// The report was delivered.
+    Send,
+    /// The report was delivered with an auto-mode warning.
+    Flagged,
+    /// The report was held back; no `handback_report` is sent.
+    Withheld,
+    /// A value not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl TaskHandback {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Send => "send",
+            Self::Flagged => "flagged",
+            Self::Withheld => "withheld",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for TaskHandback {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for TaskHandback {
+    fn from(s: &str) -> Self {
+        match s {
+            "send" => Self::Send,
+            "flagged" => Self::Flagged,
+            "withheld" => Self::Withheld,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for TaskHandback {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for TaskHandback {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// A subagent's delivered hand-back report
+/// ([`TaskNotificationMessage::handback_report`]).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HandbackReport {
+    /// The subagent's whole report, never truncated, with a backslash
+    /// inserted into text that imitates harness markup.
+    pub text: String,
+    /// Auto mode's warning to show above `text`: a security warning, or a
+    /// note that the review could not run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub warning: Option<String>,
 }
 
 /// API error category attached to assistant wrapper frames.
@@ -4003,6 +4148,78 @@ pub struct FileAttachmentsMissingMessage {
     pub session_id: String,
 }
 
+/// `system/permission_check_status` — a tool call has been waiting on its
+/// automatic permission check (the auto-mode classifier) for longer than
+/// usual, so a host can say the step is being checked instead of showing a
+/// silent pause. Every `checking` is followed by a `done` for the same
+/// `tool_use_id`; `done` does not say whether the call was allowed (the
+/// tool's result, `permission_denied` or a `can_use_tool` request does). One
+/// call can send more than one pair. Display-only and best-effort: also stop
+/// showing it at any other frame for this `tool_use_id` or at the end of the
+/// turn (CLI 2.1.292+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PermissionCheckStatusMessage {
+    pub tool_use_id: String,
+    /// Subagent ID when the tool call originated inside a subagent, as on
+    /// `permission_denied`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
+    pub status: PermissionCheckStatus,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// Phase of a [`PermissionCheckStatusMessage`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PermissionCheckStatus {
+    /// The call has waited about four seconds on its check and is still
+    /// waiting.
+    Checking,
+    /// That wait is over.
+    Done,
+    /// A status not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl PermissionCheckStatus {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Checking => "checking",
+            Self::Done => "done",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for PermissionCheckStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for PermissionCheckStatus {
+    fn from(s: &str) -> Self {
+        match s {
+            "checking" => Self::Checking,
+            "done" => Self::Done,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for PermissionCheckStatus {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PermissionCheckStatus {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
 /// One entry of [`FileAttachmentsMissingMessage::missing`].
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MissingFileAttachment {
@@ -4590,6 +4807,11 @@ pub struct AssistantMessage {
     /// from CLIs before 2.1.259 (fall back to `user_message_uuid`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub user_message_uuids: Vec<String>,
+    /// ID of the subagent that produced this message: the `task_id` of its
+    /// task events, unchanged when the subagent is resumed. Absent on
+    /// main-thread messages (CLI 2.1.292+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
     /// Subagent type, when this assistant message was produced inside a
     /// `local_agent` subagent (e.g. `general-purpose`, `Explore`).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -4733,8 +4955,11 @@ pub struct AssistantMessage {
     /// `org_disabled_credential`, `invalid_credential_header`,
     /// `model_requires_usage_credits`, `long_context_credits_required`,
     /// `consent_unanswered`, `no_allowed_fallback`,
-    /// `model_substitution_disabled` and `field_not_granted`. Kinds with
-    /// parameters carry them in [`Self::api_error_params`].
+    /// `model_substitution_disabled`, `field_not_granted` and (CLI 2.1.292+)
+    /// `usage_limit_reached` — the request was refused by the account's own
+    /// usage limit, a plan limit or a spend cap on usage credits;
+    /// [`ApiErrorParams::rate_limit_info`] says which and when it resets.
+    /// Kinds with parameters carry them in [`Self::api_error_params`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_error: Option<String>,
     /// The server's `error.details.error_code` for this API error, copied
@@ -4768,7 +4993,7 @@ pub struct AssistantMessage {
 /// Parameters of an assistant frame's `api_error`, carried as
 /// [`AssistantMessage::api_error_params`] only for the error kinds that have
 /// any (CLI 2.1.274+).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct ApiErrorParams {
     /// The effort level the API refused (`effort_requires_thinking`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4788,6 +5013,15 @@ pub struct ApiErrorParams {
     /// Why the API refused the block (`media_removed`, CLI 2.1.288+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub media_reason: Option<ApiErrorMediaReason>,
+    /// What the refused request's own response said about the limit
+    /// (`usage_limit_reached`), in the shape `rate_limit_event` carries:
+    /// `status` is rejected and `isUsingOverage` false, `rateLimitType` names
+    /// the limit, `resetsAt` is when it resets, and the overage fields and
+    /// `limitScope` say whose spend cap it is. It is that refusal's record
+    /// and is never updated, so compare `resetsAt` with the clock before
+    /// calling the limit current (CLI 2.1.292+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rate_limit_info: Option<RateLimitInfo>,
 }
 
 /// The kind of block the API refused ([`ApiErrorParams::media`]).

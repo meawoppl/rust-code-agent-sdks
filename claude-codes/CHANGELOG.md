@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.294] - 2026-10-06
+
+Re-baseline against Claude CLI **2.1.292**. Models the 2.1.291 → 2.1.292
+stream-json drift: one new `system` subtype and a set of optional fields,
+all additive on the wire. `--help` and the model-id set are byte-identical.
+
+### Added
+
+- `system/permission_check_status` (`SystemSubtype::PermissionCheckStatus`,
+  `PermissionCheckStatusMessage`, open-set `PermissionCheckStatus`
+  `checking`/`done`, `SystemMessage::as_permission_check_status`,
+  `KnownSystemEvent::PermissionCheckStatus`) — a tool call has been waiting
+  on its auto-mode permission check for longer than usual (`tool_use_id`,
+  optional `agent_id`).
+- `AssistantMessage::agent_id` — the subagent `task_id` that produced the
+  message.
+- `UserMessage::agent_id` — the same id on the prompt echoed into a
+  subagent. The CLI's user-message schema does not list it; the live
+  wrapping audit (`live_subagent_session_is_fully_wrapped`) found it.
+- `ApiErrorParams::rate_limit_info` (`RateLimitInfo`) for the new
+  `usage_limit_reached` `api_error` kind.
+- `RateLimitInfo::limit_scope` and open-set `RateLimitScope` (`service`,
+  `channel`, `group_pool`). The CLI had sent `limitScope` on
+  `rate_limit_event` before 2.1.292; the crate had not modeled it.
+- `ResultMessage::safety_stops` — running count of safety-system stops in
+  the session.
+- `StreamEventMessage::abandoned_blocks` and `AbandonedBlocks`
+  (`api_message_id`, `from_block_index`) — on a CLI-produced `message_stop`,
+  the streamed blocks that will never get an assistant message.
+- `run_id` on `TaskStartedMessage`, `TaskUpdatedMessage`,
+  `TaskProgressMessage`, `TaskNotificationMessage` and `BackgroundTaskInfo`.
+- `parent_task_id` on `TaskStartedMessage` and `BackgroundTaskInfo`.
+- `TaskNotificationMessage::handback` (open-set `TaskHandback`: `send`,
+  `flagged`, `withheld`) and `TaskNotificationMessage::handback_report`
+  (`HandbackReport`: `text`, optional `warning`).
+
+### Changed
+
+- **Breaking:** `ApiErrorParams` no longer implements `Eq`, because it now
+  holds a `RateLimitInfo` (which has `f64` fields). It still implements
+  `PartialEq`. `RateLimitInfo` now derives `PartialEq`.
+- `tests/schemas/claude_stream_json_snapshot.txt` re-snapshotted against
+  CLI 2.1.292 (59 → 60 SDK output union members). The new `ephemeral: text,
+  warning` row is an extractor labelling artifact: it is the
+  `handback_report` object, labelled by the `cache_control` literal that
+  follows it in the bundle. It is not a new wire frame.
+
 ## [2.1.293] - 2026-10-06
 
 Re-baseline against Claude CLI **2.1.291**. Pin-only: the 2.1.290 → 2.1.291
