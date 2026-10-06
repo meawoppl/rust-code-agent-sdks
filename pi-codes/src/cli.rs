@@ -58,6 +58,7 @@ pub struct PiCliBuilder {
     approve: bool,
     no_approve: bool,
     offline: bool,
+    no_mcp: bool,
     working_directory: Option<PathBuf>,
     extra_args: Vec<OsString>,
     prompt: Option<String>,
@@ -145,13 +146,16 @@ impl PiCliBuilder {
         self
     }
 
-    /// `--tools` — comma-separated tool allowlist.
+    /// `--tools` — comma-separated tool allowlist. Entries are tool names
+    /// or patterns where `*` matches any characters (pi 1.0.4+). MCP tools
+    /// are kept unless an entry starts with `mcp__`.
     pub fn tools(mut self, tools: impl Into<String>) -> Self {
         self.tools = Some(tools.into());
         self
     }
 
-    /// `--exclude-tools` — comma-separated tool denylist.
+    /// `--exclude-tools` — comma-separated tool denylist of names or `*`
+    /// patterns, MCP tools included (pi 1.0.4+).
     pub fn exclude_tools(mut self, tools: impl Into<String>) -> Self {
         self.exclude_tools = Some(tools.into());
         self
@@ -187,6 +191,13 @@ impl PiCliBuilder {
     /// `--offline` — disable startup network operations.
     pub fn offline(mut self, enabled: bool) -> Self {
         self.offline = enabled;
+        self
+    }
+
+    /// `--no-mcp` — disable the built-in MCP support for this run: no
+    /// servers connect and there are no MCP tools (pi 1.0.4+).
+    pub fn no_mcp(mut self, enabled: bool) -> Self {
+        self.no_mcp = enabled;
         self
     }
 
@@ -265,6 +276,9 @@ impl PiCliBuilder {
         if self.offline {
             a.push("--offline".into());
         }
+        if self.no_mcp {
+            a.push("--no-mcp".into());
+        }
         a.extend(self.extra_args.iter().cloned());
         if let Some(p) = &self.prompt {
             a.push(p.into());
@@ -302,5 +316,13 @@ mod tests {
         let args = PiCliBuilder::new().mode(Mode::Rpc).assembled_args();
         assert_eq!(args.len(), 2);
         assert_eq!(args[1], "rpc");
+    }
+
+    #[test]
+    fn no_mcp_flag() {
+        let args = PiCliBuilder::new().no_mcp(true).assembled_args();
+        assert_eq!(args.last().unwrap(), "--no-mcp");
+        let args = PiCliBuilder::new().no_mcp(false).assembled_args();
+        assert!(!args.iter().any(|a| a == "--no-mcp"));
     }
 }
