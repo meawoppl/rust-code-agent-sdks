@@ -175,6 +175,59 @@ impl<'de> Deserialize<'de> for OverageStatus {
     }
 }
 
+/// Which spend limit blocked a request when it is not the member's own cap
+/// ([`RateLimitInfo::limit_scope`]).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RateLimitScope {
+    Service,
+    Channel,
+    /// A pooled group budget shared by the member's team is used up.
+    GroupPool,
+    /// A scope not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl RateLimitScope {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Service => "service",
+            Self::Channel => "channel",
+            Self::GroupPool => "group_pool",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for RateLimitScope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for RateLimitScope {
+    fn from(s: &str) -> Self {
+        match s {
+            "service" => Self::Service,
+            "channel" => Self::Channel,
+            "group_pool" => Self::GroupPool,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for RateLimitScope {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for RateLimitScope {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
 /// Why overage billing is disabled.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum OverageDisabledReason {
@@ -317,7 +370,7 @@ pub struct RateLimitEvent {
 }
 
 /// Rate limit status information.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RateLimitInfo {
     /// Current rate limit status
     pub status: RateLimitStatus,
@@ -382,6 +435,10 @@ pub struct RateLimitInfo {
         skip_serializing_if = "Option::is_none"
     )]
     pub overage_period_channel: Option<OveragePeriodUtilization>,
+    /// Which spend limit blocked the request when it is not the member's own
+    /// cap. Absent on a plain member denial and from older CLIs.
+    #[serde(rename = "limitScope", skip_serializing_if = "Option::is_none")]
+    pub limit_scope: Option<RateLimitScope>,
     /// Error code attached when a request was refused outright
     #[serde(rename = "errorCode", skip_serializing_if = "Option::is_none")]
     pub error_code: Option<RateLimitErrorCode>,

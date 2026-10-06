@@ -142,6 +142,28 @@ pub struct StreamEventMessage {
     /// upstream, so treat the value set as open.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub thinking_display: Option<String>,
+    /// Set on a `message_stop` that Claude Code produced itself after it
+    /// stopped reading a response because the API's stream failed, stalled
+    /// or ended early: that response's content blocks from
+    /// [`AbandonedBlocks::from_block_index`] up have no assistant message and
+    /// never will, so a consumer that drew them from stream events can remove
+    /// them. Absent on every other `message_stop`, on Remote Control sessions
+    /// and from CLIs before 2.1.292. Marked `@internal` upstream.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub abandoned_blocks: Option<AbandonedBlocks>,
+}
+
+/// The cut-short response named by [`StreamEventMessage::abandoned_blocks`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AbandonedBlocks {
+    /// The API's id (`msg_…`) of the response that was cut short:
+    /// `event.message.id` on its `message_start`, `message.id` on its
+    /// assistant messages. Not a message `uuid`.
+    pub api_message_id: String,
+    /// Blocks of the response at this `event.index` and above have no
+    /// assistant message and never will. 0 means the whole response; can be
+    /// higher than every index the consumer has seen.
+    pub from_block_index: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

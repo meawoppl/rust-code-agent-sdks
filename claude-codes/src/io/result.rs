@@ -406,6 +406,19 @@ pub struct ResultMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subagent_stats: Option<SubagentStats>,
 
+    /// How many times a safety system has stopped one of this session's
+    /// model calls (main loop, subagents, forked skills, compaction and other
+    /// internal calls), as a running total since the session started in this
+    /// process: a `refusal` stop reason, a refusal answered on a fallback
+    /// model, output the API's content filter stopped, and (where the build
+    /// can tell) a server-side safety monitor block. Never sum across
+    /// results. Not saved, so a resumed session or a mid-session `/clear`
+    /// starts again at 0: over a stored log any result above 0 means a stop
+    /// happened, and a later 0 does not cancel it. Absent from CLIs before
+    /// 2.1.292. Marked `@internal` upstream.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub safety_stops: Option<u64>,
+
     /// Structured-output payload returned by the model, when enabled.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub structured_output: Option<Value>,
