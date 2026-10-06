@@ -8,7 +8,9 @@
 //! The catalog was taken from `openai/codex@main`'s bundled
 //! `models-manager/models.json` (2026-07-11). The server catalog evolves
 //! faster than this crate; GPT-6.1 Sol was verified against the live Codex
-//! catalog and official model documentation (2026-10-04). Unknown slugs round-trip through
+//! catalog and official model documentation (2026-10-04); GPT-6-Sol and
+//! GPT-6-Luna were added from the bundled catalog at `openai/codex@d63a9b83`
+//! (2026-10-06). Unknown slugs round-trip through
 //! [`CodexModel::Custom`].
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -24,6 +26,10 @@ pub enum CodexModel {
     /// recognizes the slug but rejects it for ChatGPT-plan auth
     /// ("not supported when using Codex with a ChatGPT account").
     Gpt6Astra,
+    /// GPT-6-Sol (`gpt-6-sol`). Availability depends on the server/account.
+    Gpt6Sol,
+    /// GPT-6-Luna (`gpt-6-luna`). Availability depends on the server/account.
+    Gpt6Luna,
     /// Daybreak Blue (`gpt-daybreak-blue-latest`) — the cyber-access
     /// program models (see `CyberAccessProgram`); server-side gated.
     DaybreakBlue,
@@ -58,6 +64,8 @@ impl CodexModel {
         match self {
             Self::Gpt61Sol => "gpt-6.1-sol",
             Self::Gpt6Astra => "gpt-6-astra",
+            Self::Gpt6Sol => "gpt-6-sol",
+            Self::Gpt6Luna => "gpt-6-luna",
             Self::DaybreakBlue => "gpt-daybreak-blue-latest",
             Self::DaybreakRed => "gpt-daybreak-red-latest",
             Self::Gpt56Sol => "gpt-5.6-sol",
@@ -83,6 +91,8 @@ impl CodexModel {
         match self {
             Self::Gpt61Sol => "GPT-6.1-Sol",
             Self::Gpt6Astra => "GPT-6-Astra",
+            Self::Gpt6Sol => "GPT-6-Sol",
+            Self::Gpt6Luna => "GPT-6-Luna",
             Self::DaybreakBlue => "Daybreak Blue",
             Self::DaybreakRed => "Daybreak Red",
             Self::Gpt56Sol => "GPT-5.6-Sol",
@@ -102,6 +112,8 @@ impl CodexModel {
         &[
             Self::Gpt61Sol,
             Self::Gpt6Astra,
+            Self::Gpt6Sol,
+            Self::Gpt6Luna,
             Self::DaybreakBlue,
             Self::DaybreakRed,
             Self::Gpt56Sol,
@@ -127,6 +139,8 @@ impl From<&str> for CodexModel {
         match s {
             "gpt-6.1-sol" => Self::Gpt61Sol,
             "gpt-6-astra" => Self::Gpt6Astra,
+            "gpt-6-sol" => Self::Gpt6Sol,
+            "gpt-6-luna" => Self::Gpt6Luna,
             "gpt-daybreak-blue-latest" => Self::DaybreakBlue,
             "gpt-daybreak-red-latest" => Self::DaybreakRed,
             "gpt-5.6-sol" => Self::Gpt56Sol,
@@ -177,6 +191,21 @@ mod tests {
         assert_eq!(serde_json::from_str::<CodexModel>(&json).unwrap(), model);
         let slug: String = model.into();
         assert_eq!(slug, "gpt-6.1-sol");
+    }
+
+    #[test]
+    fn test_gpt6_sol_and_luna_catalog_entries() {
+        for (slug, model, label) in [
+            ("gpt-6-sol", CodexModel::Gpt6Sol, "GPT-6-Sol"),
+            ("gpt-6-luna", CodexModel::Gpt6Luna, "GPT-6-Luna"),
+        ] {
+            assert_eq!(CodexModel::from(slug), model);
+            assert!(CodexModel::known().contains(&model));
+            assert_eq!(model.display_name(), label);
+            let json = serde_json::to_string(&model).unwrap();
+            assert_eq!(json, format!("\"{slug}\""));
+            assert_eq!(serde_json::from_str::<CodexModel>(&json).unwrap(), model);
+        }
     }
 
     #[test]
