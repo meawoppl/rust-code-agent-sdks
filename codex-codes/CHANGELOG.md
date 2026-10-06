@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.160.5] - 2026-10-06
+
+### Added
+
+- `Turn::root_turn_id` (`rootTurnId`): the first turn in the chain of work
+  that led to this turn; null in older history (openai/codex#51415).
+- `TurnStartParams::parent_turn_id` / `root_turn_id` (`parentTurnId` /
+  `rootTurnId`): attribute a new turn to the turn that caused it and to the
+  original root turn (openai/codex#51415). **Breaking** for code that builds
+  `TurnStartParams` with an explicit struct literal; `..Default::default()`
+  callers are unaffected.
+- `ThreadItem::SubAgentActivity` gains optional `model` and
+  `reasoning_effort` (`reasoningEffort`), resolved at sub-agent creation
+  (openai/codex#51463). **Breaking** for exhaustive struct patterns on the
+  variant.
+
+### Changed
+
+- Refresh the schema snapshot to `openai/codex@main` (`0b863c69`). Still
+  tested against Codex CLI **0.160.1**, the latest release.
+
 ## [0.160.4] - 2026-10-06
 
 ### Added
