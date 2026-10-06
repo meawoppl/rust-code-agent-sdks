@@ -102,6 +102,19 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub input_attachments_detail: Option<InputAttachmentsDetail>,
 
+    /// How the `resume_store_confirm` phase of `time_to_request_phases_ms`
+    /// was spent. Present where that phase is, in a session whose transcript
+    /// goes to a hosted store: on the result of a handed-off turn whose lines
+    /// were confirmed and that went on to a model request (CLI 2.1.290+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resume_store_confirm_detail: Option<ResumeStoreConfirmDetail>,
+
+    /// What the `system_prompt` phase of `time_to_request_phases_ms` waited
+    /// for, on turns where it took 25 ms or more; absent below that
+    /// (CLI 2.1.290+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub system_prompt_detail: Option<SystemPromptDetail>,
+
     /// Time from spawning a worker/spare until the first request was issued, in milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time_to_request_from_spawn_ms: Option<u64>,
@@ -422,9 +435,6 @@ pub struct ResultMessage {
     pub startup_failure_reason: Option<StartupFailureReason>,
 }
 
-/// Why Claude Code refused to start, carried as
-/// [`ResultMessage::startup_failure_reason`] so a host can offer the fix
-/// instead of a retry (CLI 2.1.274+).
 /// [`ResultMessage::input_attachments_detail`] — what the
 /// `input_attachments` phase did on the turn (CLI 2.1.288+).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
@@ -455,6 +465,66 @@ pub struct InputAttachmentsDetail {
     pub changed_files_reread: Option<u64>,
 }
 
+/// [`ResultMessage::resume_store_confirm_detail`] — how the
+/// `resume_store_confirm` phase was spent (CLI 2.1.290+). The four `_ms`
+/// values sum to that phase exactly.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct ResumeStoreConfirmDetail {
+    /// The transcript write, until the carried lines are in the queue of the
+    /// lane that uploads transcript rows.
+    pub write_ms: u64,
+    /// A POST was out that held only rows queued before the hand-off's write
+    /// began.
+    pub ahead_ms: u64,
+    /// Any other POST was out, each retry included.
+    pub post_ms: u64,
+    /// No POST was out (backoff, batching, a busy event loop), plus rounding
+    /// and any POST still out when the wait was cut short.
+    pub other_ms: u64,
+    /// POST attempts that ended between the start of the write and the end
+    /// of the wait.
+    pub posts: u64,
+    /// Those of [`Self::posts`] that did not go through.
+    pub failed_posts: u64,
+    /// Rows the lane had accepted and the store had not yet confirmed when
+    /// the write began.
+    pub rows_ahead: u64,
+    /// Rows queued since then that a POST delivered, the carried lines among
+    /// them.
+    pub rows: u64,
+}
+
+/// [`ResultMessage::system_prompt_detail`] — what the `system_prompt` phase
+/// waited for (CLI 2.1.290+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct SystemPromptDetail {
+    /// How the conversation's user context was obtained: `hit` (a finished
+    /// build was reused), `joined` (a build was still running) or `built`
+    /// (the phase started one).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_context: Option<String>,
+    /// Why that build ran (an open string set).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub refresh_reason: Option<String>,
+    /// The awaited part of the build that ran longest inside the phase:
+    /// `auto_memory_index`, `claude_md`, `context_hooks`, or the attached
+    /// Project's block (`project_kept`, `project_joined`, `project_fetched`,
+    /// `project_refused`, `project_failed`, `project_none`). Absent on a hit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slowest_producer: Option<String>,
+    /// How long [`Self::slowest_producer`] ran inside the phase. Far below
+    /// the phase's time, something else held it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slowest_producer_ms: Option<u64>,
+    /// `time_to_request_cpu_ms`'s counter over this phase alone. Far below
+    /// the phase's time, the process waited; at or above it, it computed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cpu_ms: Option<u64>,
+}
+
+/// Why Claude Code refused to start, carried as
+/// [`ResultMessage::startup_failure_reason`] so a host can offer the fix
+/// instead of a retry (CLI 2.1.274+).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum StartupFailureReason {
     /// Managed settings pin a first-party or Cloud gateway sign-in, and an
