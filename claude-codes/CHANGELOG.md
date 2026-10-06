@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.292] - 2026-10-05
+
+Re-baseline against Claude CLI **2.1.290**. Models the 2.1.289 → 2.1.290
+stream-json drift: one new `system` subtype and three optional fields, all
+additive. The model-id set is unchanged. `--help` only changed the
+`attach`/`logs` background-session subcommands to accept a session name
+(neither is modeled).
+
+### Added
+
+- `system/file_attachments_missing` (`SystemSubtype::FileAttachmentsMissing`,
+  `FileAttachmentsMissingMessage`, `MissingFileAttachment`,
+  `SystemMessage::as_file_attachments_missing`,
+  `KnownSystemEvent::FileAttachmentsMissing`) — files a user message sent by
+  reference did not arrive (`message_uuid`, `sent_count`, `missing[]` with
+  `file_uuid` and an open-set `reason`). Claude Code Remote workers only.
+- `ResultMessage::resume_store_confirm_detail` and `ResumeStoreConfirmDetail`
+  (`write_ms`, `ahead_ms`, `post_ms`, `other_ms`, `posts`, `failed_posts`,
+  `rows_ahead`, `rows`) — how the `resume_store_confirm` phase was spent.
+- `ResultMessage::system_prompt_detail` and `SystemPromptDetail`
+  (`user_context`, `refresh_reason`, `slowest_producer`,
+  `slowest_producer_ms`, `cpu_ms`) — what the `system_prompt` phase waited
+  for.
+- `UserMessage::refused_message_id` — the API id of the refused response, on
+  the synthetic message that re-asks the model after a refusal.
+
+### Fixed
+
+- The `StartupFailureReason` rustdoc had been attached to
+  `InputAttachmentsDetail` since 2.1.290; it is back on the enum.
+
+### Changed
+
+- `tests/schemas/claude_stream_json_snapshot.txt` re-snapshotted against
+  CLI 2.1.290 (58 → 59 SDK output union members).
+
 ## [2.1.291] - 2026-10-04
 
 Re-baseline against Claude CLI **2.1.289**. No wire drift: the 128 extracted

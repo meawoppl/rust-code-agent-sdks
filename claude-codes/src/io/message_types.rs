@@ -52,6 +52,7 @@ pub enum SystemSubtype {
     PerTurnEffortChanged,
     SessionTitleChanged,
     InstructionSizeWarning,
+    FileAttachmentsMissing,
     UiFocus,
     UiInvalidate,
     UiLog,
@@ -105,6 +106,7 @@ impl SystemSubtype {
             Self::PerTurnEffortChanged => "per_turn_effort_changed",
             Self::SessionTitleChanged => "session_title_changed",
             Self::InstructionSizeWarning => "instruction_size_warning",
+            Self::FileAttachmentsMissing => "file_attachments_missing",
             Self::UiFocus => "ui_focus",
             Self::UiInvalidate => "ui_invalidate",
             Self::UiLog => "ui_log",
@@ -165,6 +167,7 @@ impl From<&str> for SystemSubtype {
             "per_turn_effort_changed" => Self::PerTurnEffortChanged,
             "session_title_changed" => Self::SessionTitleChanged,
             "instruction_size_warning" => Self::InstructionSizeWarning,
+            "file_attachments_missing" => Self::FileAttachmentsMissing,
             "ui_focus" => Self::UiFocus,
             "ui_invalidate" => Self::UiInvalidate,
             "ui_log" => Self::UiLog,
@@ -1123,6 +1126,11 @@ pub struct UserMessage {
     /// (CLI 2.1.286+). Not settable by clients.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub server_received_wall_ms: Option<f64>,
+    /// Only on the synthetic message that re-asks the same model after a
+    /// refusal: the API `msg_*` id of the refused response. Absent when the
+    /// CLI has no well-formed id for it (CLI 2.1.290+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub refused_message_id: Option<String>,
 }
 
 impl UserMessage {
@@ -1577,6 +1585,19 @@ impl SystemMessage {
         serde_json::from_value(self.data.clone()).ok()
     }
 
+    /// Check if this is a file_attachments_missing message.
+    pub fn is_file_attachments_missing(&self) -> bool {
+        self.subtype == SystemSubtype::FileAttachmentsMissing
+    }
+
+    /// Try to parse as a file_attachments_missing message.
+    pub fn as_file_attachments_missing(&self) -> Option<FileAttachmentsMissingMessage> {
+        if self.subtype != SystemSubtype::FileAttachmentsMissing {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
     /// Check if this is a ui_focus message.
     pub fn is_ui_focus(&self) -> bool {
         self.subtype == SystemSubtype::UiFocus
@@ -1748,6 +1769,9 @@ impl SystemMessage {
             SystemSubtype::InstructionSizeWarning => {
                 parse!(InstructionSizeWarning, InstructionSizeWarningMessage)
             }
+            SystemSubtype::FileAttachmentsMissing => {
+                parse!(FileAttachmentsMissing, FileAttachmentsMissingMessage)
+            }
             SystemSubtype::UiFocus => parse!(UiFocus, UiFocusMessage),
             SystemSubtype::UiInvalidate => parse!(UiInvalidate, UiInvalidateMessage),
             SystemSubtype::UiLog => parse!(UiLog, UiLogMessage),
@@ -1851,6 +1875,9 @@ impl SystemMessage {
             SystemSubtype::InstructionSizeWarning => {
                 reserialize(parse_system::<InstructionSizeWarningMessage>(self))
             }
+            SystemSubtype::FileAttachmentsMissing => {
+                reserialize(parse_system::<FileAttachmentsMissingMessage>(self))
+            }
             SystemSubtype::UiFocus => reserialize(parse_system::<UiFocusMessage>(self)),
             SystemSubtype::UiInvalidate => reserialize(parse_system::<UiInvalidateMessage>(self)),
             SystemSubtype::UiLog => reserialize(parse_system::<UiLogMessage>(self)),
@@ -1914,6 +1941,7 @@ pub enum KnownSystemEvent {
     PerTurnEffortChanged(PerTurnEffortChangedMessage),
     SessionTitleChanged(SessionTitleChangedMessage),
     InstructionSizeWarning(InstructionSizeWarningMessage),
+    FileAttachmentsMissing(FileAttachmentsMissingMessage),
     UiFocus(UiFocusMessage),
     UiInvalidate(UiInvalidateMessage),
     UiLog(UiLogMessage),
@@ -3954,6 +3982,36 @@ pub struct InstructionSizeWarningMessage {
     pub largest_chars: Option<u64>,
     pub uuid: String,
     pub session_id: String,
+}
+
+/// `system/file_attachments_missing` — some files a user message sent by
+/// reference (`file_attachments`) did not arrive where Claude can read them,
+/// and Claude was told so; the turn runs on without them. A host can use it
+/// to tell the person who sent them. Only sent by a worker connected to
+/// Claude Code Remote. Each event states the whole list for its message, so
+/// keep the last one per `message_uuid` (CLI 2.1.290+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileAttachmentsMissingMessage {
+    /// The uuid of the inbound user message whose `file_attachments` named
+    /// the files.
+    pub message_uuid: String,
+    /// How many well-formed `file_attachments` entries that message had.
+    pub sent_count: u64,
+    /// The files Claude was told did not arrive, each once. Never empty.
+    pub missing: Vec<MissingFileAttachment>,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// One entry of [`FileAttachmentsMissingMessage::missing`].
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MissingFileAttachment {
+    /// The `file_uuid` of the message's `file_attachments` entry.
+    pub file_uuid: String,
+    /// Why, as a short code: `download`, `too_large`, `write`, `no_token`,
+    /// `not_finished` or `count_cap`. More codes may be added; read an
+    /// unknown one as "did not arrive".
+    pub reason: String,
 }
 
 /// `system/session_title_changed` — the session's name, for a host that

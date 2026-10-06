@@ -79,6 +79,7 @@ impl ClaudeInput {
             pasted_content: None,
             historical: None,
             server_received_wall_ms: None,
+            refused_message_id: None,
         })
     }
 
@@ -120,6 +121,7 @@ impl ClaudeInput {
             pasted_content: None,
             historical: None,
             server_received_wall_ms: None,
+            refused_message_id: None,
         })
     }
 

@@ -78,7 +78,7 @@
 //! ⚠️ **Important**: The Claude CLI protocol is unstable and evolving. This crate
 //! automatically checks your Claude CLI version and warns if it's newer than tested.
 //!
-//! Current tested version: **2.1.289**
+//! Current tested version: **2.1.290**
 //!
 //! Report compatibility issues at: <https://github.com/meawoppl/rust-claude-codes/pulls>
 //!
@@ -170,26 +170,27 @@ pub use io::{
     CompactMetadata, CompactionTrigger, ContextAgent, ContextCategory, ContextMcpTool,
     ContextMemoryFile, ContextOverLimit, ContextSkill, ContextUsage, ControlRequestProgressMessage,
     DevIntentKind, DevIntentMessage, DevIntentTrigger, ElicitationCompleteMessage,
-    FailedPersistedFile, FeedbackDraftQueuedMessage, FilesPersistedMessage, HookProgressMessage,
-    HookResponseMessage, HookStartedMessage, InformationalMessage, InitMessage, InitPermissionMode,
-    InstructionSizeWarningMessage, KnownSystemEvent, LocalCommandOutcome, LocalCommandOutcomeKind,
-    LocalCommandOutputMessage, LocalCommandRun, McpMeta, McpServerError, MemoryPaths,
-    MemoryRecallItem, MemoryRecallMessage, MessageOrigin, MessageRole, MirrorErrorKey,
-    MirrorErrorMessage, ModelRefusalFallbackMessage, ModelRefusalNoFallbackMessage,
-    NotificationMessage, OutputStyle, PeerMessageHoldCause, PeerMessageHoldMessage,
-    PeerMessageHoldOutcome, PeerMessageHoldState, PeerMessageLane, PerTurnEffortChangedMessage,
-    PermissionDeniedMessage, PermissionDeniedReasonCode, PersistedFile, PluginDiagnostic,
-    PluginInfo, PluginInstallMessage, PreservedMessages, PreservedSegment, RefusalFallbackScope,
-    RemedyFeature, RemedyFeatureCause, RemedyLoginProvider, RemedyPolicyKind,
-    SessionTitleChangedMessage, StatusMessage, StatusMessageStatus, StopReason, SummarizeMetadata,
-    SystemMessage, SystemSubtype, TaskEndReason, TaskNotificationMessage, TaskPatch,
-    TaskProgressMessage, TaskStartedMessage, TaskStatus, TaskType, TaskUpdatedMessage, TaskUsage,
-    ThinkingTokensMessage, ToolResultMeta, ToolResultRemedy, ToolResultRemedyKind, ToolUseMeta,
-    TurnHandoffAvailableMessage, TurnPreemptedMessage, UiFocusMessage, UiInvalidateMessage,
-    UiInvalidatedInstance, UiLogMessage, UiPane, UiPanesMessage, UiScrollMessage, UiSiteComponent,
-    UiStatusMessage, UiToastMessage, UsageReport, UsageReportExtraUsage, UsageReportLimit,
-    UsageReportRateLimits, UsageReportScope, UsageReportScopeLabel, VcsMutationKind,
-    VcsStateChangedMessage, ViewMode, WorkerShuttingDownMessage,
+    FailedPersistedFile, FeedbackDraftQueuedMessage, FileAttachmentsMissingMessage,
+    FilesPersistedMessage, HookProgressMessage, HookResponseMessage, HookStartedMessage,
+    InformationalMessage, InitMessage, InitPermissionMode, InstructionSizeWarningMessage,
+    KnownSystemEvent, LocalCommandOutcome, LocalCommandOutcomeKind, LocalCommandOutputMessage,
+    LocalCommandRun, McpMeta, McpServerError, MemoryPaths, MemoryRecallItem, MemoryRecallMessage,
+    MessageOrigin, MessageRole, MirrorErrorKey, MirrorErrorMessage, MissingFileAttachment,
+    ModelRefusalFallbackMessage, ModelRefusalNoFallbackMessage, NotificationMessage, OutputStyle,
+    PeerMessageHoldCause, PeerMessageHoldMessage, PeerMessageHoldOutcome, PeerMessageHoldState,
+    PeerMessageLane, PerTurnEffortChangedMessage, PermissionDeniedMessage,
+    PermissionDeniedReasonCode, PersistedFile, PluginDiagnostic, PluginInfo, PluginInstallMessage,
+    PreservedMessages, PreservedSegment, RefusalFallbackScope, RemedyFeature, RemedyFeatureCause,
+    RemedyLoginProvider, RemedyPolicyKind, SessionTitleChangedMessage, StatusMessage,
+    StatusMessageStatus, StopReason, SummarizeMetadata, SystemMessage, SystemSubtype,
+    TaskEndReason, TaskNotificationMessage, TaskPatch, TaskProgressMessage, TaskStartedMessage,
+    TaskStatus, TaskType, TaskUpdatedMessage, TaskUsage, ThinkingTokensMessage, ToolResultMeta,
+    ToolResultRemedy, ToolResultRemedyKind, ToolUseMeta, TurnHandoffAvailableMessage,
+    TurnPreemptedMessage, UiFocusMessage, UiInvalidateMessage, UiInvalidatedInstance, UiLogMessage,
+    UiPane, UiPanesMessage, UiScrollMessage, UiSiteComponent, UiStatusMessage, UiToastMessage,
+    UsageReport, UsageReportExtraUsage, UsageReportLimit, UsageReportRateLimits, UsageReportScope,
+    UsageReportScopeLabel, VcsMutationKind, VcsStateChangedMessage, ViewMode,
+    WorkerShuttingDownMessage,
 };
 
 // Additional top-level output message wrappers
@@ -211,10 +212,10 @@ pub use io::{
 // Usage types
 pub use io::{
     AssistantUsage, CacheCreationDetails, DeferredToolUse, FastModeDisabledReason,
-    InputAttachmentsDetail, RunnerExit, RunnerExitPhase, ServerToolUse, StartupFailureReason,
-    StreamPostQueuedBehind, SubagentKillCounts, SubagentRefusalCounts, SubagentResult,
-    SubagentSpawnRequests, SubagentStats, SubagentToolStats, SubagentUsageRollup,
-    TurnStartResumeKind, UsageInfo,
+    InputAttachmentsDetail, ResumeStoreConfirmDetail, RunnerExit, RunnerExitPhase, ServerToolUse,
+    StartupFailureReason, StreamPostQueuedBehind, SubagentKillCounts, SubagentRefusalCounts,
+    SubagentResult, SubagentSpawnRequests, SubagentStats, SubagentToolStats, SubagentUsageRollup,
+    SystemPromptDetail, TurnStartResumeKind, UsageInfo,
 };
 
 // Typed tool input types
