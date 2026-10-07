@@ -673,6 +673,179 @@ pub struct ToolResultMeta {
     /// [`non_execution_kind`](Self::non_execution_kind), not from this.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub remedy: Option<ToolResultRemedy>,
+    /// How the call's permission check ended (CLI 2.1.293+). On a
+    /// subagent's messages (`parent_tool_use_id` set) entries carry only
+    /// this, so those messages do not say whether a call ran. Absent when
+    /// the call ended before its permission check, and on some results
+    /// built apart from the call's own run (a plugin hook's refusal, a
+    /// hook's rewrite of a denied result, a queued call a stop cancelled).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permission_decision: Option<ToolPermissionDecision>,
+}
+
+/// [`ToolResultMeta::permission_decision`] — how a tool call's permission
+/// check ended, as Claude Code's `claude_code.tool.blocked_on_user` trace
+/// span reports it (CLI 2.1.293+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ToolPermissionDecision {
+    /// The outcome.
+    pub decision: PermissionDecisionOutcome,
+    /// What decided: `config`, `classifier`, `hook`, `user_temporary`,
+    /// `user_permanent`, `user_reject`, `user_abort`, or `invalid_input`,
+    /// `permission_updated_input_invalid` or `server_fallback_tombstone`
+    /// when bad input or the server ended the wait. In SDK sessions a rule
+    /// for this session or in the user's own settings reports
+    /// `user_temporary`, `user_permanent` or `user_reject` and other rules
+    /// report `config`; interactive sessions report every rule as `config`.
+    pub source: String,
+    /// The kind of reason the check gave when it decided by itself, such as
+    /// `rule` whenever a rule decided, or `classifier` for an auto-mode
+    /// allow (which reports source `config`). Absent when a person or the
+    /// SDK host answered, when the outcome was still a question, and for
+    /// `user_abort` and the last three sources above.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason_type: Option<PermissionDecisionReasonType>,
+}
+
+/// [`ToolPermissionDecision::decision`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PermissionDecisionOutcome {
+    /// The call was allowed.
+    Accept,
+    /// The call was denied.
+    Reject,
+    /// The permission wait was cancelled.
+    Cancelled,
+    /// An outcome not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl PermissionDecisionOutcome {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Accept => "accept",
+            Self::Reject => "reject",
+            Self::Cancelled => "cancelled",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for PermissionDecisionOutcome {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for PermissionDecisionOutcome {
+    fn from(s: &str) -> Self {
+        match s {
+            "accept" => Self::Accept,
+            "reject" => Self::Reject,
+            "cancelled" => Self::Cancelled,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for PermissionDecisionOutcome {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PermissionDecisionOutcome {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// [`ToolPermissionDecision::reason_type`] — the kind of reason a
+/// self-decided permission check gave.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PermissionDecisionReasonType {
+    /// A permission rule decided.
+    Rule,
+    /// The permission mode decided.
+    Mode,
+    /// The results of a compound command's subcommands decided.
+    SubcommandResults,
+    /// The `--permission-prompt-tool` decided.
+    PermissionPromptTool,
+    /// A hook decided.
+    Hook,
+    /// An async agent's permission handling decided.
+    AsyncAgent,
+    /// A sandbox override decided.
+    SandboxOverride,
+    /// The working-directory check decided.
+    WorkingDir,
+    /// A safety check decided.
+    SafetyCheck,
+    /// The auto-mode classifier decided.
+    Classifier,
+    /// Some other reason.
+    Other,
+    /// A reason type not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl PermissionDecisionReasonType {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Rule => "rule",
+            Self::Mode => "mode",
+            Self::SubcommandResults => "subcommandResults",
+            Self::PermissionPromptTool => "permissionPromptTool",
+            Self::Hook => "hook",
+            Self::AsyncAgent => "asyncAgent",
+            Self::SandboxOverride => "sandboxOverride",
+            Self::WorkingDir => "workingDir",
+            Self::SafetyCheck => "safetyCheck",
+            Self::Classifier => "classifier",
+            Self::Other => "other",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for PermissionDecisionReasonType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for PermissionDecisionReasonType {
+    fn from(s: &str) -> Self {
+        match s {
+            "rule" => Self::Rule,
+            "mode" => Self::Mode,
+            "subcommandResults" => Self::SubcommandResults,
+            "permissionPromptTool" => Self::PermissionPromptTool,
+            "hook" => Self::Hook,
+            "asyncAgent" => Self::AsyncAgent,
+            "sandboxOverride" => Self::SandboxOverride,
+            "workingDir" => Self::WorkingDir,
+            "safetyCheck" => Self::SafetyCheck,
+            "classifier" => Self::Classifier,
+            "other" => Self::Other,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for PermissionDecisionReasonType {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PermissionDecisionReasonType {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// The fix a host can offer for what a `tool_result` reports, stamped from
@@ -2220,6 +2393,11 @@ pub struct BackgroundTaskInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub run_id: Option<String>,
     pub task_type: String,
+    /// Agent type of a `local_agent` task, such as `general-purpose` or a
+    /// custom agent's name; `main-session` for a backgrounded main session.
+    /// Not set on other tasks (CLI 2.1.293+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subagent_type: Option<String>,
     pub description: String,
     /// `task_id` of the subagent task that launched this one; see
     /// [`TaskStartedMessage::parent_task_id`] (CLI 2.1.292+).
@@ -2229,6 +2407,10 @@ pub struct BackgroundTaskInfo {
     /// hosts should exclude them from activity indicators (CLI 2.1.259+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ambient: Option<bool>,
+    /// True for an awaited run of a resumed subagent; see
+    /// [`TaskStartedMessage::awaited`] (CLI 2.1.293+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub awaited: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -3012,6 +3194,15 @@ pub struct TaskStartedMessage {
     /// (CLI 2.1.239+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub is_backgrounded: Option<bool>,
+    /// True for a run of a resumed subagent (`local_agent`) that the tool
+    /// call which resumed it waits for, as `SendMessage` does when
+    /// background tasks are disabled; [`tool_use_id`](Self::tool_use_id)
+    /// then names that call. The run has ended by the time that call
+    /// returns, and its report goes into that call's result, so expect no
+    /// follow-up turn when it ends. A later resume that nothing waits for
+    /// starts a new run without the field (CLI 2.1.293+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub awaited: Option<bool>,
     /// Nesting depth of a spawned subagent (`local_agent`) task: 1 for a
     /// top-level spawn, N+1 when spawned from inside a depth-N agent. Not set
     /// on other tasks (CLI 2.1.239+).
@@ -4225,9 +4416,10 @@ impl<'de> Deserialize<'de> for PermissionCheckStatus {
 pub struct MissingFileAttachment {
     /// The `file_uuid` of the message's `file_attachments` entry.
     pub file_uuid: String,
-    /// Why, as a short code: `download`, `too_large`, `write`, `no_token`,
-    /// `not_finished` or `count_cap`. More codes may be added; read an
-    /// unknown one as "did not arrive".
+    /// Why, as a short code: `download`, `too_large`, `not_found` (the
+    /// files route answered 404 or 410, so sending it again rarely helps;
+    /// CLI 2.1.293+), `write`, `no_token`, `not_finished` or `count_cap`.
+    /// More codes may be added; read an unknown one as "did not arrive".
     pub reason: String,
 }
 

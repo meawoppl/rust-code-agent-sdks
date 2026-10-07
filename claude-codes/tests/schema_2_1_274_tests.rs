@@ -246,6 +246,11 @@ fn startup_failure_reason_known_values_and_unknown() {
             StartupFailureReason::CliVersionTooOld,
         ),
         ("bypass_root", StartupFailureReason::BypassRoot),
+        (
+            "org_config_required_unavailable",
+            StartupFailureReason::OrgConfigRequiredUnavailable,
+        ),
+        ("org_config_refused", StartupFailureReason::OrgConfigRefused),
     ];
     for (wire, variant) in known {
         assert_eq!(StartupFailureReason::from(wire), variant);
