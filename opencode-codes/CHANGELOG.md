@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.35] - 2026-10-06
+
+### Changed
+
+- Re-baseline the tested pin to opencode **1.18.35** (from 1.18.34). The
+  live `GET /doc` OpenAPI document is byte-identical to the committed
+  snapshot, `opencode --help` is unchanged, and the live suite passes
+  unmodified — pin-only release.
+
 ## [1.18.34] - 2026-10-01
 
 ### Changed
