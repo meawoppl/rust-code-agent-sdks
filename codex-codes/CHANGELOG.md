@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.160.6] - 2026-10-06
+
+### Changed
+
+- `SkillMetadata::path` and `SkillSummary::path` are now
+  `LegacyAppPathString` instead of `AbsolutePathBuf`, following upstream's
+  move to `PathUri` skill identity (openai/codex#51482). Both are
+  transparent `String` newtypes, so the wire format is unchanged.
+  **Breaking** for code that constructs or matches on these fields.
+- Refresh the schema snapshot to `openai/codex@main` (`18e28fe1`). Still
+  tested against Codex CLI **0.160.1**, the latest release.
+
 ## [0.160.5] - 2026-10-06
 
 ### Added
