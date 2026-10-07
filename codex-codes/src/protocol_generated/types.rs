@@ -7066,7 +7066,7 @@ pub struct SkillMetadata {
     #[serde(default)]
     pub name: String,
     #[serde()]
-    pub path: AbsolutePathBuf,
+    pub path: LegacyAppPathString,
     #[serde(rename = "pluginId", default, skip_serializing_if = "Option::is_none")]
     pub plugin_id: Option<String>,
     #[serde()]
@@ -7110,7 +7110,7 @@ pub struct SkillSummary {
     #[serde(default)]
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub path: Option<AbsolutePathBuf>,
+    pub path: Option<LegacyAppPathString>,
     #[serde(
         rename = "shortDescription",
         default,
