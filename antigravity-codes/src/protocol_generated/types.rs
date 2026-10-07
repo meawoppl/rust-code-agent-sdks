@@ -2703,6 +2703,12 @@ pub struct CompactionConfig {
         skip_serializing_if = "Option::is_none"
     )]
     pub max_context_tokens: Option<u32>,
+    #[serde(
+        alias = "summary_prompt_override",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub summary_prompt_override: Option<String>,
 }
 
 /// `genai.Content`
@@ -4993,6 +4999,8 @@ pub struct SystemInstructions {
     pub custom: Option<CustomSystemInstructions>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub appended: Option<AppendedSystemInstructions>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub overrides: Vec<TemplateOverride>,
 }
 
 /// The `type` oneof of [`SystemInstructions`], as an owned value.
@@ -5018,6 +5026,20 @@ impl SystemInstructions {
     pub fn has_type(&self) -> bool {
         self.custom.is_some() || self.appended.is_some()
     }
+}
+
+/// `antigravity.localharness.TemplateOverride`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TemplateOverride {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remove: Option<bool>,
+    #[serde(alias = "si_template", default, skip_serializing_if = "Vec::is_empty")]
+    pub si_template: Vec<SystemInstructionTemplate>,
 }
 
 /// `genai.TextContent`
@@ -5395,6 +5417,12 @@ pub struct ToolOutputTruncationErrorStrategy {
 pub struct ToolOutputTruncationTruncateStrategy {
     #[serde(alias = "max_tokens", default, skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<i32>,
+    #[serde(
+        alias = "save_full_output",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub save_full_output: Option<bool>,
 }
 
 /// `antigravity.localharness.ToolResponse`

@@ -5,6 +5,30 @@ All notable changes to `antigravity-codes` are documented here.
 The version tracks the `google-antigravity` release whose harness the crate was
 generated from and tested against.
 
+## [0.1.21] - 2026-10-07
+
+Re-baseline against `google-antigravity` 0.1.21: types regenerated from the
+0.1.21 wheel's descriptors (177 messages, 31 enums, up from 176/31). Regen
+against the committed 0.1.20 descriptors was verified as a byte-identical
+no-op first, so nothing hand-maintained was clobbered. No renames, removals,
+or `oneof` changes. The new fields are public, so code that builds these three
+structs with exhaustive struct literals (no `..Default::default()`) has to add
+them. Nothing in this workspace does that. The wheel's Python side also gained
+a `beta` package and `connections/local/interactions_*` modules and dropped
+`proto/live_config_pb2.py`; none of that reaches the harness descriptors this
+crate is generated from.
+
+### Added
+
+- `TemplateOverride` message (`title`, `text`, `remove`, `si_template:
+  Vec<SystemInstructionTemplate>`), for overriding or removing individual
+  system-instruction template sections.
+- `SystemInstructions.overrides: Vec<TemplateOverride>` (proto field 3).
+- `CompactionConfig.summary_prompt_override: Option<String>` (proto field 4,
+  wire `summaryPromptOverride`).
+- `ToolOutputTruncationTruncateStrategy.save_full_output: Option<bool>` (proto
+  field 2, wire `saveFullOutput`).
+
 ## [0.1.20] - 2026-09-28
 
 Re-baseline against `google-antigravity` 0.1.20: types regenerated from the
