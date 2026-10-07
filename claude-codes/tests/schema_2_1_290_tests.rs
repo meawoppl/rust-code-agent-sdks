@@ -1,8 +1,9 @@
 //! Coverage for the CLI 2.1.290 stream-json drift.
 //!
 //! 2.1.289 → 2.1.290 added the `system/file_attachments_missing` subtype,
-//! `resume_store_confirm_detail` and `system_prompt_detail` on `result`, and
-//! `refused_message_id` on `user`.
+//! `resume_store_confirm_detail` on `result`, and `refused_message_id` on
+//! `user`. (Its `system_prompt_detail` on `result` was removed again in
+//! 2.1.293.)
 //!
 //! Each frame below carries the new fields and is asserted **fully wrapped** —
 //! the typed model captures every wire field with nothing left in an untyped
@@ -45,10 +46,9 @@ fn file_attachments_missing_is_typed() {
     ));
 }
 
-/// `result` carries how the `resume_store_confirm` and `system_prompt`
-/// phases were spent.
+/// `result` carries how the `resume_store_confirm` phase was spent.
 #[test]
-fn result_carries_resume_store_confirm_and_system_prompt_detail() {
+fn result_carries_resume_store_confirm_detail() {
     let frame = json!({
         "type": "result",
         "subtype": "success",
@@ -80,13 +80,6 @@ fn result_carries_resume_store_confirm_and_system_prompt_detail() {
             "failed_posts": 1,
             "rows_ahead": 12,
             "rows": 4
-        },
-        "system_prompt_detail": {
-            "user_context": "joined",
-            "refresh_reason": "session_start",
-            "slowest_producer": "claude_md",
-            "slowest_producer_ms": 41,
-            "cpu_ms": 6
         }
     });
     assert_fully_wrapped(&frame);
@@ -101,20 +94,6 @@ fn result_carries_resume_store_confirm_and_system_prompt_detail() {
     );
     assert_eq!(store.failed_posts, 1);
     assert_eq!(store.rows_ahead, 12);
-    let prompt = res.system_prompt_detail.expect("prompt detail");
-    assert_eq!(prompt.user_context.as_deref(), Some("joined"));
-    assert_eq!(prompt.slowest_producer.as_deref(), Some("claude_md"));
-    assert_eq!(prompt.slowest_producer_ms, Some(41));
-}
-
-/// A `system_prompt_detail` on a hit carries only `user_context`.
-#[test]
-fn system_prompt_detail_fields_are_optional() {
-    let detail: claude_codes::SystemPromptDetail =
-        serde_json::from_value(json!({"user_context": "hit"})).unwrap();
-    assert_eq!(detail.user_context.as_deref(), Some("hit"));
-    assert_eq!(detail.slowest_producer, None);
-    assert_eq!(detail.cpu_ms, None);
 }
 
 /// The synthetic re-ask after a refusal names the refused response.

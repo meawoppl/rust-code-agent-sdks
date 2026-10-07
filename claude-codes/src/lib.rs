@@ -78,7 +78,7 @@
 //! ⚠️ **Important**: The Claude CLI protocol is unstable and evolving. This crate
 //! automatically checks your Claude CLI version and warns if it's newer than tested.
 //!
-//! Current tested version: **2.1.292**
+//! Current tested version: **2.1.293**
 //!
 //! Report compatibility issues at: <https://github.com/meawoppl/rust-claude-codes/pulls>
 //!
@@ -180,13 +180,14 @@ pub use io::{
     ModelRefusalNoFallbackMessage, NotificationMessage, OutputStyle, PeerMessageHoldCause,
     PeerMessageHoldMessage, PeerMessageHoldOutcome, PeerMessageHoldState, PeerMessageLane,
     PerTurnEffortChangedMessage, PermissionCheckStatus, PermissionCheckStatusMessage,
-    PermissionDeniedMessage, PermissionDeniedReasonCode, PersistedFile, PluginDiagnostic,
-    PluginInfo, PluginInstallMessage, PreservedMessages, PreservedSegment, RefusalFallbackScope,
-    RemedyFeature, RemedyFeatureCause, RemedyLoginProvider, RemedyPolicyKind,
-    SessionTitleChangedMessage, StatusMessage, StatusMessageStatus, StopReason, SummarizeMetadata,
-    SystemMessage, SystemSubtype, TaskEndReason, TaskHandback, TaskNotificationMessage, TaskPatch,
-    TaskProgressMessage, TaskStartedMessage, TaskStatus, TaskType, TaskUpdatedMessage, TaskUsage,
-    ThinkingTokensMessage, ToolResultMeta, ToolResultRemedy, ToolResultRemedyKind, ToolUseMeta,
+    PermissionDecisionOutcome, PermissionDecisionReasonType, PermissionDeniedMessage,
+    PermissionDeniedReasonCode, PersistedFile, PluginDiagnostic, PluginInfo, PluginInstallMessage,
+    PreservedMessages, PreservedSegment, RefusalFallbackScope, RemedyFeature, RemedyFeatureCause,
+    RemedyLoginProvider, RemedyPolicyKind, SessionTitleChangedMessage, StatusMessage,
+    StatusMessageStatus, StopReason, SummarizeMetadata, SystemMessage, SystemSubtype,
+    TaskEndReason, TaskHandback, TaskNotificationMessage, TaskPatch, TaskProgressMessage,
+    TaskStartedMessage, TaskStatus, TaskType, TaskUpdatedMessage, TaskUsage, ThinkingTokensMessage,
+    ToolPermissionDecision, ToolResultMeta, ToolResultRemedy, ToolResultRemedyKind, ToolUseMeta,
     TurnHandoffAvailableMessage, TurnPreemptedMessage, UiFocusMessage, UiInvalidateMessage,
     UiInvalidatedInstance, UiLogMessage, UiPane, UiPanesMessage, UiScrollMessage, UiSiteComponent,
     UiStatusMessage, UiToastMessage, UsageReport, UsageReportExtraUsage, UsageReportLimit,
@@ -216,7 +217,7 @@ pub use io::{
     InputAttachmentsDetail, ResumeStoreConfirmDetail, RunnerExit, RunnerExitPhase, ServerToolUse,
     StartupFailureReason, StreamPostQueuedBehind, SubagentKillCounts, SubagentRefusalCounts,
     SubagentResult, SubagentSpawnRequests, SubagentStats, SubagentToolStats, SubagentUsageRollup,
-    SystemPromptDetail, TurnStartResumeKind, UsageInfo,
+    TurnStartResumeKind, UsageInfo,
 };
 
 // Typed tool input types

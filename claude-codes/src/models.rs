@@ -22,7 +22,9 @@ pub enum ClaudeModel {
     /// Newest Opus-family model (floating alias `opus`). Resolves to
     /// `claude-opus-5-5` first-party as of CLI 2.1.280.
     Opus,
-    /// Newest Haiku-family model (floating alias `haiku`).
+    /// Newest Haiku-family model (floating alias `haiku`). Resolves to
+    /// `claude-haiku-5-5` first-party as of CLI 2.1.293; Bedrock, Vertex,
+    /// Foundry and the gateway still resolve it to `claude-haiku-4-5`.
     Haiku,
     /// Newest Fable-family model (floating alias `fable`).
     Fable,
@@ -76,6 +78,9 @@ pub enum ClaudeModel {
     Sonnet37,
     /// Sonnet 3.5 (`claude-3-5-sonnet`).
     Sonnet35,
+    /// Haiku 5.5 (`claude-haiku-5-5`), added in CLI 2.1.293 — the new
+    /// first-party float target of the `haiku` alias.
+    Haiku55,
     /// Haiku 4.5 (`claude-haiku-4-5`).
     Haiku45,
     /// Haiku 3.5 (`claude-3-5-haiku`).
@@ -117,6 +122,7 @@ impl ClaudeModel {
             Self::Sonnet40 => "claude-sonnet-4-0",
             Self::Sonnet37 => "claude-3-7-sonnet",
             Self::Sonnet35 => "claude-3-5-sonnet",
+            Self::Haiku55 => "claude-haiku-5-5",
             Self::Haiku45 => "claude-haiku-4-5",
             Self::Haiku35 => "claude-3-5-haiku",
             Self::Custom(s) => s.as_str(),
@@ -160,6 +166,7 @@ impl ClaudeModel {
             Self::Sonnet40 => "Sonnet 4",
             Self::Sonnet37 => "Sonnet 3.7",
             Self::Sonnet35 => "Sonnet 3.5",
+            Self::Haiku55 => "Haiku 5.5",
             Self::Haiku45 => "Haiku 4.5",
             Self::Haiku35 => "Haiku 3.5",
             Self::Custom(s) => s.as_str(),
@@ -214,6 +221,7 @@ impl ClaudeModel {
             Self::Sonnet40,
             Self::Sonnet37,
             Self::Sonnet35,
+            Self::Haiku55,
             Self::Haiku45,
             Self::Haiku35,
         ]
@@ -257,6 +265,7 @@ impl From<&str> for ClaudeModel {
             "claude-sonnet-4-0" => Self::Sonnet40,
             "claude-3-7-sonnet" => Self::Sonnet37,
             "claude-3-5-sonnet" => Self::Sonnet35,
+            "claude-haiku-5-5" => Self::Haiku55,
             "claude-haiku-4-5" => Self::Haiku45,
             "claude-3-5-haiku" => Self::Haiku35,
             other => Self::Custom(other.to_string()),
@@ -327,5 +336,12 @@ mod tests {
         assert_eq!(json, "\"claude-haiku-4-5\"");
         let back: ClaudeModel = serde_json::from_str(&json).unwrap();
         assert_eq!(back, ClaudeModel::Haiku45);
+
+        let json = serde_json::to_string(&ClaudeModel::Haiku55).unwrap();
+        assert_eq!(json, "\"claude-haiku-5-5\"");
+        let back: ClaudeModel = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, ClaudeModel::Haiku55);
+        assert_eq!(ClaudeModel::Haiku55.display_name(), "Haiku 5.5");
+        assert!(!ClaudeModel::Haiku55.is_alias());
     }
 }

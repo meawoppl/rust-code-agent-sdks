@@ -109,12 +109,6 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resume_store_confirm_detail: Option<ResumeStoreConfirmDetail>,
 
-    /// What the `system_prompt` phase of `time_to_request_phases_ms` waited
-    /// for, on turns where it took 25 ms or more; absent below that
-    /// (CLI 2.1.290+).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub system_prompt_detail: Option<SystemPromptDetail>,
-
     /// Time from spawning a worker/spare until the first request was issued, in milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time_to_request_from_spawn_ms: Option<u64>,
@@ -507,34 +501,6 @@ pub struct ResumeStoreConfirmDetail {
     pub rows: u64,
 }
 
-/// [`ResultMessage::system_prompt_detail`] — what the `system_prompt` phase
-/// waited for (CLI 2.1.290+).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
-pub struct SystemPromptDetail {
-    /// How the conversation's user context was obtained: `hit` (a finished
-    /// build was reused), `joined` (a build was still running) or `built`
-    /// (the phase started one).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub user_context: Option<String>,
-    /// Why that build ran (an open string set).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub refresh_reason: Option<String>,
-    /// The awaited part of the build that ran longest inside the phase:
-    /// `auto_memory_index`, `claude_md`, `context_hooks`, or the attached
-    /// Project's block (`project_kept`, `project_joined`, `project_fetched`,
-    /// `project_refused`, `project_failed`, `project_none`). Absent on a hit.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub slowest_producer: Option<String>,
-    /// How long [`Self::slowest_producer`] ran inside the phase. Far below
-    /// the phase's time, something else held it.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub slowest_producer_ms: Option<u64>,
-    /// `time_to_request_cpu_ms`'s counter over this phase alone. Far below
-    /// the phase's time, the process waited; at or above it, it computed.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cpu_ms: Option<u64>,
-}
-
 /// Why Claude Code refused to start, carried as
 /// [`ResultMessage::startup_failure_reason`] so a host can offer the fix
 /// instead of a retry (CLI 2.1.274+).
@@ -586,6 +552,16 @@ pub enum StartupFailureReason {
     CliVersionTooOld,
     /// Bypass permissions mode was requested while running as root.
     BypassRoot,
+    /// The organization requires its policy limits and managed settings
+    /// before a session starts, and they could not be loaded (network,
+    /// proxy, or an Anthropic error); retrying may succeed (CLI 2.1.293+).
+    OrgConfigRequiredUnavailable,
+    /// The organization requires its policy limits and managed settings, and
+    /// Anthropic refused them for this sign-in (expired or revoked session,
+    /// or the organization does not allow Claude Code for this account);
+    /// signing in again or an admin's change is the fix, not a retry
+    /// (CLI 2.1.293+).
+    OrgConfigRefused,
     /// A cause not yet known to this version of the crate.
     Unknown(String),
 }
@@ -610,6 +586,8 @@ impl StartupFailureReason {
             Self::WorktreeUnverified => "worktree_unverified",
             Self::CliVersionTooOld => "cli_version_too_old",
             Self::BypassRoot => "bypass_root",
+            Self::OrgConfigRequiredUnavailable => "org_config_required_unavailable",
+            Self::OrgConfigRefused => "org_config_refused",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -641,6 +619,8 @@ impl From<&str> for StartupFailureReason {
             "worktree_unverified" => Self::WorktreeUnverified,
             "cli_version_too_old" => Self::CliVersionTooOld,
             "bypass_root" => Self::BypassRoot,
+            "org_config_required_unavailable" => Self::OrgConfigRequiredUnavailable,
+            "org_config_refused" => Self::OrgConfigRefused,
             other => Self::Unknown(other.to_string()),
         }
     }

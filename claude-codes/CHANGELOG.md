@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.295] - 2026-10-07
+
+Re-baseline against Claude CLI **2.1.293**. Models the 2.1.292 → 2.1.293
+stream-json drift (optional fields and enum values added, one internal
+`result` field removed) and adds the new Haiku 5.5 model. `--help` is
+byte-identical.
+
+### Added
+
+- `ClaudeModel::Haiku55` (`claude-haiku-5-5`, "Haiku 5.5"). The `haiku`
+  alias now resolves to it first-party; Bedrock, Vertex, Foundry and the
+  gateway still resolve `haiku` to `claude-haiku-4-5`.
+- `TaskStartedMessage::awaited` and `BackgroundTaskInfo::awaited`. These
+  flag a run of a resumed subagent that the resuming tool call waits for.
+  Its report goes into that call's result, so no follow-up turn comes.
+- `BackgroundTaskInfo::subagent_type`. This is the agent type of a
+  `local_agent` task, or `main-session` for a backgrounded main session.
+- `ToolResultMeta::permission_decision` (`ToolPermissionDecision`). It
+  reports how a tool call's permission check ended: an open-set
+  `PermissionDecisionOutcome` (`accept` / `reject` / `cancelled`), the
+  `source` that decided, and an optional open-set
+  `PermissionDecisionReasonType` (`rule`, `mode`, `subcommandResults`,
+  `permissionPromptTool`, `hook`, `asyncAgent`, `sandboxOverride`,
+  `workingDir`, `safetyCheck`, `classifier`, `other`).
+- `StartupFailureReason::OrgConfigRequiredUnavailable` and
+  `StartupFailureReason::OrgConfigRefused`. Both mean the organization's
+  required policy limits and managed settings were unavailable or refused
+  at startup.
+
+### Changed
+
+- **Breaking:** `ClaudeModel` gains the `Haiku55` variant, which breaks
+  exhaustive downstream matches.
+- **Breaking:** `StartupFailureReason` gains two variants, which breaks
+  exhaustive downstream matches.
+- `MissingFileAttachment::reason` documents the new `not_found` code.
+- `tests/schemas/claude_stream_json_snapshot.txt` re-snapshotted against
+  CLI 2.1.293.
+
+### Removed
+
+- **Breaking:** `ResultMessage::system_prompt_detail` and
+  `SystemPromptDetail`. CLI 2.1.293 no longer defines or emits the field.
+  If an older CLI still sends it, it is now ignored.
+
 ## [2.1.294] - 2026-10-06
 
 Re-baseline against Claude CLI **2.1.292**. Models the 2.1.291 → 2.1.292
