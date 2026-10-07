@@ -155,6 +155,15 @@ fn thread_originator_fields_round_trip() {
         serde_json::to_value(params).unwrap(),
         serde_json::json!({"originators": ["codex_vscode"]})
     );
+
+    let params = ThreadListParams {
+        excluded_thread_ids: Some(vec!["thr_1".to_string()]),
+        ..ThreadListParams::default()
+    };
+    assert_eq!(
+        serde_json::to_value(params).unwrap(),
+        serde_json::json!({"excludedThreadIds": ["thr_1"]})
+    );
 }
 
 /// McpServerStatus.toolsError decodes the discovery failure message and is omitted when a catalog was returned.
