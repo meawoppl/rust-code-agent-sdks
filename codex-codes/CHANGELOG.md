@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.160.7] - 2026-10-07
+
+### Added
+
+- `ThreadListParams::excluded_thread_ids` (`excludedThreadIds`): thread IDs
+  to exclude before the result limit is applied, up to 100 entries
+  (openai/codex#51595). **Breaking** for code that builds
+  `ThreadListParams` with an explicit struct literal;
+  `..Default::default()` callers are unaffected.
+- Refresh the schema snapshot to `openai/codex@main` (`1fbe15c9`). Still
+  tested against Codex CLI **0.160.1**, the latest release.
+
 ## [0.160.6] - 2026-10-06
 
 ### Changed

@@ -8190,6 +8190,16 @@ pub struct ThreadListParams {
     pub cursor: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cwd: Option<ThreadListCwdFilter>,
+    /// Thread IDs to exclude before applying the result limit. Up to 100
+    /// entries; invalid IDs or a larger list are rejected, never truncated.
+    /// Send the same exclusions on each page. Omitted, null, or empty means
+    /// no exclusions.
+    #[serde(
+        rename = "excludedThreadIds",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub excluded_thread_ids: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
     #[serde(
