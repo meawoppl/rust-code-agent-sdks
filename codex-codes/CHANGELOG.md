@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.162.0] - 2026-10-08
+
+### Changed
+
+- Tested against Codex CLI **0.162.0** (was 0.161.0). The release's
+  `generate-json-schema` output is a strict subset of the tracked
+  `openai/codex@main` snapshot. With descriptions stripped, the only
+  difference is the main-only `ThreadListParams.excludedThreadIds`, already
+  modeled in 0.160.7. No type changes needed. The bundled `models.json` slug
+  set is unchanged.
+
 ## [0.161.0] - 2026-10-07
 
 ### Changed
