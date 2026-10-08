@@ -88,6 +88,7 @@ pub struct MuseExecBuilder {
     provider: Option<Provider>,
     preset: Option<String>,
     model: Option<String>,
+    config: Vec<(String, String)>,
     session_id: Option<String>,
     reasoning_effort: Option<String>,
     parallel_tool_calls: Option<bool>,
@@ -137,6 +138,7 @@ impl Default for MuseExecBuilder {
             provider: None,
             preset: None,
             model: None,
+            config: Vec::new(),
             session_id: None,
             reasoning_effort: None,
             parallel_tool_calls: None,
@@ -219,6 +221,15 @@ impl MuseExecBuilder {
     /// the CLI mints a random v4 of its own.)
     pub fn session_id(mut self, session_id: impl Into<String>) -> Self {
         self.session_id = Some(session_id.into());
+        self
+    }
+
+    /// Set one setting for this run (`--config KEY=VALUE`, repeatable;
+    /// since Muse 1.4.4). `value` is JSON, so strings need their quotes
+    /// (`"\"x\""`); secrets are only accepted as a whole-value `${VAR}`.
+    /// Unknown or clashing keys make the CLI refuse the run.
+    pub fn config(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.config.push((key.into(), value.into()));
         self
     }
 
@@ -487,6 +498,9 @@ impl MuseExecBuilder {
         if let Some(m) = &self.model {
             cmd.args(["--model", m]);
         }
+        for (key, value) in &self.config {
+            cmd.arg("--config").arg(format!("{key}={value}"));
+        }
         if let Some(s) = &self.session_id {
             cmd.args(["--session-id", s]);
         }
@@ -650,6 +664,8 @@ mod tests {
             .provider(Provider::Meta)
             .preset("native-basic")
             .model("m-1")
+            .config("model", "\"m-2\"")
+            .config("a.b", "1")
             .session_id("s-1")
             .reasoning_effort("high")
             .parallel_tool_calls(true)
@@ -693,6 +709,10 @@ mod tests {
             "native-basic",
             "--model",
             "m-1",
+            "--config",
+            "model=\"m-2\"",
+            "--config",
+            "a.b=1",
             "--session-id",
             "s-1",
             "--reasoning-effort",
