@@ -2926,6 +2926,14 @@ pub struct StatusMessage {
     pub compact_result: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compact_error: Option<String>,
+    /// On the `compacting` statuses of an automatic compaction (absent on a
+    /// typed `/compact`): characters of the summary streamed so far (text
+    /// and tool-input deltas, not thinking). Returns to 0 at each new attempt
+    /// and stays 0 while a background summary is awaited. A rising count
+    /// shows progress; it is not a share of the final length. Absent from
+    /// CLIs before 2.1.295. Marked `@internal` upstream.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compact_output_chars: Option<u64>,
 }
 
 /// Compact boundary message - marks where context compaction occurred
