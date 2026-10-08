@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.5] - 2026-10-08
+
+### Added
+
+- `MuseExecBuilder::config(key, value)` for the new repeatable
+  `muse exec -c/--config KEY=VALUE` flag (per-run setting overrides;
+  values are JSON, unknown keys make the CLI refuse the run).
+
+### Changed
+
+- Re-baseline the tested pin to Muse Code **1.4.4 (1.4.4-R5419.1)** (from
+  1.4.3-R5018.1). The stream fingerprint is unchanged. Besides `--config`,
+  `muse exec --help` gained a `--effort` alias for `--reasoning-effort`.
+- Upstream surface the crate does not model: MSP (`muse serve`) additions —
+  new `computerUseSettings/read`, `computerUseSettings/update`,
+  `media/upload`, `session/sideChat`, `skill/setActivation` and
+  `workflow/pause` methods, Code Mode receipts (`CodeModeReceipt`, new
+  `execute`/`wait` tool-receipt operations and outcomes), a `sideChat` item
+  kind, a `video` turn-input part, a `toolUseStart` hook event, and
+  `computerUseUnavailable` / `uploadNotFound` error kinds.
+
 ## [1.4.4] - 2026-10-05
 
 ### Added
