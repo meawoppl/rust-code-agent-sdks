@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-10-08
+
+### Changed
+
+- Re-baseline the tested pin to pi **1.1.0** (from 1.0.4). The RPC wire
+  surface is unchanged: `dist/modes/rpc/` and `json-event.d.ts` are
+  byte-identical to 1.0.4, and the live suite passes unmodified. The
+  `agent_settled` event now carries `aborted: bool`; the crate does not
+  model `agent_settled`, so it still arrives as `PiEvent::Unknown` with
+  the field in `payload`. `pi --help` documents `+name` / `-name` entries
+  for `--tools`, which adjust the default tool selection instead of
+  replacing it. The `tools` docs say so.
+
 ## [1.0.4] - 2026-10-05
 
 ### Added
