@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.296] - 2026-10-08
+
+Re-baseline against Claude CLI **2.1.295**. Models the 2.1.293 → 2.1.295
+stream-json drift (2.1.294 included): three
+optional fields, no removals. `--help` and the model-id set are unchanged.
+
+### Added
+
+- `StreamEventMessage::api_message_id`. The API's `msg_…` id of the
+  response an event belongs to, set on every event from `message_start` to
+  `message_stop` so a consumer that missed the `message_start` can still
+  tell responses apart.
+- `StreamEventMessage::text_runs_joined`. Set on a response's
+  `message_start` when `CLAUDE_CODE_WEBSEARCH_CITATIONS` is on in a
+  non-interactive session; adjacent text blocks then arrive as one joined
+  assistant text block with `span_start`/`span_end` citation offsets.
+- `StatusMessage::compact_output_chars`. Characters of the compaction
+  summary streamed so far on an automatic compaction's `compacting`
+  statuses.
+
+### Changed
+
+- Tested against Claude CLI **2.1.295** (was 2.1.293); stream-json snapshot
+  refreshed.
+
 ## [2.1.295] - 2026-10-07
 
 Re-baseline against Claude CLI **2.1.293**. Models the 2.1.292 → 2.1.293

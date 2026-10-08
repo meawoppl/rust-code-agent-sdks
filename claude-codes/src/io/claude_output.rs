@@ -151,6 +151,27 @@ pub struct StreamEventMessage {
     /// and from CLIs before 2.1.292. Marked `@internal` upstream.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub abandoned_blocks: Option<AbandonedBlocks>,
+    /// The API's id (`msg_…`) of the response this event belongs to:
+    /// `event.message.id` on its `message_start`, `message.id` on its
+    /// assistant messages. Not a message `uuid`. Set on every event from a
+    /// response's `message_start` to its `message_stop`, so a consumer that
+    /// missed the `message_start` can still tell responses apart; a replayed
+    /// `message_start` can make two responses share an id. Absent on pings,
+    /// on Remote Control sessions, on some plugin-produced events and from
+    /// CLIs before 2.1.295. An absent key states nothing about which
+    /// response the event belongs to. Marked `@internal` upstream.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_message_id: Option<String>,
+    /// Always `true` when present. Set on a response's `message_start` when
+    /// `CLAUDE_CODE_WEBSEARCH_CITATIONS` is on in a non-interactive session:
+    /// each run of adjacent text blocks then arrives as one assistant message
+    /// with one joined text block, whose non-`web_search_result_location`
+    /// citations carry `span_start`/`span_end` (Unicode code points, end
+    /// exclusive) into the joined text. The `content_block_*` events still
+    /// show each block by its own index. Absent from CLIs before 2.1.295.
+    /// Marked `@internal` upstream.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_runs_joined: Option<bool>,
 }
 
 /// The cut-short response named by [`StreamEventMessage::abandoned_blocks`].
