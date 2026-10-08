@@ -148,7 +148,9 @@ impl PiCliBuilder {
 
     /// `--tools` — comma-separated tool allowlist. Entries are tool names
     /// or patterns where `*` matches any characters (pi 1.0.4+). MCP tools
-    /// are kept unless an entry starts with `mcp__`.
+    /// are kept unless an entry starts with `mcp__`. Entries written as
+    /// `+name` / `-name` add to or remove from the default selection
+    /// instead of replacing it (pi 1.1.0+), e.g. `"+codemode,-write"`.
     pub fn tools(mut self, tools: impl Into<String>) -> Self {
         self.tools = Some(tools.into());
         self
