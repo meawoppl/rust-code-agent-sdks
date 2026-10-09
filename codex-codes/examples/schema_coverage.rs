@@ -399,6 +399,7 @@ mod samples {
         [
             methods::THREAD_STARTED,
             methods::THREAD_STATUS_CHANGED,
+            methods::THREAD_READ_STATE_CHANGED,
             methods::THREAD_TOKEN_USAGE_UPDATED,
             methods::TURN_STARTED,
             methods::TURN_COMPLETED,

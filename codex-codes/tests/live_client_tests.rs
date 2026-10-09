@@ -585,6 +585,7 @@ async fn test_typed_message_audit_strict() {
                 let variant = match &n {
                     Notification::ThreadStarted(_) => "ThreadStarted",
                     Notification::ThreadStatusChanged(_) => "ThreadStatusChanged",
+                    Notification::ThreadReadStateChanged(_) => "ThreadReadStateChanged",
                     Notification::ThreadTokenUsageUpdated(_) => "ThreadTokenUsageUpdated",
                     Notification::TurnStarted(_) => "TurnStarted",
                     Notification::TurnCompleted(_) => "TurnCompleted",
