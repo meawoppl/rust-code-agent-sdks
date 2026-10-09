@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.162.1] - 2026-10-09
+
+### Added
+
+- `thread/readState/changed` notification
+  (`Notification::ThreadReadStateChanged`, `methods::THREAD_READ_STATE_CHANGED`)
+  with `ThreadReadStateChangedNotification`, `ThreadReadState`, and
+  `ThreadUnreadPosition` (`threadStart` | `turn { turnId }`). This is a durable
+  local read receipt, experimental upstream (openai/codex#52350, #52384,
+  #52395). **Breaking** for exhaustive matches on `Notification`. The
+  matching experimental `thread/readState/update` request,
+  `ThreadReadStateOperation`, and the `readState`/`readStates` fields on
+  `thread/read`/`thread/list` responses are stripped from the published
+  schema and are not modeled.
+- Refresh the schema snapshot to `openai/codex@main` (`2351d9e1`). It also
+  picks up 17 new `RealtimeVoice` values and `RealtimeVoicesList.v3`
+  (openai/codex#52363). The crate does not model those types. Still tested
+  against Codex CLI **0.162.0**, the latest release. The bundled
+  `models.json` slug set is unchanged.
+
 ## [0.162.0] - 2026-10-08
 
 ### Changed

@@ -51,17 +51,17 @@ use crate::protocol::{
     ThreadAttachmentUpdatedNotification, ThreadClosedNotification, ThreadDeletedNotification,
     ThreadGoalClearedNotification, ThreadGoalUpdatedNotification, ThreadNameUpdatedNotification,
     ThreadPredictionUpdatedNotification, ThreadProjectUpdatedNotification,
-    ThreadQueueChangedNotification, ThreadRealtimeClosedNotification,
-    ThreadRealtimeErrorNotification, ThreadRealtimeItemAddedNotification,
-    ThreadRealtimeItemCompletedNotification, ThreadRealtimeItemStartedNotification,
-    ThreadRealtimeItemTranscriptDeltaNotification, ThreadRealtimeOutputAudioDeltaNotification,
-    ThreadRealtimeSdpNotification, ThreadRealtimeStartedNotification,
-    ThreadRealtimeTranscriptDeltaNotification, ThreadRealtimeTranscriptDoneNotification,
-    ThreadRevertedNotification, ThreadSettingsUpdatedNotification, ThreadStartedNotification,
-    ThreadStatusChangedNotification, ThreadTokenUsageUpdatedNotification,
-    ThreadUnarchivedNotification, TurnCompletedNotification, TurnDiffUpdatedNotification,
-    TurnModerationMetadataNotification, TurnPlanUpdatedNotification, TurnStartedNotification,
-    WarningNotification, WindowsSandboxSetupCompletedNotification,
+    ThreadQueueChangedNotification, ThreadReadStateChangedNotification,
+    ThreadRealtimeClosedNotification, ThreadRealtimeErrorNotification,
+    ThreadRealtimeItemAddedNotification, ThreadRealtimeItemCompletedNotification,
+    ThreadRealtimeItemStartedNotification, ThreadRealtimeItemTranscriptDeltaNotification,
+    ThreadRealtimeOutputAudioDeltaNotification, ThreadRealtimeSdpNotification,
+    ThreadRealtimeStartedNotification, ThreadRealtimeTranscriptDeltaNotification,
+    ThreadRealtimeTranscriptDoneNotification, ThreadRevertedNotification,
+    ThreadSettingsUpdatedNotification, ThreadStartedNotification, ThreadStatusChangedNotification,
+    ThreadTokenUsageUpdatedNotification, ThreadUnarchivedNotification, TurnCompletedNotification,
+    TurnDiffUpdatedNotification, TurnModerationMetadataNotification, TurnPlanUpdatedNotification,
+    TurnStartedNotification, WarningNotification, WindowsSandboxSetupCompletedNotification,
     WindowsWorldWritableWarningNotification,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -79,6 +79,9 @@ pub enum Notification {
     ThreadStarted(ThreadStartedNotification),
     /// `thread/status/changed`
     ThreadStatusChanged(ThreadStatusChangedNotification),
+    /// `thread/readState/changed` — experimental upstream; durable local
+    /// read receipt for a thread changed.
+    ThreadReadStateChanged(ThreadReadStateChangedNotification),
     /// `thread/tokenUsage/updated`
     ThreadTokenUsageUpdated(ThreadTokenUsageUpdatedNotification),
     /// `turn/started`
@@ -276,6 +279,7 @@ impl Notification {
                 methods::MODEL_PROVIDER_AUTH_RECOVERY_COMPLETED
             }
             Self::ThreadStatusChanged(_) => methods::THREAD_STATUS_CHANGED,
+            Self::ThreadReadStateChanged(_) => methods::THREAD_READ_STATE_CHANGED,
             Self::ThreadTokenUsageUpdated(_) => methods::THREAD_TOKEN_USAGE_UPDATED,
             Self::TurnStarted(_) => methods::TURN_STARTED,
             Self::TurnCompleted(_) => methods::TURN_COMPLETED,
@@ -470,6 +474,9 @@ impl Notification {
             }
             methods::THREAD_STATUS_CHANGED => {
                 serde_json::from_value(params_value).map(Self::ThreadStatusChanged)
+            }
+            methods::THREAD_READ_STATE_CHANGED => {
+                serde_json::from_value(params_value).map(Self::ThreadReadStateChanged)
             }
             methods::THREAD_TOKEN_USAGE_UPDATED => {
                 serde_json::from_value(params_value).map(Self::ThreadTokenUsageUpdated)
@@ -703,6 +710,7 @@ impl Notification {
                 pack(methods::MODEL_PROVIDER_AUTH_RECOVERY_COMPLETED, v)
             }
             Self::ThreadStatusChanged(v) => pack(methods::THREAD_STATUS_CHANGED, v),
+            Self::ThreadReadStateChanged(v) => pack(methods::THREAD_READ_STATE_CHANGED, v),
             Self::ThreadTokenUsageUpdated(v) => pack(methods::THREAD_TOKEN_USAGE_UPDATED, v),
             Self::TurnStarted(v) => pack(methods::TURN_STARTED, v),
             Self::TurnCompleted(v) => pack(methods::TURN_COMPLETED, v),

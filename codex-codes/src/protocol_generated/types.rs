@@ -8344,6 +8344,30 @@ pub struct ThreadReadResponse {
     pub thread: Thread,
 }
 
+/// The first unread position in a durable local thread. A null position means read.
+/// The opaque revision guards edits against activity or marks the caller has not seen.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadReadState {
+    #[serde(
+        rename = "firstUnread",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub first_unread: Option<ThreadUnreadPosition>,
+    #[serde(default)]
+    pub revision: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadReadStateChangedNotification {
+    #[serde(rename = "readState")]
+    pub read_state: ThreadReadState,
+    #[serde(rename = "threadId", default)]
+    pub thread_id: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreadRealtimeAudioChunk {
@@ -9240,6 +9264,19 @@ pub struct ThreadUnarchiveResponse {
 pub struct ThreadUnarchivedNotification {
     #[serde(rename = "threadId", default)]
     pub thread_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ThreadUnreadPosition {
+    /// Explicitly marked unread, including when the thread has no turns.
+    #[serde(rename = "threadStart")]
+    ThreadStart,
+    /// The earliest completed result needing attention.
+    Turn {
+        #[serde(rename = "turnId")]
+        turn_id: String,
+    },
 }
 
 /// EXPERIMENTAL upstream — one item or turn boundary in canonical rollout

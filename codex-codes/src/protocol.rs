@@ -146,6 +146,7 @@ pub mod methods {
     pub const THREAD_PREDICTION_UPDATED: &str = "thread/prediction/updated";
     pub const MCP_SERVER_EVENT_STREAM: &str = "mcpServer/event/stream/notification";
     pub const THREAD_STATUS_CHANGED: &str = "thread/status/changed";
+    pub const THREAD_READ_STATE_CHANGED: &str = "thread/readState/changed";
     pub const THREAD_TOKEN_USAGE_UPDATED: &str = "thread/tokenUsage/updated";
     pub const TURN_STARTED: &str = "turn/started";
     pub const TURN_COMPLETED: &str = "turn/completed";
