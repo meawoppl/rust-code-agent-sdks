@@ -9792,6 +9792,10 @@ pub struct TurnToolOutput {
     pub namespace: Option<String>,
     #[serde()]
     pub output: FunctionCallOutputBody,
+    /// Requests retention of this output in the thread's model history
+    /// (openai/codex#52686). Omitted from the wire when `false`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub retain: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
