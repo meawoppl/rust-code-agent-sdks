@@ -3,7 +3,7 @@ use codex_codes::io::items::{
 };
 use codex_codes::protocol::{
     ConfigReadResponse, FeedbackUploadResponse, GetAccountRateLimitsParams,
-    GetAccountRateLimitsResponse, McpServerStatus, Thread, ThreadListParams,
+    GetAccountRateLimitsResponse, McpServerStatus, Thread, ThreadListParams, TurnToolOutput,
 };
 use codex_codes::{
     JsonRpcMessage, JsonRpcNotification, McpServerElicitationRequestParams, Notification,
@@ -109,6 +109,30 @@ fn account_rate_limits_params_omit_false_capabilities() {
     );
     let back: GetAccountRateLimitsParams = serde_json::from_value(wire).unwrap();
     assert_eq!(back, params);
+}
+
+/// TurnToolOutput omits `retain` when false, defaults it when absent, and round-trips `retain: true`.
+#[test]
+fn turn_tool_output_retain_round_trips() {
+    let output: TurnToolOutput =
+        serde_json::from_value(serde_json::json!({"name": "lookup", "output": "ok"})).unwrap();
+    assert!(!output.retain);
+    assert_eq!(
+        serde_json::to_value(&output).unwrap(),
+        serde_json::json!({"name": "lookup", "output": "ok"})
+    );
+
+    let retained = TurnToolOutput {
+        retain: true,
+        ..output
+    };
+    let wire = serde_json::to_value(&retained).unwrap();
+    assert_eq!(
+        wire,
+        serde_json::json!({"name": "lookup", "output": "ok", "retain": true})
+    );
+    let back: TurnToolOutput = serde_json::from_value(wire).unwrap();
+    assert_eq!(back, retained);
 }
 
 /// GetAccountRateLimitsResponse decodes ordinaryUsageAllowed and RateLimitSnapshot.normalModelSlug, round-tripping both.
