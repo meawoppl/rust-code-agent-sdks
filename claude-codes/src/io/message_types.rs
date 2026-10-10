@@ -3940,8 +3940,9 @@ pub struct TurnHandoffAvailableMessage {
     /// request whose `mount_path` is `/uploads/.home/<path>` as a file for
     /// `/home/claude/<path>`: it writes the file there, answers ok with a
     /// noop (`already_present`, `path_occupied`, `refused_name`,
-    /// `home_files_off`) and writes nothing, or answers an error. Any other
-    /// worker treats that path as an ordinary upload (CLI 2.1.287+).
+    /// `home_files_off`, `unchecked_announcement`, `resent_announcement`)
+    /// and writes nothing, or answers an error. Any other worker treats that
+    /// path as an ordinary upload (CLI 2.1.287+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub home_files: Option<bool>,
     /// Present, and true, only when this worker uses the `file_names` member
@@ -3960,6 +3961,21 @@ pub struct TurnHandoffAvailableMessage {
     /// for these calls (CLI 2.1.288+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub carried_writes: Option<bool>,
+    /// Present, and true, only on a worker that rebuilt the conversation
+    /// from the session's stored transcript before it read any request, and
+    /// would not have started without it. A client may send such a worker
+    /// again a `turn_handoff` request an earlier worker accepted, if the
+    /// request names no calls (empty `tool_use_ids`), is not stopped, and its
+    /// messages hold no tool call: the worker appends only the turn's
+    /// messages its conversation lacks and, once the store confirms them,
+    /// echoes the turn's last message back as an assistant event. The
+    /// request can still be accepted or refused (`invalid_handoff:`) with no
+    /// echo, e.g. after a rewind, a compaction or a Stop; an echo proves
+    /// nothing if the same worker had the request before. The key promises
+    /// nothing for a turn that holds a tool call. A worker without it may
+    /// have started with none of the turn's messages (CLI 2.1.296+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hydrates_carried_lines: Option<bool>,
     pub uuid: String,
     pub session_id: String,
     #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
@@ -5104,6 +5120,18 @@ pub struct AssistantMessage {
     /// sibling — never inside `message.content`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub thinking_duration_ms: Option<u64>,
+    /// The `thinking.display` value Claude Code put in the API request body
+    /// for the response that streamed this frame's thinking block; same
+    /// source and meaning as
+    /// [`StreamEventMessage::thinking_display`](crate::io::StreamEventMessage::thinking_display).
+    /// Sent only on a frame whose one content block is a thinking block that
+    /// was streamed, and only when the request body had a display. Absent
+    /// from CLIs before 2.1.296 and from a CLI replaying history it rebuilt
+    /// from SDK frames; an absent key states nothing. Marked `@internal`
+    /// upstream, so treat the value set as open. Wrapper-level sibling —
+    /// never inside `message.content`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thinking_display: Option<String>,
     /// Structured twin of the `/context` report, carried on the synthetic
     /// assistant message that delivers the markdown table. Present only on
     /// `/context` results from CLIs new enough to attach it (2.1.239+).

@@ -5,7 +5,7 @@
 # see the header of check_claude_schema_drift.py for the comparison contract.
 # union_members: 60
 
-assistant: aborted, advisor_model, agent_id, api_error, api_error_code, api_error_params, api_error_status, attribution_agent, attribution_mcp_server, attribution_mcp_tool, attribution_plugin, attribution_skill, batch_tool_uses, context_usage, error, error_details, historical, is_api_error_message, is_meta, is_virtual, local_command_outcome, local_command_run, local_command_source, message, narration_block_indexes, narration_hint, parent_tool_use_id, request_id, resume_reason, resumed_from_incomplete_thinking, session_id, subagent_type, supersedes, task_description, thinking_duration_ms, timestamp, tool_use_meta, type, usage_report, user_message_uuid, user_message_uuids, uuid, wire_ingest_context, wire_tool_inputs
+assistant: aborted, advisor_model, agent_id, api_error, api_error_code, api_error_params, api_error_status, attribution_agent, attribution_mcp_server, attribution_mcp_tool, attribution_plugin, attribution_skill, batch_tool_uses, context_usage, error, error_details, historical, is_api_error_message, is_meta, is_virtual, local_command_outcome, local_command_run, local_command_source, message, narration_block_indexes, narration_hint, parent_tool_use_id, request_id, resume_reason, resumed_from_incomplete_thinking, session_id, subagent_type, supersedes, task_description, thinking_display, thinking_duration_ms, timestamp, tool_use_meta, type, usage_report, user_message_uuid, user_message_uuids, uuid, wire_ingest_context, wire_tool_inputs
 auth_status: error, isAuthenticating, output, session_id, type, uuid
 command_lifecycle: command_uuid, session_id, state, type, uuid
 content: content, type
@@ -59,7 +59,7 @@ system/task_progress: description, last_tool_name, run_id, session_id, subagent_
 system/task_started: ambient, awaited, description, is_backgrounded, parent_task_id, prompt, run_id, session_id, skip_transcript, spawn_depth, subagent_type, subtype, task_id, task_type, tool_use_id, type, uuid, workflow_name
 system/task_updated: patch, run_id, session_id, subtype, task_id, type, uuid
 system/thinking_tokens: estimated_tokens, estimated_tokens_delta, session_id, subtype, type, user_message_uuid, uuid
-system/turn_handoff_available: carried_writes, file_names, home_files, no_query_first, relay_marker, session_id, staged_files, subtype, tools, type, uuid, v, worker_epoch
+system/turn_handoff_available: carried_writes, file_names, home_files, hydrates_carried_lines, no_query_first, relay_marker, session_id, staged_files, subtype, tools, type, uuid, v, worker_epoch
 system/turn_preempted: preempted_by_uuid, preempted_message_uuids, reason, session_id, subtype, type, uuid
 system/ui_focus: client_id, component, instance_id, key, plugin, session_id, subtype, type, uuid
 system/ui_invalidate: event, instances, session_id, subtype, type, uuid
