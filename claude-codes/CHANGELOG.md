@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.297] - 2026-10-10
+
+Re-baseline against Claude CLI **2.1.296**. Models the 2.1.295 → 2.1.296
+stream-json drift: two optional fields, no removals. `--help` and the
+model-id set are unchanged.
+
+### Added
+
+- `AssistantMessage::thinking_display`. The `thinking.display` value Claude
+  Code put in the API request body for the response that streamed this
+  frame's thinking block (same meaning as
+  `StreamEventMessage::thinking_display`). Sent only on a frame whose one
+  content block is a streamed thinking block.
+- `TurnHandoffAvailableMessage::hydrates_carried_lines`. Capability marker
+  for a worker that rebuilt the conversation from the stored transcript
+  before reading any request, so a client may re-send it a tool-call-free
+  `turn_handoff` an earlier worker accepted.
+
+### Changed
+
+- Tested against Claude CLI **2.1.296** (was 2.1.295); stream-json snapshot
+  refreshed.
+- `TurnHandoffAvailableMessage::home_files` docs list the
+  `unchecked_announcement` and `resent_announcement` noops.
+
 ## [2.1.296] - 2026-10-08
 
 Re-baseline against Claude CLI **2.1.295**. Models the 2.1.293 → 2.1.295
