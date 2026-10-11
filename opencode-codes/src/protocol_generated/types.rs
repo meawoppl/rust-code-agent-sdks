@@ -558,7 +558,7 @@ pub struct ConfigAgent {
     pub title: Option<AgentConfig>,
 }
 
-/// Automatically update to the latest version. Set to true to auto-update, false to disable, or 'notify' to show update notifications
+/// Check for new versions and show an update notice. Updates are never installed automatically; run /update or `opencode upgrade`. Set to false to disable update checks. true and 'notify' behave the same
 /// Untagged union: serde tries each variant in the order below.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]

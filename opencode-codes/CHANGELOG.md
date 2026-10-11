@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0] - 2026-10-10
+
+### Changed
+
+- Re-baseline the tested pin to opencode **1.19.0** (from 1.18.35). The
+  fingerprint check against a fresh 1.19.0 server is clean (162 paths,
+  472 schemas) and `opencode --help` / `opencode serve --help` are
+  unchanged. The only `GET /doc` difference is the description of
+  `Config.autoupdate`: opencode no longer installs updates automatically,
+  and `true` / `"notify"` now both just show an update notice. The
+  snapshot and the `ConfigAutoupdate` rustdoc are refreshed to match; the
+  wire shape (`bool | string`) is unchanged. The minor crate bump follows
+  the crate-version == tested-version convention; there are no API changes.
+
 ## [1.18.35] - 2026-10-06
 
 ### Changed
