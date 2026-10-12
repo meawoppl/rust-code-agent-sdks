@@ -88,6 +88,7 @@ pub struct MuseExecBuilder {
     provider: Option<Provider>,
     preset: Option<String>,
     model: Option<String>,
+    contributor_mode: Option<bool>,
     config: Vec<(String, String)>,
     session_id: Option<String>,
     reasoning_effort: Option<String>,
@@ -138,6 +139,7 @@ impl Default for MuseExecBuilder {
             provider: None,
             preset: None,
             model: None,
+            contributor_mode: None,
             config: Vec::new(),
             session_id: None,
             reasoning_effort: None,
@@ -204,6 +206,14 @@ impl MuseExecBuilder {
 
     pub fn model(mut self, model: impl Into<String>) -> Self {
         self.model = Some(model.into());
+        self
+    }
+
+    /// Per-run contributor mode override (`--contributor-mode on|off`, since
+    /// Muse 1.4.6): `true` → `on`, `false` → `off`. Applies to this run only
+    /// and is never persisted to settings.
+    pub fn contributor_mode(mut self, enabled: bool) -> Self {
+        self.contributor_mode = Some(enabled);
         self
     }
 
@@ -498,6 +508,9 @@ impl MuseExecBuilder {
         if let Some(m) = &self.model {
             cmd.args(["--model", m]);
         }
+        if let Some(enabled) = self.contributor_mode {
+            cmd.args(["--contributor-mode", if enabled { "on" } else { "off" }]);
+        }
         for (key, value) in &self.config {
             cmd.arg("--config").arg(format!("{key}={value}"));
         }
@@ -664,6 +677,7 @@ mod tests {
             .provider(Provider::Meta)
             .preset("native-basic")
             .model("m-1")
+            .contributor_mode(true)
             .config("model", "\"m-2\"")
             .config("a.b", "1")
             .session_id("s-1")
@@ -709,6 +723,8 @@ mod tests {
             "native-basic",
             "--model",
             "m-1",
+            "--contributor-mode",
+            "on",
             "--config",
             "model=\"m-2\"",
             "--config",

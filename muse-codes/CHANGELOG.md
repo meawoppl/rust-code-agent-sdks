@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.6] - 2026-10-12
+
+### Added
+
+- `MuseExecBuilder::contributor_mode(bool)` for the new
+  `muse exec --contributor-mode on|off` flag (per-run override of the
+  `contributor_mode_enabled` setting; never persisted).
+
+### Changed
+
+- Re-baseline the tested pin to Muse Code **1.4.6 (1.4.6-R6000.1)** (from
+  1.4.4-R5419.1). The stream fingerprint is unchanged. `--contributor-mode`
+  is the only `muse exec --help` change; the top-level and `muse serve`
+  help gained the same flag.
+- Upstream surface the crate does not model: MSP (`muse serve`) additions —
+  new `computerUseSetup/read`, `computerUseSetup/start`, `plugin/install`,
+  `plugin/marketplaceAdd`, `plugin/marketplaceRemove`,
+  `plugin/marketplaceUpdate`, `recap/request`, `recap/cancel`,
+  `skill/import`, `task/list` and `workflow/resume` methods;
+  `computerUseSetup/changed`, `plugin/changed`, `plugin/marketplaceChanged`
+  and `recap/completed` notifications; and new `LimitKind`, `QuotaDetail`,
+  `RetractOutcome` and `TurnUserShell` definitions.
+
 ## [1.4.5] - 2026-10-08
 
 ### Added
