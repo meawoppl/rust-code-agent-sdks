@@ -6,7 +6,7 @@
 //!
 //! The table mirrors Muse Code's on-disk model catalog
 //! (`~/.local/share/muse/model-catalog/`, `provider_catalog` source) as of
-//! Muse Code 1.0.2. Unknown or future model ids round-trip through
+//! Muse Code 1.4.6 (catalog refreshed 2026-10-12). Unknown or future model ids round-trip through
 //! [`MuseModel::Custom`]. Context/output limits from the same catalog are
 //! exposed via [`MuseModel::context_limit`] / [`MuseModel::output_limit`].
 
@@ -16,10 +16,13 @@ use std::fmt;
 /// A model id accepted by `muse exec --model` (Meta provider).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MuseModel {
-    /// muse-spark-1.3 (`muse-spark-1.3`), released 2026-09-02.
+    /// muse-wonder-1.0 (`muse-wonder-1.0`), released 2026-10-12.
+    Wonder10,
+    /// muse-spark-1.3 (`muse-spark-1.3`), released 2026-09-02. The catalog
+    /// default as of Muse Code 1.4.6.
     Spark13,
     /// muse-spark-1.3 contributor build (`muse-spark-1.3-contributor`),
-    /// released 2026-09-02. The catalog default as of Muse Code 1.0.2.
+    /// released 2026-09-02.
     Spark13Contributor,
     /// muse-spark-1.2 (`muse-spark-1.2`), released 2026-08-05.
     Spark12,
@@ -35,6 +38,7 @@ impl MuseModel {
     /// The string to pass to `muse exec --model` for this model.
     pub fn cli_arg(&self) -> &str {
         match self {
+            Self::Wonder10 => "muse-wonder-1.0",
             Self::Spark13 => "muse-spark-1.3",
             Self::Spark13Contributor => "muse-spark-1.3-contributor",
             Self::Spark12 => "muse-spark-1.2",
@@ -59,9 +63,11 @@ impl MuseModel {
     /// [`Custom`](Self::Custom) ids the catalog hasn't described.
     pub fn context_limit(&self) -> Option<u64> {
         match self {
-            Self::Spark13 | Self::Spark13Contributor | Self::Spark12 | Self::Spark12Contributor => {
-                Some(1_007_997)
-            }
+            Self::Wonder10
+            | Self::Spark13
+            | Self::Spark13Contributor
+            | Self::Spark12
+            | Self::Spark12Contributor => Some(1_007_997),
             Self::Custom(_) => None,
         }
     }
@@ -70,22 +76,26 @@ impl MuseModel {
     /// [`Custom`](Self::Custom) ids the catalog hasn't described.
     pub fn output_limit(&self) -> Option<u64> {
         match self {
-            Self::Spark13 | Self::Spark13Contributor | Self::Spark12 | Self::Spark12Contributor => {
-                Some(128_000)
-            }
+            Self::Wonder10
+            | Self::Spark13
+            | Self::Spark13Contributor
+            | Self::Spark12
+            | Self::Spark12Contributor => Some(128_000),
             Self::Custom(_) => None,
         }
     }
 
-    /// The catalog-default model as of Muse Code 1.0.2 — what a run
-    /// resolves to when `--model` is omitted.
+    /// The catalog-default model as of Muse Code 1.4.6 — what a run
+    /// resolves to when `--model` is omitted and no `model` is set in the
+    /// user's Muse settings.
     pub fn catalog_default() -> Self {
-        Self::Spark13Contributor
+        Self::Spark13
     }
 
     /// Every model known to this version of the crate, newest first.
     pub fn known() -> &'static [MuseModel] {
         &[
+            Self::Wonder10,
             Self::Spark13,
             Self::Spark13Contributor,
             Self::Spark12,
@@ -103,6 +113,7 @@ impl fmt::Display for MuseModel {
 impl From<&str> for MuseModel {
     fn from(s: &str) -> Self {
         match s {
+            "muse-wonder-1.0" => Self::Wonder10,
             "muse-spark-1.3" => Self::Spark13,
             "muse-spark-1.3-contributor" => Self::Spark13Contributor,
             "muse-spark-1.2" => Self::Spark12,
@@ -156,10 +167,7 @@ mod tests {
     }
 
     #[test]
-    fn default_is_spark_13_contributor() {
-        assert_eq!(
-            MuseModel::catalog_default().cli_arg(),
-            "muse-spark-1.3-contributor"
-        );
+    fn default_is_spark_13() {
+        assert_eq!(MuseModel::catalog_default().cli_arg(), "muse-spark-1.3");
     }
 }

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.7] - 2026-10-12
+
+### Added
+
+- `MuseModel::Wonder10` (`muse-wonder-1.0`, released 2026-10-12), with
+  catalog limits of 1,007,997 context / 128,000 output tokens. Verified
+  live: a `--model muse-wonder-1.0` turn configures it and reaches
+  terminal with no new payload types.
+
+### Changed
+
+- `MuseModel::catalog_default()` now returns `Spark13`: the refreshed
+  provider catalog marks `muse-spark-1.3` as the default (it was
+  `muse-spark-1.3-contributor` as of 1.0.2).
+- Still tested against Muse Code 1.4.6 (`1.4.6-R6000.1`). Model-only
+  release.
+
 ## [1.4.6] - 2026-10-12
 
 ### Added
