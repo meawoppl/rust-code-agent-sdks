@@ -6,7 +6,7 @@
 //!
 //! The table mirrors Muse Code's on-disk model catalog
 //! (`~/.local/share/muse/model-catalog/`, `provider_catalog` source) as of
-//! Muse Code 1.4.6 (catalog refreshed 2026-10-12). Unknown or future model ids round-trip through
+//! Muse Code 1.4.8 (catalog refreshed 2026-10-14). Unknown or future model ids round-trip through
 //! [`MuseModel::Custom`]. Context/output limits from the same catalog are
 //! exposed via [`MuseModel::context_limit`] / [`MuseModel::output_limit`].
 
@@ -19,7 +19,7 @@ pub enum MuseModel {
     /// muse-wonder-1.0 (`muse-wonder-1.0`), released 2026-10-12.
     Wonder10,
     /// muse-spark-1.3 (`muse-spark-1.3`), released 2026-09-02. The catalog
-    /// default as of Muse Code 1.4.6.
+    /// default as of Muse Code 1.4.8.
     Spark13,
     /// muse-spark-1.3 contributor build (`muse-spark-1.3-contributor`),
     /// released 2026-09-02.
@@ -85,7 +85,7 @@ impl MuseModel {
         }
     }
 
-    /// The catalog-default model as of Muse Code 1.4.6 — what a run
+    /// The catalog-default model as of Muse Code 1.4.8 — what a run
     /// resolves to when `--model` is omitted and no `model` is set in the
     /// user's Muse settings.
     pub fn catalog_default() -> Self {

@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.300] - 2026-10-14
+
+Re-baseline against Claude CLI **2.1.300**. Models the 2.1.296 → 2.1.300
+stream-json drift: optional fields only, no new message types and no
+removals. The model-id set, alias table and `--model` argument list are
+unchanged; `--help` differs only in the `--restricted` prose (not modeled by
+this crate).
+
+### Added
+
+- `AssistantMessage::api_error_origin` and `ResultMessage::api_error_origin`.
+  `first_party` when the API error came straight from Anthropic's own API
+  endpoint; absent means unknown origin. Open set.
+- `ToolUseMeta::server_id` (claude.ai `mcpsrv_` connector id),
+  `ToolUseMeta::server_id_stamp` (an http entry's `X-MCP-Server-ID` claim)
+  and `ToolUseMeta::tool_name` (the tool's name without the `mcp__` prefix).
+- `LocalCommandRun::plugin`: the plugin that registered the command, or the
+  plugins whose `command.run` hooks answered it.
+- `CommandLifecycleMessage::ran_ahead`: an `immediate` command's plugin hooks
+  answered ahead of its turn.
+- `ResultMessage::interrupted_by_shutdown`: tells a multi-tenant worker
+  shutdown apart from a client's Stop.
+- `ResultMessage::handoff_intake_phases_ms`: how a `turn_handoff` request's
+  wait before it was read splits up.
+- `ResultMessage` process counters, sent only by Anthropic-hosted workers:
+  `process_rss_mib_turn_start`, `process_anon_mib_turn_start`,
+  `process_rss_mib_result`, `process_anon_mib_result`,
+  `process_peak_rss_mib`, `process_cpu_ms_between_turns`,
+  `process_wall_ms_between_turns`, `process_cpu_ms_turn` and
+  `process_wall_ms_turn`.
+- `InputAttachmentsDetail::touch_compare` and the new `TouchCompareCounts`
+  type: how the `changed_files` producer's compares ended.
+- `InformationalMessage::prompt_submit_outcome` with the new
+  `PromptSubmitOutcome` type and open-set `PromptSubmitOutcomeKind` enum:
+  how a submitted prompt ended before a model call (blocked, stopped or
+  dropped by a hook, not passed on, or no verdict).
+- `TurnHandoffAvailableMessage::shared_message_id`: capability marker for a
+  worker that accepts consecutive assistant messages sharing a message id.
+- `UiInvalidateMessage::prompts_screened`: a mod may change what is recorded
+  of a typed line.
+- `UserMessage::text_not_typed`: no person typed this message's text.
+
+### Changed
+
+- Tested against Claude CLI **2.1.300** (was 2.1.296); stream-json snapshot
+  refreshed. The crate version now matches the tested CLI again.
+- `MessageOrigin` absorbs the new `peer` origin keys (`flagged`, `members`)
+  and the `task-notification` `taskKind: "mcp-task"` through its open `extra`
+  map; no type change needed.
+
 ## [2.1.297] - 2026-10-10
 
 Re-baseline against Claude CLI **2.1.296**. Models the 2.1.295 → 2.1.296

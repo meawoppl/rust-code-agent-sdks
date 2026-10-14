@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-10-14
+
+### Changed
+
+- Re-baseline the tested pin to pi **1.2.0** (from 1.1.0). The RPC wire
+  surface is unchanged: `dist/modes/rpc/`, `json-event.d.ts`,
+  `docs/rpc.md`, `docs/json.md` and `pi --help` are byte-identical to
+  1.1.0, `pi-agent-core` types are unchanged, and the `pi-ai` type
+  changes are a refactor (model/compat types moved into schema modules
+  with the same shapes). The live suite passes unmodified. `--print` now
+  exits nonzero when the final response is cut off at the output token
+  limit (`length` stop reason), still printing the partial text; the
+  `print` docs say so.
+
 ## [1.1.0] - 2026-10-08
 
 ### Changed
