@@ -21,7 +21,7 @@ The descriptor embedded in the wheel's `localharness_pb2.py` is both parseable
 ## The wheel is 37 MB; this script downloads ~30 KB of it
 
 PyPI serves HTTP range requests, and a wheel is a zip. So: read the end of the
-file to find the central directory, locate the two `*_pb2.py` members, and
+file to find the central directory, locate the `*_pb2.py` members, and
 fetch only those. Falls back to a full download if the server refuses ranges.
 
 ## Usage
@@ -139,7 +139,7 @@ def read_member(url: str, name: str, entry: tuple[int, int, int]) -> bytes:
 
 
 def upstream_descriptors(url: str) -> dict[str, bytes]:
-    """Pulls the two pb2 modules out of the wheel, by range if possible."""
+    """Pulls the pb2 modules out of the wheel, by range if possible."""
     try:
         members = zip_members(url)
         out = {}

@@ -1626,6 +1626,7 @@ pub enum TrajectoryStateUpdateState {
     FullyIdle,
     Cancelled,
     WaitingForTasks,
+    WaitingForSubagents,
     /// A value this crate does not know about yet.
     ///
     /// The harness is versioned independently of this crate, so an
@@ -1643,6 +1644,7 @@ impl TrajectoryStateUpdateState {
             Self::FullyIdle => "STATE_FULLY_IDLE",
             Self::Cancelled => "STATE_CANCELLED",
             Self::WaitingForTasks => "STATE_WAITING_FOR_TASKS",
+            Self::WaitingForSubagents => "STATE_WAITING_FOR_SUBAGENTS",
             Self::Unknown(s) => s,
         }
     }
@@ -1670,11 +1672,15 @@ impl<'de> Deserialize<'de> for TrajectoryStateUpdateState {
             crate::wire::EnumRepr::Name(n) if n == "STATE_WAITING_FOR_TASKS" => {
                 Self::WaitingForTasks
             }
+            crate::wire::EnumRepr::Name(n) if n == "STATE_WAITING_FOR_SUBAGENTS" => {
+                Self::WaitingForSubagents
+            }
             crate::wire::EnumRepr::Number(0) => Self::Unspecified,
             crate::wire::EnumRepr::Number(1) => Self::Running,
             crate::wire::EnumRepr::Number(2) => Self::FullyIdle,
             crate::wire::EnumRepr::Number(3) => Self::Cancelled,
             crate::wire::EnumRepr::Number(4) => Self::WaitingForTasks,
+            crate::wire::EnumRepr::Number(5) => Self::WaitingForSubagents,
             crate::wire::EnumRepr::Name(n) => Self::Unknown(n),
             crate::wire::EnumRepr::Number(n) => Self::Unknown(n.to_string()),
         })
@@ -2225,6 +2231,24 @@ pub struct ActionRunCommand {
     pub combined_output: Option<String>,
 }
 
+/// `antigravity.localharness.ActionRunWorkflow`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActionRunWorkflow {
+    #[serde(
+        alias = "script_path",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub script_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub script: Option<String>,
+}
+
 /// `antigravity.localharness.ActionSearchDirectory`
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -2709,6 +2733,12 @@ pub struct CompactionConfig {
         skip_serializing_if = "Option::is_none"
     )]
     pub summary_prompt_override: Option<String>,
+    #[serde(
+        alias = "use_model_reported_token_count",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub use_model_reported_token_count: Option<bool>,
 }
 
 /// `genai.Content`
@@ -2988,7 +3018,7 @@ pub struct FileCitation {
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    pub custom_metadata: Option<Struct>,
+    pub custom_metadata: Option<serde_json::Value>,
     #[serde(
         alias = "page_number",
         default,
@@ -3211,6 +3241,12 @@ pub struct GeminiModelOptions {
         skip_serializing_if = "Option::is_none"
     )]
     pub service_tier: Option<String>,
+    #[serde(
+        alias = "max_output_tokens",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub max_output_tokens: Option<i32>,
 }
 
 /// `antigravity.localharness.GemmaEndpoint`
@@ -3456,6 +3492,12 @@ pub struct HarnessConfig {
         skip_serializing_if = "Option::is_none"
     )]
     pub rules_config: Option<RulesConfig>,
+    #[serde(
+        alias = "mcp_max_output_bytes",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub mcp_max_output_bytes: Option<i32>,
 }
 
 /// `antigravity.localharness.HarnessSideTools`
@@ -3526,6 +3568,12 @@ pub struct HarnessSideTools {
     pub manage_task: Option<ManageTaskToolConfig>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub schedule: Option<ScheduleToolConfig>,
+    #[serde(
+        alias = "run_workflow",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub run_workflow: Option<RunWorkflowToolConfig>,
 }
 
 /// `genai.ImageContent`
@@ -3838,6 +3886,12 @@ pub struct McpServerConfig {
         skip_serializing_if = "Option::is_none"
     )]
     pub timeout_seconds: Option<i32>,
+    #[serde(
+        alias = "force_all_tools_eager",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub force_all_tools_eager: Option<bool>,
 }
 
 /// The `transport` oneof of [`McpServerConfig`], as an owned value.
@@ -4617,6 +4671,20 @@ pub struct RunCommandToolConfig {
     pub execution_mode: Option<ToolExecutionMode>,
 }
 
+/// `antigravity.localharness.RunWorkflowToolConfig`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunWorkflowToolConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    #[serde(
+        alias = "execution_mode",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub execution_mode: Option<ToolExecutionMode>,
+}
+
 /// `antigravity.localharness.SandboxStatus`
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -4647,16 +4715,151 @@ pub struct SearchWebToolConfig {
     pub enabled: Option<bool>,
 }
 
+/// `genai.skills.Skill`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Skill {
+    #[serde(
+        alias = "inline_resources",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub inline_resources: Option<SkillInlineResources>,
+    #[serde(
+        alias = "zipped_resources",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub zipped_resources: Option<SkillFile>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(alias = "skill_id", default, skip_serializing_if = "Option::is_none")]
+    pub skill_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+    #[serde(
+        alias = "allowed_tools",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub allowed_tools: Vec<String>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub metadata: HashMap<String, String>,
+}
+
+/// The `resources` oneof of [`Skill`], as an owned value.
+#[derive(Debug, Clone, PartialEq)]
+pub enum SkillResources {
+    InlineResources(SkillInlineResources),
+    ZippedResources(SkillFile),
+}
+
+impl Skill {
+    /// Takes the set arm of the `resources` oneof, if any.
+    pub fn into_resources(self) -> Option<SkillResources> {
+        if let Some(v) = self.inline_resources {
+            return Some(SkillResources::InlineResources(v));
+        }
+        if let Some(v) = self.zipped_resources {
+            return Some(SkillResources::ZippedResources(v));
+        }
+        None
+    }
+
+    /// True when any arm of the `resources` oneof is set.
+    pub fn has_resources(&self) -> bool {
+        self.inline_resources.is_some() || self.zipped_resources.is_some()
+    }
+}
+
+/// `genai.skills.SkillFile`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillFile {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::wire::opt_bytes"
+    )]
+    pub data: Option<Vec<u8>>,
+    #[serde(alias = "mime_type", default, skip_serializing_if = "Option::is_none")]
+    pub mime_type: Option<String>,
+}
+
+/// The `content` oneof of [`SkillFile`], as an owned value.
+#[derive(Debug, Clone, PartialEq)]
+pub enum SkillFileContent {
+    Text(String),
+    Data(Vec<u8>),
+}
+
+impl SkillFile {
+    /// Takes the set arm of the `content` oneof, if any.
+    pub fn into_content(self) -> Option<SkillFileContent> {
+        if let Some(v) = self.text {
+            return Some(SkillFileContent::Text(v));
+        }
+        if let Some(v) = self.data {
+            return Some(SkillFileContent::Data(v));
+        }
+        None
+    }
+
+    /// True when any arm of the `content` oneof is set.
+    pub fn has_content(&self) -> bool {
+        self.text.is_some() || self.data.is_some()
+    }
+}
+
+/// `genai.skills.Skill.InlineResources`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillInlineResources {
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub resources: HashMap<String, SkillFile>,
+}
+
 /// `antigravity.localharness.SkillSource`
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SkillSource {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skill: Option<Skill>,
     #[serde(
         alias = "directory_path",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub directory_path: Option<String>,
+}
+
+/// The `source` oneof of [`SkillSource`], as an owned value.
+#[derive(Debug, Clone, PartialEq)]
+pub enum SkillSourceSource {
+    Skill(Skill),
+    DirectoryPath(String),
+}
+
+impl SkillSource {
+    /// Takes the set arm of the `source` oneof, if any.
+    pub fn into_source(self) -> Option<SkillSourceSource> {
+        if let Some(v) = self.skill {
+            return Some(SkillSourceSource::Skill(v));
+        }
+        if let Some(v) = self.directory_path {
+            return Some(SkillSourceSource::DirectoryPath(v));
+        }
+        None
+    }
+
+    /// True when any arm of the `source` oneof is set.
+    pub fn has_source(&self) -> bool {
+        self.skill.is_some() || self.directory_path.is_some()
+    }
 }
 
 /// `antigravity.localharness.SkillsConfig`
@@ -4794,6 +4997,12 @@ pub struct StepUpdate {
         skip_serializing_if = "Option::is_none"
     )]
     pub skill_lookup: Option<ActionSkillLookup>,
+    #[serde(
+        alias = "run_workflow",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub run_workflow: Option<ActionRunWorkflow>,
     #[serde(
         alias = "request_text",
         default,
@@ -4948,6 +5157,12 @@ pub struct SubagentSkillsConfigNoneConfig {}
 pub struct SubagentSkillsConfigOverrideConfig {
     #[serde(alias = "skills_paths", default, skip_serializing_if = "Vec::is_empty")]
     pub skills_paths: Vec<String>,
+    #[serde(
+        alias = "skill_sources",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub skill_sources: Vec<SkillSource>,
 }
 
 /// `antigravity.localharness.SubagentsConfig`
