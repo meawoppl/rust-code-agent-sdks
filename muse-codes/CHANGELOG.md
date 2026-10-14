@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.8] - 2026-10-14
+
+### Changed
+
+- Re-baseline the tested pin to Muse Code **1.4.8 (1.4.8-R6256.1)** (from
+  1.4.6-R6000.1; `muse-stable` skipped straight past 1.4.7-R6101.1). The
+  stream fingerprint is unchanged and a live meta turn produced no new
+  payload types. The crate version catches up to the CLI's number (the
+  1.4.7 crate-side offset is absorbed), so crate == tested again.
+- `MuseExecBuilder::preset` docs list the two new built-in presets, `empty`
+  and `ac_orch` (the only `muse --help` / `muse exec --help` change). The
+  preset is passed through as a string, so no API change was needed; the
+  echo provider accepts both.
+- Model catalog refreshed: unchanged rows, `muse-spark-1.3` is still the
+  default, so `MuseModel::catalog_default()` stays `Spark13`. The hidden
+  `muse-image-1.0` row (no context/output limits) is still not modeled; it
+  round-trips via `MuseModel::Custom`.
+- Upstream surface the crate does not model: MSP (`muse serve`) additions —
+  new `computerUseSetup/check` method; new `turn/modelRetryScheduled`
+  notification (`TurnModelRetryScheduledParams`); `computerUseHostSetup`
+  and `sessionRename` grants (`computerUseSetup/*` `sessionId` is now
+  optional for host-level setup); a per-app Computer Use settings list
+  (`ComputerUseApp*`, `ComputerUseInstalledApp`); `agentMessage`
+  `messagePhase`/`cutOff`, `monitorFeed` `monitorId`/`monitorDescription`;
+  session `generatedName`/`nameOrigin` (`SessionNameOrigin`); startup
+  `sandboxAvailability`/`sandboxUnavailableReason`; a launch
+  `permissionProfile`; and skill `title`.
+
 ## [1.4.7] - 2026-10-12
 
 ### Added
