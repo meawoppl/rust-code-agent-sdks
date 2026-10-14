@@ -198,7 +198,9 @@ impl MuseExecBuilder {
         self
     }
 
-    /// Built-in preset (`native-basic`, `miniswe`, `openai-apply-patch`).
+    /// Built-in preset (`native-basic`, `miniswe`, `empty`, `ac_orch`,
+    /// `openai-apply-patch`). Passed through verbatim, so presets newer
+    /// than this list work too.
     pub fn preset(mut self, preset: impl Into<String>) -> Self {
         self.preset = Some(preset.into());
         self
