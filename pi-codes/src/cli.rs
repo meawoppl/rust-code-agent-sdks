@@ -169,7 +169,10 @@ impl PiCliBuilder {
         self
     }
 
-    /// `--print` — non-interactive: process the prompt and exit.
+    /// `--print` — non-interactive: process the prompt and exit. The exit
+    /// status is nonzero when the final response stops with `error` or
+    /// `aborted`, or (pi 1.2.0+) is cut off at the output token limit
+    /// (`length`); the partial text still goes to stdout.
     pub fn print(mut self, enabled: bool) -> Self {
         self.print = enabled;
         self
