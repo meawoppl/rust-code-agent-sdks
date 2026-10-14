@@ -5,6 +5,54 @@ All notable changes to `antigravity-codes` are documented here.
 The version tracks the `google-antigravity` release whose harness the crate was
 generated from and tested against.
 
+## [0.1.22] - 2026-10-14
+
+Re-baseline against `google-antigravity` 0.1.22: types regenerated from the
+0.1.22 wheel's descriptors (184 messages, 31 enums, up from 177/31). Regen
+against the committed 0.1.21 descriptors was verified as a byte-identical
+no-op first, so nothing hand-maintained was clobbered. The harness descriptor
+now imports a new `skill.proto` (package `genai.skills`), so codegen and the
+drift check snapshot a third descriptor,
+`tests/schemas/skill.descriptor.bin`, alongside `content` and `localharness`.
+There are no renames or removals. The new fields are public, so code that
+builds the touched structs with exhaustive struct literals (no
+`..Default::default()`) has to add them. Nothing in this workspace does that.
+The wheel's Python side dropped 20 unused `proto/*_pb2.py` modules (`agents`,
+`events`, `hooks`, `tools`, ...) and gained a `workflows` module. None of that
+reaches the harness descriptors this crate is generated from.
+
+### Added
+
+- `genai.skills` types: `Skill` (with a `resources` oneof:
+  `inline_resources: SkillInlineResources` or `zipped_resources: SkillFile`),
+  `SkillFile` (`content` oneof: `text` or base64 `data`, plus `mime_type`) and
+  `SkillInlineResources`. Each oneof has a generated view enum
+  (`SkillResources`, `SkillFileContent`).
+- `SkillSource.skill: Option<Skill>` (proto field 1). `skill` and the existing
+  `directory_path` now form the `source` oneof, which has the view enum
+  `SkillSourceSource` and the helpers `into_source`/`has_source`.
+- `SubagentSkillsConfigOverrideConfig.skill_sources: Vec<SkillSource>` (proto
+  field 2, wire `skillSources`).
+- A workflow tool. `HarnessSideTools.run_workflow: Option<RunWorkflowToolConfig>`
+  (proto field 20) enables it, and `StepUpdate.run_workflow:
+  Option<ActionRunWorkflow>` (proto field 38) reports it (`script_path`,
+  `description`, `output`, `script`). `HarnessSideTools::all()` does not turn
+  it on.
+- `TrajectoryStateUpdateState::WaitingForSubagents` (`STATE_WAITING_FOR_SUBAGENTS`
+  = 5). The turn loop treats it as non-terminal, the same as `WaitingForTasks`.
+- `CompactionConfig.use_model_reported_token_count: Option<bool>` (proto
+  field 5).
+- `GeminiModelOptions.max_output_tokens: Option<i32>` (proto field 3).
+- `HarnessConfig.mcp_max_output_bytes: Option<i32>` (proto field 29).
+- `McpServerConfig.force_all_tools_eager: Option<bool>` (proto field 10).
+
+### Changed
+
+- **Breaking:** `FileCitation.custom_metadata` changed from `Option<Struct>`
+  to `Option<serde_json::Value>`. Upstream retyped the field from
+  `genai.Struct` to `google.protobuf.Struct`, and that well-known type maps to
+  free-form JSON. The wire shape (a JSON object) is the same.
+
 ## [0.1.21] - 2026-10-07
 
 Re-baseline against `google-antigravity` 0.1.21: types regenerated from the

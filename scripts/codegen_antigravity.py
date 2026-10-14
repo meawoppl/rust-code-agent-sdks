@@ -49,6 +49,7 @@ GEN = CRATE / "src" / "protocol_generated"
 # Files we lift out of the wheel, in dependency order.
 PB2_FILES = [
     ("content", "google/antigravity/proto/content_pb2.py"),
+    ("skill", "google/antigravity/proto/skill_pb2.py"),
     ("localharness", "google/antigravity/proto/localharness_pb2.py"),
 ]
 
