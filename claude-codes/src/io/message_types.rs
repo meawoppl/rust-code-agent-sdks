@@ -1284,6 +1284,16 @@ pub struct UserMessage {
     /// type; its text is delivered as written (CLI 2.1.259+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_composed: Option<bool>,
+    /// True when no person typed this message's text in this session (a
+    /// server or an app composed it). The text is delivered as written: no
+    /// slash-command dispatch, no at-mention expansion beyond the message's
+    /// own uploaded files, no keyword reminders or commands, and a skill it
+    /// names does not count as typed by the user. Unlike
+    /// [`client_composed`](Self::client_composed), the turn-start attachment
+    /// pass still runs. Who sent it stays with [`origin`](Self::origin)
+    /// (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_not_typed: Option<bool>,
     /// The host's own label for what started this turn (e.g. the desktop
     /// app's `scheduled-task`, `sleep-auto-resume`); `user` or absent means a
     /// person sent it. Usage attribution only; it does not change how the
@@ -2632,10 +2642,107 @@ pub struct InformationalMessage {
     /// ordinary lines. Hosts ignore values they do not know (CLI 2.1.288+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tag: Option<String>,
+    /// Present on the line that ends a submitted prompt before a model call:
+    /// how the prompt ended, so a host can write its own message or count
+    /// endings without matching `content`. A follow-up a hook blocks while a
+    /// turn runs carries it too, so read it as the end of a turn only when
+    /// the next result has `num_turns` 0 (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt_submit_outcome: Option<PromptSubmitOutcome>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_id: Option<String>,
+}
+
+/// How a submitted prompt ended before a model call, carried as
+/// [`InformationalMessage::prompt_submit_outcome`] (CLI 2.1.300+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PromptSubmitOutcome {
+    /// What ended the prompt. The CLI drops a kind it does not know, so the
+    /// key can be absent; treat [`PromptSubmitOutcomeKind::Other`] as absent
+    /// too, and ignore [`reason`](Self::reason) beside it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<PromptSubmitOutcomeKind>,
+    /// Sent with kind `no_verdict`, and says why: `remote_run_failed`,
+    /// `remote_run_timed_out`, `interrupted`, `remote_runner_refused`,
+    /// `unsupported_in_cloud_session`, `output_distrusted`,
+    /// `callback_timed_out`, `hook_failed`, `hook_timed_out`,
+    /// `hooks_never_ran`, `personal_config_refused` or
+    /// `rewrite_unplaceable`. Open set — treat an unknown value as absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub no_verdict_kind: Option<String>,
+    /// True when the prompt stays in the conversation, where the model reads
+    /// it on the next turn. Do not infer it from `kind`.
+    pub prompt_kept: bool,
+    /// The hook's text as Claude Code got it, sanitized and possibly cut.
+    /// Never sent with `no_verdict`; absent when Claude Code got no text.
+    /// Untrusted and can quote the prompt, so render it as plain text.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
+/// [`PromptSubmitOutcome::kind`] — what ended a submitted prompt.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PromptSubmitOutcomeKind {
+    /// A hook answered with a block.
+    BlockedByHook,
+    /// A hook answered `continue: false`.
+    StoppedByHook,
+    /// A plugin's code module dropped the prompt.
+    DroppedByHook,
+    /// A plugin's code module answered and did not pass the prompt on.
+    NotPassedOn,
+    /// No hook gave a verdict, and Claude Code ended the prompt itself; see
+    /// [`PromptSubmitOutcome::no_verdict_kind`].
+    NoVerdict,
+    /// A kind not yet known to this version of the crate.
+    Other(String),
+}
+
+impl PromptSubmitOutcomeKind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::BlockedByHook => "blocked_by_hook",
+            Self::StoppedByHook => "stopped_by_hook",
+            Self::DroppedByHook => "dropped_by_hook",
+            Self::NotPassedOn => "not_passed_on",
+            Self::NoVerdict => "no_verdict",
+            Self::Other(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for PromptSubmitOutcomeKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for PromptSubmitOutcomeKind {
+    fn from(s: &str) -> Self {
+        match s {
+            "blocked_by_hook" => Self::BlockedByHook,
+            "stopped_by_hook" => Self::StoppedByHook,
+            "dropped_by_hook" => Self::DroppedByHook,
+            "not_passed_on" => Self::NotPassedOn,
+            "no_verdict" => Self::NoVerdict,
+            other => Self::Other(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for PromptSubmitOutcomeKind {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PromptSubmitOutcomeKind {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// Plugin info from the init message
@@ -3976,6 +4083,13 @@ pub struct TurnHandoffAvailableMessage {
     /// have started with none of the turn's messages (CLI 2.1.296+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hydrates_carried_lines: Option<bool>,
+    /// Present, and true, when this worker accepts a `turn_handoff` request
+    /// in which an assistant message repeats the message id of the assistant
+    /// message before it. A worker that omits it refuses such a request
+    /// (`invalid_handoff`), so a client gives each message an id of its own
+    /// there (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shared_message_id: Option<bool>,
     pub uuid: String,
     pub session_id: String,
     #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
@@ -4532,6 +4646,15 @@ pub struct UiInvalidateMessage {
     /// alone. Absent, every mounted instance may be stale.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instances: Option<Vec<UiInvalidatedInstance>>,
+    /// Present, and true, while a mod may change what is recorded of a typed
+    /// line (a hook on `prompt.submit`, `command.run`, `session.append` or
+    /// `session.receive`, mods not yet known, or an organization policy that
+    /// lists a plugin or cannot be read): what the `prompts_screened_v1`
+    /// capability says on `system/init`, sent as soon as a plugin load or
+    /// reload makes it so. Absent says nothing; the next `system/init` does
+    /// (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompts_screened: Option<bool>,
     pub uuid: String,
     pub session_id: String,
 }
@@ -4703,6 +4826,12 @@ pub struct LocalCommandRun {
     /// Its arguments as the echo shows them (`***` when the command marks
     /// them sensitive).
     pub args: String,
+    /// For a command a plugin registered, that plugin's name; for a row
+    /// whose text plugins' `command.run` hooks answered or retold, the names
+    /// the text is led by. Untrusted text; absent for the binary's own
+    /// command in its own words (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugin: Option<String>,
 }
 
 /// What a local-command row reports, carried as
@@ -4991,6 +5120,25 @@ pub struct ToolUseMeta {
     pub server_display_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icon_url: Option<String>,
+    /// The `mcpsrv_` connector id of a server provisioned by claude.ai, set
+    /// by the CLI from claude.ai's own connector listing, so a client may
+    /// show the call as that connector's. Not a permission grant (CLI
+    /// 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_id: Option<String>,
+    /// The `X-MCP-Server-ID` header value, lower-cased, of an http entry in
+    /// the dynamic scope (passed at launch or by a later `mcp_set_servers`
+    /// push). The CLI checks only its shape, not whose it is: look it up in
+    /// your own server list, treat a miss as an unknown server (never an
+    /// error), and show a hit as the entry's claim, not proof. Separate from
+    /// [`server_id`](Self::server_id); both are absent for plugin, repo,
+    /// settings and agent entries (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_id_stamp: Option<String>,
+    /// The tool's name as its server lists it, without the
+    /// `mcp__<server>__` prefix (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_name: Option<String>,
 }
 
 /// Assistant message
@@ -5198,6 +5346,18 @@ pub struct AssistantMessage {
     /// from CLIs before 2.1.274.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_error_code: Option<String>,
+    /// `first_party` when this API error was built from a response
+    /// Anthropic's own API sent: the first-party provider, the default
+    /// `https://api.anthropic.com` endpoint answering directly, over TLS
+    /// verified with no added CA, override or socket tunnel. Absent in every
+    /// other case (a base-URL override, a gateway, a third-party provider, a
+    /// connection error, an error Claude Code raised itself, any replayed
+    /// frame); treat absence as unknown origin. It says which endpoint
+    /// answered, not that the text is the server's verbatim, so render
+    /// stamped text as plain text. Open set — treat an unknown value as
+    /// absent (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_error_origin: Option<String>,
     /// Parameters of [`Self::api_error`], present only for the kinds that
     /// have any (CLI 2.1.274+).
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -234,6 +234,12 @@ pub struct CommandLifecycleMessage {
     /// message (distinct from the universal per-frame `uuid`).
     pub command_uuid: String,
     pub state: CommandLifecycleState,
+    /// Present, and true, only on a repeated `queued` frame written to the
+    /// VS Code panel: the plugin hooks of this `immediate` command, typed
+    /// during a turn, have run and answered ahead of its turn. The command is
+    /// still queued, and its own turn prints the answer (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ran_ahead: Option<bool>,
     pub uuid: String,
     pub session_id: String,
 }
