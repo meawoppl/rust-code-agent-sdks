@@ -57,6 +57,17 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub turn_start_resume_kind: Option<TurnStartResumeKind>,
 
+    /// On a turn the session's client handed over (`turn_start_resume_kind`
+    /// is `turn_handoff`), how long its `turn_handoff` control request waited
+    /// from its arrival on the session server's SSE stream until the input
+    /// loop read it, in integer ms, split into `startup_wait`,
+    /// `control_requests_ahead` and `user_frames_ahead` (each absent when 0)
+    /// and `before_read` (the rest, always present). The values sum to the
+    /// wait. Open set — keep unrecognized part names. Present only on
+    /// results that carry `turn_start_resume_kind` (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub handoff_intake_phases_ms: Option<std::collections::BTreeMap<String, u64>>,
+
     /// Number of earlier turns of this CLI process that sent a
     /// main-conversation model request: 0 is the process's first turn to
     /// reach the model, not the conversation's first. Turns stopped or
@@ -94,6 +105,72 @@ pub struct ResultMessage {
     /// `time_to_request_cpu_ms` is (CLI 2.1.285+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub time_to_request_major_faults: Option<u64>,
+
+    /// Resident memory of the CLI process at turn start, in whole MiB
+    /// (`VmRSS`), child processes left out. Sent only by a worker Anthropic
+    /// hosts, with telemetry on, on Linux (not WSL); there it is present,
+    /// always with [`process_rss_mib_result`](Self::process_rss_mib_result),
+    /// where `process_turn_index` is, unless the process hosts other
+    /// sessions too (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_rss_mib_turn_start: Option<u64>,
+
+    /// The anonymous part (`RssAnon`: heaps, stacks, JIT code) of
+    /// [`process_rss_mib_turn_start`](Self::process_rss_mib_turn_start), in
+    /// whole MiB (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_anon_mib_turn_start: Option<u64>,
+
+    /// As [`process_rss_mib_turn_start`](Self::process_rss_mib_turn_start),
+    /// read again just before this result is built: the level the turn
+    /// leaves behind (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_rss_mib_result: Option<u64>,
+
+    /// The anonymous part of
+    /// [`process_rss_mib_result`](Self::process_rss_mib_result), in whole
+    /// MiB (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_anon_mib_result: Option<u64>,
+
+    /// The most memory the process has had resident from its start until
+    /// this result (`VmHWM`), in whole MiB — not this turn's peak alone
+    /// (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_peak_rss_mib: Option<u64>,
+
+    /// CPU time (user plus system, all threads, no child processes) the CLI
+    /// process used from the end of its previous turn to this turn's start,
+    /// in ms. Divide sums of it by sums of
+    /// [`process_wall_ms_between_turns`](Self::process_wall_ms_between_turns),
+    /// which always comes with it, for CPU per second. Present where
+    /// [`process_cpu_ms_turn`](Self::process_cpu_ms_turn) is, from the
+    /// process's second turn on (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_cpu_ms_between_turns: Option<u64>,
+
+    /// Monotonic wall time of the
+    /// [`process_cpu_ms_between_turns`](Self::process_cpu_ms_between_turns)
+    /// stretch, in ms (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_wall_ms_between_turns: Option<u64>,
+
+    /// CPU time, counted as in
+    /// [`process_cpu_ms_between_turns`](Self::process_cpu_ms_between_turns),
+    /// from this turn's start until just before this result is built,
+    /// including the waits for the model and tools. Always comes with
+    /// [`process_wall_ms_turn`](Self::process_wall_ms_turn). Sent only by the
+    /// workers named under
+    /// [`process_rss_mib_turn_start`](Self::process_rss_mib_turn_start)
+    /// (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_cpu_ms_turn: Option<u64>,
+
+    /// Monotonic wall time of the
+    /// [`process_cpu_ms_turn`](Self::process_cpu_ms_turn) stretch, in ms
+    /// (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_wall_ms_turn: Option<u64>,
 
     /// What the `input_attachments` phase of `time_to_request_phases_ms` did
     /// on the turn, to tell a wait inside one attachment producer from a
@@ -355,6 +432,14 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_error_code: Option<String>,
 
+    /// The `api_error_origin` of the API error that ended the turn (see
+    /// `AssistantMessage::api_error_origin`): `first_party` when Anthropic's
+    /// own API sent the response. Absent when the turn did not end on an API
+    /// error or the origin is anything else; treat an unknown value as
+    /// absent (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_error_origin: Option<String>,
+
     /// The typed kind of the API error that ended the turn (see
     /// `AssistantMessage::api_error`). Absent when the turn did not end on
     /// an API error, when the error has no typed kind, and from CLIs before
@@ -369,6 +454,16 @@ pub struct ResultMessage {
     /// Why the session ended (e.g., "completed")
     #[serde(skip_serializing_if = "Option::is_none")]
     pub terminal_reason: Option<String>,
+
+    /// Present, and true, when the host of a multi-tenant worker shut the
+    /// worker down while this turn ran, the shutdown was the first thing to
+    /// abort the turn, and the turn is left for the session's next worker.
+    /// The other frames of the ending, and `terminal_reason`, look the same
+    /// as a client's Stop; this tells the two apart. A success result can
+    /// carry it (a shutdown during a Stop hook), and a result without it can
+    /// still be a shutdown's (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub interrupted_by_shutdown: Option<bool>,
 
     /// Delivery sequence of this result within the run: how many results the
     /// run numbered before this one, starting at 0, in the order the process
@@ -470,6 +565,60 @@ pub struct InputAttachmentsDetail {
     /// conversation's record of files was empty or the producer did not run.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub changed_files_reread: Option<u64>,
+    /// How the `changed_files` producer's compares ended in the main
+    /// thread's pass (a subagent's are not counted). Absent when nothing was
+    /// counted (CLI 2.1.300+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub touch_compare: Option<TouchCompareCounts>,
+}
+
+/// [`InputAttachmentsDetail::touch_compare`] — how the `changed_files`
+/// producer's compares of touched files (size, then bytes, against what the
+/// conversation last saw) ended. Whole numbers; a zero count is left out
+/// (CLI 2.1.300+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct TouchCompareCounts {
+    /// The text had not changed, so it was not read again.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub same: Option<u64>,
+    /// The text had changed, so it was read again.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub differs: Option<u64>,
+    /// Those of `same` and `differs` reached through the hosted container's
+    /// outputs link (`/mnt/user-data/outputs` → `/mnt/attach/outputs`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub via_outputs_link: Option<u64>,
+    /// Not compared, because the conversation has seen only part of the
+    /// file; read again.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub partial_view: Option<u64>,
+    /// Not compared, because it was compared once already since the
+    /// conversation last read or wrote it; read again.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub already_compared: Option<u64>,
+    /// The file could not be shown to be the one its path names (a symbolic
+    /// link on the way, an unjudged outputs-link landing, or the file swapped
+    /// or removed meanwhile); read again.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub link_on_path: Option<u64>,
+    /// The open met a symbolic link; read again.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub leaf_link: Option<u64>,
+    /// The file has a second hard link; read again.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nlink: Option<u64>,
+    /// Not a regular file; read again.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub not_regular: Option<u64>,
+    /// Too large to compare; read again.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub oversize: Option<u64>,
+    /// The file was gone.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enoent: Option<u64>,
+    /// Anything else, errors included; read again.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub other: Option<u64>,
 }
 
 /// [`ResultMessage::resume_store_confirm_detail`] — how the
