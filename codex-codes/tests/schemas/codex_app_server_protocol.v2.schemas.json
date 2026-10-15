@@ -20554,6 +20554,33 @@
           "type": "object"
         },
         {
+          "anyOf": [
+            {
+              "properties": {
+                "fileId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "fileId"
+              ],
+              "title": "FileIdThreadItem",
+              "type": "object"
+            },
+            {
+              "properties": {
+                "result": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "result"
+              ],
+              "title": "ResultThreadItem",
+              "type": "object"
+            }
+          ],
+          "description": "Either inline generated-image data or its durable attachment-store identity.\n\n`File` must remain first so rollouts written during the migration, which contain both an empty `result` and a `fileId`, retain the file reference when deserialized.",
           "properties": {
             "failure": {
               "anyOf": [
@@ -20567,9 +20594,6 @@
               "default": null
             },
             "id": {
-              "type": "string"
-            },
-            "result": {
               "type": "string"
             },
             "revisedPrompt": {
@@ -20608,7 +20632,6 @@
           },
           "required": [
             "id",
-            "result",
             "status",
             "type"
           ],

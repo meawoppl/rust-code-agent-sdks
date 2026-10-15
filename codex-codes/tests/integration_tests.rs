@@ -865,6 +865,54 @@ fn function_call_output_input_image_round_trips_image_url_and_file_id() {
     );
 }
 
+/// An `imageGeneration` item carries either an inline `result` or a durable
+/// `fileId`; migration-era items with both prefer the file reference.
+#[test]
+fn image_generation_item_accepts_file_id_or_inline_result() {
+    use codex_codes::protocol::{GeneratedImageRef, ThreadItem as ProtocolThreadItem};
+
+    let inline: ProtocolThreadItem = serde_json::from_value(serde_json::json!({
+        "type": "imageGeneration",
+        "id": "ig_1",
+        "status": "completed",
+        "result": "iVBORw0KGgo="
+    }))
+    .unwrap();
+    let ProtocolThreadItem::ImageGeneration { image, .. } = &inline else {
+        panic!("expected ImageGeneration");
+    };
+    assert_eq!(
+        *image,
+        GeneratedImageRef::Inline {
+            result: "iVBORw0KGgo=".into()
+        }
+    );
+    let wire = serde_json::to_value(&inline).unwrap();
+    assert_eq!(wire["result"], "iVBORw0KGgo=");
+    assert!(wire.get("fileId").is_none());
+
+    let migrated: ProtocolThreadItem = serde_json::from_value(serde_json::json!({
+        "type": "imageGeneration",
+        "id": "ig_2",
+        "status": "completed",
+        "result": "",
+        "fileId": "file_7"
+    }))
+    .unwrap();
+    let ProtocolThreadItem::ImageGeneration { image, .. } = &migrated else {
+        panic!("expected ImageGeneration");
+    };
+    assert_eq!(
+        *image,
+        GeneratedImageRef::File {
+            file_id: "file_7".into()
+        }
+    );
+    let wire = serde_json::to_value(&migrated).unwrap();
+    assert_eq!(wire["fileId"], "file_7");
+    assert!(wire.get("result").is_none());
+}
+
 /// An `mcpToolCall` item carries the new `mcpAppUi` block beside the legacy
 /// `mcpAppResourceUri`, and older history without it still parses.
 #[test]
