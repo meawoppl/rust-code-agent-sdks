@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.301] - 2026-10-15
+
+Re-baseline against Claude CLI **2.1.301**. Models the 2.1.300 → 2.1.301
+stream-json drift: three optional fields, no new message types and no
+removals. The model-id set, `--help` output and registered CLI flags are
+unchanged.
+
+### Added
+
+- `AssistantMessage::refused_message_id`: on the assistant message that
+  reports a refusal, the API `msg_*` id of the refused response (the
+  message's own `message.id` is a local UUID). Mirrors the existing
+  `UserMessage::refused_message_id`.
+- `InitMessage::original_cwd`: the folder the session's file permission
+  checks are anchored at. Unlike `cwd` it does not follow the shell.
+- `InitMessage::additional_directories`: absolute paths of folders added to
+  the session (`--add-dir`, SDK option, settings, grants). `None` means not
+  told; `Some(vec![])` means none.
+- `AssistantUsage::speed` (`"standard"` / `"fast"`). Already in the CLI's
+  usage schema and on `UsageInfo`; the live wrapping audit caught the API
+  now sending it on per-message usage.
+
+### Changed
+
+- Stream-json schema snapshot refreshed to CLI 2.1.301.
+- Live tool-approval tests now pass `--permission-mode default`. Headless
+  sessions on accounts with the auto-mode gate enabled default to `auto`,
+  which lets the classifier approve the edits/reads these tests expect to be
+  prompted for (seen on both 2.1.300 and 2.1.301, so not a CLI-version change).
+
 ## [2.1.300] - 2026-10-14
 
 Re-baseline against Claude CLI **2.1.300**. Models the 2.1.296 → 2.1.300
