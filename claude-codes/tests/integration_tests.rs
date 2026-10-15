@@ -8,7 +8,9 @@
 #![cfg(feature = "integration-tests")]
 
 use claude_codes::io::ContentBlock;
-use claude_codes::{AsyncClient, ClaudeCliBuilder, ClaudeInput, ClaudeOutput, SyncClient};
+use claude_codes::{
+    AsyncClient, ClaudeCliBuilder, ClaudeInput, ClaudeOutput, PermissionMode, SyncClient,
+};
 use uuid::Uuid;
 
 /// Create an async client that works inside a Claude Code session
@@ -1273,6 +1275,7 @@ async fn test_tool_approval_initialization() {
     let child = ClaudeCliBuilder::new()
         .model("sonnet")
         .allow_recursion()
+        .permission_mode(PermissionMode::Default)
         .permission_prompt_tool("stdio")
         .spawn()
         .await
@@ -1316,6 +1319,7 @@ async fn test_tool_approval_with_query() {
     let child = ClaudeCliBuilder::new()
         .model("sonnet")
         .allow_recursion()
+        .permission_mode(PermissionMode::Default)
         .permission_prompt_tool("stdio")
         .spawn()
         .await
@@ -1402,6 +1406,7 @@ fn test_sync_tool_approval_initialization() {
     let child = ClaudeCliBuilder::new()
         .model("sonnet")
         .allow_recursion()
+        .permission_mode(PermissionMode::Default)
         .permission_prompt_tool("stdio")
         .spawn_sync()
         .expect("Failed to spawn Claude with permission_prompt_tool");
@@ -1510,6 +1515,7 @@ async fn test_tool_approval_deny_flow() {
     let child = ClaudeCliBuilder::new()
         .model("sonnet")
         .allow_recursion()
+        .permission_mode(PermissionMode::Default)
         .permission_prompt_tool("stdio")
         .spawn()
         .await
@@ -1658,6 +1664,7 @@ async fn test_tool_approval_allow_and_remember() {
     let child = ClaudeCliBuilder::new()
         .model("sonnet")
         .allow_recursion()
+        .permission_mode(PermissionMode::Default)
         .permission_prompt_tool("stdio")
         .spawn()
         .await
@@ -2006,6 +2013,7 @@ async fn test_ask_user_question_round_trip() {
         .model("sonnet")
         .allow_recursion()
         .allowed_tools(["AskUserQuestion"])
+        .permission_mode(PermissionMode::Default)
         .permission_prompt_tool("stdio")
         .spawn()
         .await
@@ -2224,6 +2232,7 @@ async fn test_ask_user_question_answered_and_converges() {
     let child = ClaudeCliBuilder::new()
         .model("sonnet")
         .allow_recursion()
+        .permission_mode(PermissionMode::Default)
         .permission_prompt_tool("stdio")
         .spawn()
         .await

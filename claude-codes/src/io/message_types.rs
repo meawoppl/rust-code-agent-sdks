@@ -2952,6 +2952,26 @@ pub struct InitMessage {
     /// wins.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub view_mode: Option<ViewMode>,
+
+    /// Absolute path of the folder the session's file permission checks are
+    /// anchored at, for clients that read files from the session. Unlike
+    /// `cwd` it does not follow the shell: it moves only on `/cd`, on
+    /// entering or leaving a worktree, and on a session restore. Omitted on
+    /// the redacted Remote Control / hosted-worker inits, in a session with
+    /// no directory, for HIPAA organizations, and on CLIs before 2.1.301.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub original_cwd: Option<String>,
+
+    /// Absolute paths of the folders added to the session (`--add-dir`, the
+    /// SDK `additionalDirectories` option, settings, a grant, or a host's
+    /// mid-session request), in no particular order; `Some(vec![])` when
+    /// there are none. Folders added only by repository-delivered settings
+    /// files are left out. Grants nothing: the CLI's own check decides every
+    /// read. `None` means not told (not "none"): omitted on the same lanes as
+    /// [`original_cwd`](Self::original_cwd), by hosts that have not wired it,
+    /// and on CLIs before 2.1.301.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub additional_directories: Option<Vec<String>>,
 }
 
 /// The server-configured session indicator that the terminal renders as a
@@ -5154,6 +5174,12 @@ pub struct AssistantMessage {
     /// Anthropic API request id that produced this message (e.g. `req_...`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub request_id: Option<String>,
+    /// Only on the assistant message that reports a refusal: the API `msg_*`
+    /// id of the refused response (`message.id` on this message is a local
+    /// UUID). Absent when the CLI has no well-formed id for it, and on CLIs
+    /// before 2.1.301.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub refused_message_id: Option<String>,
     /// Client uuid of the user message that triggered this turn, stamped on
     /// the turn's first top-level assistant message so a consumer can bind
     /// the reply to the send it answers without waiting for the result. With
@@ -5704,6 +5730,11 @@ pub struct AssistantUsage {
     /// Inference geography (e.g., "not_available")
     #[serde(skip_serializing_if = "Option::is_none")]
     pub inference_geo: Option<String>,
+
+    /// Speed tier the request ran at (`"standard"` or `"fast"`). The API
+    /// began sending it on per-message usage around CLI 2.1.301.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speed: Option<String>,
 
     /// Outcome of a fallback-credit token the request presented; `null` on
     /// the wire when it presented none (CLI 2.1.285+).
