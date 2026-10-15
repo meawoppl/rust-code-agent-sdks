@@ -114,6 +114,7 @@ pub struct MuseExecBuilder {
     no_foreign_personal_context: bool,
     no_session_log: bool,
     yolo: bool,
+    disable_request_user_input: bool,
     trust_workspace: bool,
     disable_approval: bool,
     disable_sandbox: bool,
@@ -165,6 +166,7 @@ impl Default for MuseExecBuilder {
             no_foreign_personal_context: false,
             no_session_log: false,
             yolo: false,
+            disable_request_user_input: false,
             trust_workspace: false,
             disable_approval: false,
             disable_sandbox: false,
@@ -418,10 +420,17 @@ impl MuseExecBuilder {
         self
     }
 
-    /// Disable approval and sandbox and trust this workspace for the run
-    /// (`--yolo`).
+    /// Disable approval and sandbox, trust this workspace, and withhold the
+    /// `request_user_input` tool for the run (`--yolo`).
     pub fn yolo(mut self, enabled: bool) -> Self {
         self.yolo = enabled;
+        self
+    }
+
+    /// Withhold the `request_user_input` tool for the run
+    /// (`--disable-request-user-input`).
+    pub fn disable_request_user_input(mut self, disabled: bool) -> Self {
+        self.disable_request_user_input = disabled;
         self
     }
 
@@ -595,6 +604,9 @@ impl MuseExecBuilder {
         if self.yolo {
             cmd.arg("--yolo");
         }
+        if self.disable_request_user_input {
+            cmd.arg("--disable-request-user-input");
+        }
         if self.trust_workspace {
             cmd.arg("--trust-workspace");
         }
@@ -708,6 +720,7 @@ mod tests {
             .no_foreign_personal_context(true)
             .no_session_log(true)
             .yolo(true)
+            .disable_request_user_input(true)
             .trust_workspace(true)
             .disable_approval(true)
             .disable_sandbox(true)
@@ -773,6 +786,7 @@ mod tests {
             "--no-foreign-personal-context",
             "--no-session-log",
             "--yolo",
+            "--disable-request-user-input",
             "--trust-workspace",
             "--disable-approval",
             "--disable-sandbox",

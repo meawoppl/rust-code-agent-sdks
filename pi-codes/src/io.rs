@@ -93,6 +93,16 @@ pub enum ContentBlock {
         id: String,
         name: String,
         arguments: Value,
+        /// Set when the model's full arguments text was not a valid JSON
+        /// object (pi 1.3.0+). `arguments` is then `{}`, the message
+        /// describes the problem and quotes the text the model sent, and
+        /// the call fails tool argument validation instead of running.
+        #[serde(
+            rename = "argumentsError",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        arguments_error: Option<String>,
     },
     Image {
         data: String,
@@ -423,7 +433,36 @@ mod tests {
         };
         assert_eq!(content.len(), 3);
         assert_eq!(stop_reason, "stop");
-        assert!(matches!(content[2], ContentBlock::ToolCall { .. }));
+        assert!(matches!(
+            content[2],
+            ContentBlock::ToolCall {
+                arguments_error: None,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn tool_call_arguments_error_round_trips() {
+        let raw = serde_json::json!({
+            "type": "toolCall",
+            "id": "call_7",
+            "name": "read",
+            "arguments": {},
+            "argumentsError": "Tool arguments are not valid JSON: {\"path\": \"a"
+        });
+        let block: ContentBlock = serde_json::from_value(raw.clone()).unwrap();
+        let ContentBlock::ToolCall {
+            ref arguments_error,
+            ..
+        } = block
+        else {
+            panic!("wrong block")
+        };
+        assert!(arguments_error
+            .as_deref()
+            .is_some_and(|e| e.contains("not valid JSON")));
+        assert_eq!(serde_json::to_value(&block).unwrap(), raw);
     }
 
     #[test]
