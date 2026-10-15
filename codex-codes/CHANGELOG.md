@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.162.3] - 2026-10-15
+
+### Changed
+
+- `ThreadItem::ImageGeneration` replaces its required `result: String` with a
+  flattened `image: GeneratedImageRef` (openai/codex#54398, generated images
+  stored as attachment references). `GeneratedImageRef` is untagged:
+  `File { file_id }` (wire `fileId`) or `Inline { result }`. `File` is tried
+  first, so migration-era items carrying both an empty `result` and a
+  `fileId` resolve to the file reference. **Breaking** for code that reads or
+  constructs the `result` field.
+- Refresh the schema snapshot to `openai/codex@main` (`aabf13307a`). Codex CLI
+  release is still **0.162.1**; this is main-side drift only. The bundled
+  `models.json` slug set is unchanged.
+
 ## [0.162.2] - 2026-10-10
 
 ### Added
