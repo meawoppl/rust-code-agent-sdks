@@ -82,6 +82,11 @@ impl PiCliBuilder {
         self
     }
 
+    /// `--model` — exact ID or fuzzy ID/name match, optionally
+    /// `provider/id` and a `:<thinking>` suffix. When several providers
+    /// offer the match, pi 1.3.0+ prefers the one with credentials and
+    /// otherwise exits asking for `--provider` (earlier releases took
+    /// the first provider in catalog order).
     pub fn model(mut self, model: impl Into<String>) -> Self {
         self.model = Some(model.into());
         self
@@ -151,6 +156,8 @@ impl PiCliBuilder {
     /// are kept unless an entry starts with `mcp__`. Entries written as
     /// `+name` / `-name` add to or remove from the default selection
     /// instead of replacing it (pi 1.1.0+), e.g. `"+codemode,-write"`.
+    /// On a resumed session (pi 1.3.0+) the base is the session's active
+    /// tools rather than the defaults.
     pub fn tools(mut self, tools: impl Into<String>) -> Self {
         self.tools = Some(tools.into());
         self

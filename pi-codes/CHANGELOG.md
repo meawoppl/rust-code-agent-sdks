@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-10-15
+
+### Added
+
+- `ContentBlock::ToolCall::arguments_error` — pi 1.3.0's new optional
+  `argumentsError` on assistant `toolCall` blocks. It is set when the
+  model's full arguments text was not a valid JSON object; `arguments` is
+  then `{}` and the call fails tool argument validation instead of running
+  with a partial parse.
+
+### Changed
+
+- **Breaking:** `ContentBlock::ToolCall` has a new field, so struct-literal
+  construction and patterns that list every field without `..` need
+  updating.
+- Re-baseline the tested pin to pi **1.3.0** (from 1.2.0). The RPC wire
+  surface is otherwise unchanged: `dist/modes/rpc/`, `json-event.d.ts`,
+  `dist/cli/args.d.ts`, `docs/rpc*.md`, `docs/json.md` and `pi --help` are
+  byte-identical to 1.2.0, and `pi-agent-core` types are unchanged. The
+  live suite passes unmodified. Behavioural changes now documented on the
+  builder: `--model` matching several providers prefers the one with
+  credentials and otherwise asks for `--provider` (previously catalog
+  order), and `--tools +name`/`-name` on a resumed session applies on top
+  of the session's active tools.
+
 ## [1.2.0] - 2026-10-14
 
 ### Changed
