@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.1] - 2026-10-15
+
+### Changed
+
+- Re-baseline the tested pin to opencode **1.19.1** (from 1.19.0). The
+  live `GET /doc` OpenAPI document is byte-identical to the committed
+  snapshot (162 paths, 472 schemas) and `opencode serve --help` is
+  unchanged. The CLI dropped `opencode run --share` and URL sources for
+  `opencode import`; the crate wraps neither, so this is a pin-only
+  release.
+
 ## [1.19.0] - 2026-10-10
 
 ### Changed
