@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.9] - 2026-10-15
+
+### Added
+
+- `MuseExecBuilder::disable_request_user_input(bool)` for the new
+  `muse exec --disable-request-user-input` flag (withholds the
+  `request_user_input` tool for the run; the echo provider accepts it).
+
+### Changed
+
+- Re-baseline the tested pin to Muse Code **1.4.9 (1.4.9-R6297.1)** (from
+  1.4.8-R6256.1). The stream fingerprint is unchanged and a live meta turn
+  produced no new payload types.
+- `MuseExecBuilder::yolo` docs: `--yolo` now also withholds
+  `request_user_input`, in addition to disabling approval and the sandbox
+  and trusting the workspace.
+- Model catalog refreshed: same model ids and limits, `muse-spark-1.3` is
+  still the default, so `MuseModel` is unchanged. Catalog rows gained a
+  populated `background_agent_model` (`muse-spark-1.3`); the crate does not
+  read it.
+- Upstream surface the crate does not model: MSP (`muse serve`)
+  additions — a new `approval/reviewing` notification
+  (an approval held by the native reviewer, `ApprovalRequestParams`) and
+  `Item.displayLabel` (`ToolDisplayLabel` with `active`/`done`/`neutral`
+  phrasings for a tool call).
+
 ## [1.4.8] - 2026-10-14
 
 ### Changed

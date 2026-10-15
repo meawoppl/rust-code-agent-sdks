@@ -3013,6 +3013,22 @@ pub struct ThreadUsageBreakdownGroup {
     pub total_tokens: Option<i64>,
 }
 
+/// Either inline generated-image data or its durable attachment-store
+/// identity. Flattened into [`ThreadItem::ImageGeneration`]; untagged, and
+/// `File` must stay first so migration-era items carrying both an empty
+/// `result` and a `fileId` keep the file reference (`openai/codex@main` aabf13307a).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum GeneratedImageRef {
+    File {
+        #[serde(rename = "fileId")]
+        file_id: String,
+    },
+    Inline {
+        result: String,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ImageGenerationFailure {
@@ -8133,7 +8149,8 @@ pub enum ThreadItem {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         failure: Option<ImageGenerationFailure>,
         id: String,
-        result: String,
+        #[serde(flatten)]
+        image: GeneratedImageRef,
         #[serde(
             rename = "revisedPrompt",
             default,
