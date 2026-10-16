@@ -79,7 +79,7 @@
 //!
 //! The Codex CLI protocol is evolving. This crate automatically checks your
 //! installed CLI version and warns if it's newer than tested. Current tested
-//! version: **0.162.1**
+//! version: **0.163.0**
 //!
 //! Report compatibility issues at: <https://github.com/meawoppl/rust-code-agent-sdks/issues>
 //!

@@ -913,6 +913,67 @@ fn image_generation_item_accepts_file_id_or_inline_result() {
     assert!(wire.get("result").is_none());
 }
 
+/// A completed `imageGeneration` item records the local `inputImages` it read;
+/// older items without the field still parse.
+#[test]
+fn image_generation_item_carries_input_images() {
+    use codex_codes::protocol::{
+        AbsolutePathBuf, GeneratedImageRef, ImageGenerationInputImage,
+        ThreadItem as ProtocolThreadItem,
+    };
+
+    let sha = "ab".repeat(32);
+    let item: ProtocolThreadItem = serde_json::from_value(serde_json::json!({
+        "type": "imageGeneration",
+        "id": "ig_3",
+        "status": "completed",
+        "fileId": "file_8",
+        "inputImages": [{"path": "/tmp/reference.png", "sha256": sha}]
+    }))
+    .unwrap();
+    let ProtocolThreadItem::ImageGeneration {
+        image,
+        input_images,
+        ..
+    } = &item
+    else {
+        panic!("expected ImageGeneration");
+    };
+    assert_eq!(
+        *image,
+        GeneratedImageRef::File {
+            file_id: "file_8".into()
+        }
+    );
+    assert_eq!(
+        input_images.as_deref(),
+        Some(
+            &[ImageGenerationInputImage {
+                path: AbsolutePathBuf("/tmp/reference.png".into()),
+                sha256: sha.clone(),
+            }][..]
+        )
+    );
+    let wire = serde_json::to_value(&item).unwrap();
+    assert_eq!(wire["inputImages"][0]["sha256"], sha);
+
+    let older: ProtocolThreadItem = serde_json::from_value(serde_json::json!({
+        "type": "imageGeneration",
+        "id": "ig_4",
+        "status": "completed",
+        "fileId": "file_9"
+    }))
+    .unwrap();
+    let ProtocolThreadItem::ImageGeneration { input_images, .. } = &older else {
+        panic!("expected ImageGeneration");
+    };
+    assert!(input_images.is_none());
+    assert!(serde_json::to_value(&older)
+        .unwrap()
+        .get("inputImages")
+        .is_none());
+}
+
 /// An `mcpToolCall` item carries the new `mcpAppUi` block beside the legacy
 /// `mcpAppResourceUri`, and older history without it still parses.
 #[test]

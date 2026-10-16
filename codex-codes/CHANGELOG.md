@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.163.0] - 2026-10-16
+
+### Added
+
+- `ThreadItem::ImageGeneration.input_images: Option<Vec<ImageGenerationInputImage>>`
+  (wire `inputImages`) and the new `ImageGenerationInputImage { path, sha256 }`
+  struct: the local image files read for a completed generation, absent on
+  older items (openai/codex#54420). **Breaking** for code that constructs
+  `ThreadItem::ImageGeneration` without `..`.
+
+### Changed
+
+- Tested against Codex CLI **0.163.0** (was 0.162.1). The 0.163.0 release
+  schema adds the `thread/readState/changed` notification, `ThreadReadState*`
+  types, `TurnToolOutput.retain`, `ThreadListParams.excludedThreadIds` and
+  the output-token-replay fields (`ContentItem`/`ResponseItem`, new
+  `RealtimeVoice` values; not modeled in this crate), all already in the main
+  snapshot from 0.162.x. It is a strict subset of main: the release
+  `imageGeneration` item still has a required inline `result` (no `fileId`,
+  no `inputImages`), which `GeneratedImageRef::Inline` accepts.
+- Refresh the schema snapshot to `openai/codex@main` (`e790ce2717`). The
+  bundled `models.json` slug set is unchanged.
+
 ## [0.162.3] - 2026-10-15
 
 ### Changed

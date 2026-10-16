@@ -3029,6 +3029,14 @@ pub enum GeneratedImageRef {
     },
 }
 
+/// A local image file successfully read for this exact image-generation request.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ImageGenerationInputImage {
+    pub path: AbsolutePathBuf,
+    /// Lowercase SHA-256 of the file bytes read before image normalization.
+    pub sha256: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ImageGenerationFailure {
@@ -8151,6 +8159,13 @@ pub enum ThreadItem {
         id: String,
         #[serde(flatten)]
         image: GeneratedImageRef,
+        /// Observed local inputs for a completed generation, absent on older items.
+        #[serde(
+            rename = "inputImages",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        input_images: Option<Vec<ImageGenerationInputImage>>,
         #[serde(
             rename = "revisedPrompt",
             default,
