@@ -4962,6 +4962,9 @@ pub struct ProviderConfigModelsValue {
     pub provider: Option<ProviderConfigModelsValueProvider>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reasoning: Option<bool>,
+    /// Reasoning controls the model accepts, used to build its variants.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_options: Option<Vec<ProviderConfigModelsValueReasoningOption>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub release_date: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5083,6 +5086,34 @@ pub struct ProviderConfigModelsValueProvider {
     pub api: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub npm: Option<String>,
+}
+
+/// One reasoning control a configured model accepts.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum ProviderConfigModelsValueReasoningOption {
+    /// Named effort levels (e.g. `low`, `medium`, `high`).
+    #[serde(rename = "effort")]
+    Effort(ProviderConfigModelsValueReasoningOptionEffort),
+    /// Reasoning can be switched on or off.
+    #[serde(rename = "toggle")]
+    Toggle,
+    /// A thinking-token budget, optionally bounded.
+    #[serde(rename = "budget_tokens")]
+    BudgetTokens(ProviderConfigModelsValueReasoningOptionBudgetTokens),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ProviderConfigModelsValueReasoningOptionEffort {
+    pub values: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ProviderConfigModelsValueReasoningOptionBudgetTokens {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

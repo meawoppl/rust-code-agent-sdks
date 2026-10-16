@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.3] - 2026-10-16
+
+### Added
+
+- `ProviderConfigModelsValue.reasoning_options`: opencode 1.19.3 added an
+  optional per-model list of reasoning controls ("used to build its
+  variants") to the provider config schema. Modeled as
+  `Vec<ProviderConfigModelsValueReasoningOption>`, a `type`-tagged enum with
+  `Effort { values }`, `Toggle`, and `BudgetTokens { min?, max? }` variants.
+  This is the only change in the live `GET /doc` (162 paths, 472 schemas,
+  same fingerprint); `opencode --help` is unchanged.
+
+### Changed
+
+- Re-baseline the tested pin to opencode **1.19.3** (from 1.19.2).
+
 ## [1.19.2] - 2026-10-15
 
 ### Changed
