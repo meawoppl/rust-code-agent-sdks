@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.10] - 2026-10-16
+
+### Changed
+
+- Re-baseline the tested pin to Muse Code **1.4.10 (1.4.10-R6427.1)** (from
+  1.4.9-R6297.1). Pin-only: top-level `muse --help`, every subcommand's
+  `--help` (including `exec --help`), and the exported MSP schema
+  (`muse schema generate-json-schema`, same manifest fingerprint) are
+  byte-identical to 1.4.9. The echo stream fingerprint is unchanged, and
+  a live meta turn on the old and new builds produced the same payload
+  types and key paths.
+- Model catalog refreshed: same model ids, limits and labels, and
+  `muse-spark-1.3` is still the default, so `MuseModel` is unchanged.
+
 ## [1.4.9] - 2026-10-15
 
 ### Added
