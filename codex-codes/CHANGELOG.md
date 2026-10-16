@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.163.1] - 2026-10-16
+
+### Added
+
+- `McpServerStatus.tool_list_meta: Option<Value>` (wire `toolListMeta`): the
+  opaque `_meta` from the first page of the server's MCP tool catalog, `None`
+  when unavailable (openai/codex#54686). **Breaking** for code that constructs
+  `McpServerStatus` with a struct literal.
+
+### Changed
+
+- Refresh the schema snapshot to `openai/codex@main` (`0e67502123`). Still
+  tested against Codex CLI **0.163.0**; the 0.163.0 release does not send
+  `toolListMeta`. The bundled `models.json` slug set is unchanged.
+
 ## [0.163.0] - 2026-10-16
 
 ### Added

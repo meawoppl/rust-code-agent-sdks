@@ -215,6 +215,32 @@ fn mcp_server_status_decodes_tools_error() {
         .is_none());
 }
 
+/// McpServerStatus.toolListMeta round-trips the opaque tool-catalog `_meta` and is omitted when unavailable.
+#[test]
+fn mcp_server_status_decodes_tool_list_meta() {
+    let meta = serde_json::json!({"io.example/catalog": {"revision": 7}});
+    let status: McpServerStatus = serde_json::from_value(serde_json::json!({
+        "authStatus": "unsupported",
+        "name": "docs",
+        "toolListMeta": meta
+    }))
+    .unwrap();
+    assert_eq!(status.tool_list_meta.as_ref(), Some(&meta));
+    assert_eq!(serde_json::to_value(status).unwrap()["toolListMeta"], meta);
+
+    let bare: McpServerStatus = serde_json::from_value(serde_json::json!({
+        "authStatus": "unsupported",
+        "name": "docs",
+        "toolListMeta": null
+    }))
+    .unwrap();
+    assert!(bare.tool_list_meta.is_none());
+    assert!(serde_json::to_value(bare)
+        .unwrap()
+        .get("toolListMeta")
+        .is_none());
+}
+
 /// FeedbackUploadResponse.promptHash decodes the base-instructions hash and is omitted when the rollout has no prompt metadata.
 #[test]
 fn feedback_upload_response_decodes_prompt_hash() {

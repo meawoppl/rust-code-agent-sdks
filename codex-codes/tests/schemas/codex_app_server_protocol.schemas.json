@@ -15157,6 +15157,9 @@
               }
             ]
           },
+          "toolListMeta": {
+            "description": "Opaque `_meta` from the first page of the corresponding MCP tool catalog. Null when unavailable."
+          },
           "tools": {
             "additionalProperties": {
               "$ref": "#/definitions/v2/Tool"

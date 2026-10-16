@@ -4476,6 +4476,14 @@ pub struct McpServerStatus {
         skip_serializing_if = "Option::is_none"
     )]
     pub server_info: Option<McpServerInfo>,
+    /// Opaque `_meta` from the first page of the corresponding MCP tool
+    /// catalog; `None` when unavailable.
+    #[serde(
+        rename = "toolListMeta",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub tool_list_meta: Option<Value>,
     #[serde(default)]
     pub tools: std::collections::BTreeMap<String, Tool>,
     /// Tool discovery failed and no catalog was returned. `None` when a
