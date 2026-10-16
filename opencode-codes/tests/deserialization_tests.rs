@@ -17,8 +17,10 @@
 //! making the event-stream test a strong forward-compatibility tripwire.
 
 use opencode_codes::protocol_generated::types::{
-    Event, MessageWithParts, NotFoundError, ProviderConfigModelsValueInterleaved,
-    ProviderConfigModelsValueInterleavedVariant3Field, ProviderConfigOptions,
+    Event, MessageWithParts, NotFoundError, ProviderConfigModelsValue,
+    ProviderConfigModelsValueInterleaved, ProviderConfigModelsValueInterleavedVariant3Field,
+    ProviderConfigModelsValueReasoningOption, ProviderConfigModelsValueReasoningOptionBudgetTokens,
+    ProviderConfigModelsValueReasoningOptionEffort, ProviderConfigOptions,
     ProviderConfigOptionsChunkTimeout, Session, SessionStatus,
 };
 use serde::de::DeserializeOwned;
@@ -254,5 +256,48 @@ fn provider_config_1_18_30_shapes_roundtrip() {
     assert_eq!(
         by_flag,
         ProviderConfigModelsValueInterleaved::Variant0(true)
+    );
+}
+
+/// opencode 1.19.3 added `ProviderConfig.models.*.reasoning_options`, a list of
+/// `type`-tagged reasoning controls (`effort`, `toggle`, `budget_tokens`).
+#[test]
+fn provider_config_1_19_3_reasoning_options_roundtrip() {
+    let model: ProviderConfigModelsValue = roundtrip(
+        "reasoning_options",
+        r#"{"reasoning": true, "reasoning_options": [
+            {"type": "effort", "values": ["low", "medium", "high"]},
+            {"type": "toggle"},
+            {"type": "budget_tokens", "min": 1024, "max": 32000}
+        ]}"#,
+    );
+    assert_eq!(
+        model.reasoning_options,
+        Some(vec![
+            ProviderConfigModelsValueReasoningOption::Effort(
+                ProviderConfigModelsValueReasoningOptionEffort {
+                    values: vec!["low".into(), "medium".into(), "high".into()],
+                }
+            ),
+            ProviderConfigModelsValueReasoningOption::Toggle,
+            ProviderConfigModelsValueReasoningOption::BudgetTokens(
+                ProviderConfigModelsValueReasoningOptionBudgetTokens {
+                    min: Some(1024.0),
+                    max: Some(32000.0),
+                }
+            ),
+        ])
+    );
+
+    let unbounded: ProviderConfigModelsValueReasoningOption =
+        roundtrip("budget_tokens_unbounded", r#"{"type": "budget_tokens"}"#);
+    assert_eq!(
+        unbounded,
+        ProviderConfigModelsValueReasoningOption::BudgetTokens(
+            ProviderConfigModelsValueReasoningOptionBudgetTokens {
+                min: None,
+                max: None,
+            }
+        )
     );
 }
