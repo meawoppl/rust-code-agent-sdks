@@ -355,7 +355,7 @@ dependencies = [
 
 [[package]]
 name = "codex-codes"
-version = "0.163.0"
+version = "0.163.1"
 dependencies = [
  "env_logger",
  "jsonschema",
