@@ -906,7 +906,9 @@ pub struct SubagentStats {
     /// Subagents actually started; a refused or failed launch is not counted.
     pub spawned: u64,
     /// Spawns by the `run_in_background` value the model passed; all count as
-    /// `unset` while the parameter is not offered.
+    /// `unset` while the parameter is not offered (background tasks disabled,
+    /// or subagents forced into the background: in a terminal, the desktop
+    /// app or the VS Code extension, or with `CLAUDE_CODE_FORK_SUBAGENT=1`).
     pub requested: SubagentSpawnRequests,
     /// Spawns that started in the background after defaults and session
     /// settings; the rest blocked the spawning tool call.
