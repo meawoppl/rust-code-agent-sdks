@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.302] - 2026-10-16
+
+Re-baseline against Claude CLI **2.1.302**. No stream-json drift: the
+key, enum and literal sets of every extracted schema are identical to
+2.1.301, and a label-keyed block diff shows only minifier renames. The
+model-id set, `--help` output and registered CLI flags are unchanged.
+
+### Changed
+
+- `SubagentStats::requested` rustdoc now lists when the `run_in_background`
+  parameter is not offered (background tasks disabled, or subagents forced
+  into the background in a terminal, the desktop app, the VS Code extension,
+  or with `CLAUDE_CODE_FORK_SUBAGENT=1`), matching the CLI's updated
+  schema description.
+
 ## [2.1.301] - 2026-10-15
 
 Re-baseline against Claude CLI **2.1.301**. Models the 2.1.300 → 2.1.301
