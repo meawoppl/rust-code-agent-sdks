@@ -6,8 +6,9 @@
 //!
 //! The table mirrors Muse Code's on-disk model catalog
 //! (`~/.local/share/muse/model-catalog/`, `provider_catalog` source) as of
-//! Muse Code 1.4.10 (catalog refreshed 2026-10-16). Unknown or future model ids round-trip through
-//! [`MuseModel::Custom`]. Context/output limits from the same catalog are
+//! Muse Code 1.4.11 (catalog refreshed 2026-10-19). Unknown or future model ids round-trip through
+//! [`MuseModel::Custom`], including the hidden image-generation row
+//! `muse-image-1.0`, which is not an `exec --model` chat model. Context/output limits from the same catalog are
 //! exposed via [`MuseModel::context_limit`] / [`MuseModel::output_limit`].
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -18,11 +19,10 @@ use std::fmt;
 pub enum MuseModel {
     /// muse-wonder-1.0 (`muse-wonder-1.0`), released 2026-10-12.
     Wonder10,
-    /// muse-spark-1.3 (`muse-spark-1.3`), released 2026-09-02. The catalog
-    /// default as of Muse Code 1.4.10.
+    /// muse-spark-1.3 (`muse-spark-1.3`), released 2026-09-02.
     Spark13,
     /// muse-spark-1.3 contributor build (`muse-spark-1.3-contributor`),
-    /// released 2026-09-02.
+    /// released 2026-09-02. The catalog default as of 2026-10-19.
     Spark13Contributor,
     /// muse-spark-1.2 (`muse-spark-1.2`), released 2026-08-05.
     Spark12,
@@ -85,11 +85,11 @@ impl MuseModel {
         }
     }
 
-    /// The catalog-default model as of Muse Code 1.4.10 — what a run
-    /// resolves to when `--model` is omitted and no `model` is set in the
-    /// user's Muse settings.
+    /// The catalog-default model as of Muse Code 1.4.11 (catalog of
+    /// 2026-10-19) — what a run resolves to when `--model` is omitted and
+    /// no `model` is set in the user's Muse settings.
     pub fn catalog_default() -> Self {
-        Self::Spark13
+        Self::Spark13Contributor
     }
 
     /// Every model known to this version of the crate, newest first.
@@ -167,7 +167,10 @@ mod tests {
     }
 
     #[test]
-    fn default_is_spark_13() {
-        assert_eq!(MuseModel::catalog_default().cli_arg(), "muse-spark-1.3");
+    fn default_is_spark_13_contributor() {
+        assert_eq!(
+            MuseModel::catalog_default().cli_arg(),
+            "muse-spark-1.3-contributor"
+        );
     }
 }

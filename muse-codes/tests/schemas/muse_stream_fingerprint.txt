@@ -2,6 +2,7 @@ __envelope__: causation_id, durability, id, payload, payload_schema_version, pay
 run.lifecycle.started: command_id, kind, prompt, run_stream
 run.output.delta: command_id, kind, run_stream, text
 run.terminal.completed: command_id, kind, reason, run_stream, terminal, text
+run.usage: allowance, calls, cancelled_calls, children_included, command_id, completed_calls, failed_calls, kind, models, run_stream
 runtime.command.accepted: client_id, command_id, command_kind, kind
 session.run.linked: command_id, kind, run_stream
 task.lifecycle.accepted: command_id, event, kind, run_stream, task_id, task_stream

@@ -65,6 +65,12 @@ pub enum StreamKind {
     Session,
     Run,
     Task,
+    /// `exec.usage` — the per-exec usage stream carrying [`RunUsage`]
+    /// (Muse Code 1.4.11+). Its `id` is the **session id**, and its
+    /// `sequence` restarts at 1, so key per-stream state by the whole
+    /// [`StreamRef`] (kind + id), not by `id` alone.
+    #[serde(rename = "exec.usage")]
+    ExecUsage,
 }
 
 /// Journal record classes.
@@ -106,6 +112,8 @@ pub enum MusePayload {
     ToolResult(ToolResult),
     /// `run.terminal.completed` (and any future `run.terminal.*`)
     RunTerminal(RunTerminal),
+    /// `run.usage`
+    RunUsage(RunUsage),
     /// `task.stream.linked`
     TaskStreamLinked(TaskStreamLinked),
     /// `task.lifecycle.*`
@@ -131,6 +139,7 @@ impl MusePayload {
             }
             "tool.result" => MusePayload::ToolResult(serde_json::from_value(payload)?),
             "run.output.delta" => MusePayload::RunOutputDelta(serde_json::from_value(payload)?),
+            "run.usage" => MusePayload::RunUsage(serde_json::from_value(payload)?),
             t if t.starts_with("run.terminal.") => {
                 MusePayload::RunTerminal(serde_json::from_value(payload)?)
             }
@@ -372,6 +381,64 @@ pub struct RunTerminal {
     pub extra: serde_json::Map<String, Value>,
 }
 
+/// `run.usage` — per-run call counts and token usage, emitted once just
+/// before `run.terminal.*` (Muse Code 1.4.11+). Unlike every other record
+/// it arrives on its own [`StreamKind::ExecUsage`] stream, as an ephemeral
+/// `status` record.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RunUsage {
+    pub kind: String,
+    pub command_id: String,
+    pub run_stream: StreamRef,
+    /// Model calls made by the run.
+    pub calls: u64,
+    pub completed_calls: u64,
+    pub failed_calls: u64,
+    pub cancelled_calls: u64,
+    /// Whether subagent usage is rolled into these totals.
+    pub children_included: bool,
+    /// Per-model breakdown.
+    pub models: Vec<RunUsageModel>,
+    /// Subscription allowance snapshot; `null` on the echo provider and on
+    /// meta runs without a subscription reading. Serialized as `null`, not
+    /// omitted, to round-trip the wire.
+    pub allowance: Option<RunUsageAllowance>,
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
+}
+
+/// One entry of [`RunUsage::models`].
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RunUsageModel {
+    /// Model id (e.g. `muse-spark-1.2-contributor`); `null` on the echo
+    /// provider.
+    pub model: Option<String>,
+    pub calls: u64,
+    pub input_tokens: u64,
+    pub cached_tokens: u64,
+    pub output_tokens: u64,
+    pub reasoning_tokens: u64,
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
+}
+
+/// [`RunUsage::allowance`] — subscription usage window. Not yet observed
+/// populated on the wire; fields are taken from the 1.4.11 binary's serde
+/// names and kept optional, with anything else landing in `extra`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct RunUsageAllowance {
+    /// Allowance period (`weekly` in the binary).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub window: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub used_percent: Option<f64>,
+    /// Epoch milliseconds when the window resets.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resets_at_ms: Option<u64>,
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
+}
+
 /// `task.stream.linked` — a task stream was attached to a run.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TaskStreamLinked {
@@ -481,6 +548,43 @@ mod tests {
             }
             other => panic!("expected Unknown, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn run_usage_parses_meta_shape_and_allowance() {
+        let payload = json!({
+            "allowance": {"window": "weekly", "used_percent": 12.5, "resets_at_ms": 1780531400000u64},
+            "calls": 1,
+            "cancelled_calls": 0,
+            "children_included": false,
+            "command_id": "cmd-1",
+            "completed_calls": 1,
+            "failed_calls": 0,
+            "kind": "run_usage",
+            "models": [{
+                "cached_tokens": 0,
+                "calls": 1,
+                "input_tokens": 26870,
+                "model": "muse-spark-1.2-contributor",
+                "output_tokens": 385,
+                "reasoning_tokens": 373
+            }],
+            "run_stream": {"id": "run-1", "kind": "run"}
+        });
+        let MusePayload::RunUsage(u) =
+            MusePayload::from_parts("run.usage", payload.clone()).unwrap()
+        else {
+            panic!("expected RunUsage");
+        };
+        assert_eq!(
+            u.models[0].model.as_deref(),
+            Some("muse-spark-1.2-contributor")
+        );
+        assert_eq!(u.models[0].input_tokens, 26870);
+        let allowance = u.allowance.as_ref().unwrap();
+        assert_eq!(allowance.window.as_deref(), Some("weekly"));
+        assert_eq!(allowance.resets_at_ms, Some(1780531400000));
+        assert_eq!(serde_json::to_value(&u).unwrap(), payload);
     }
 
     #[test]

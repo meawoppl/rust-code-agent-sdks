@@ -23,6 +23,7 @@ async fn echo_run_streams_to_terminal() {
 
     let mut saw_prompt = false;
     let mut saw_delta = false;
+    let mut saw_usage = false;
     let mut records = 0usize;
     let terminal = run
         .wait_terminal(|record| {
@@ -34,6 +35,9 @@ async fn echo_run_streams_to_terminal() {
                 MusePayload::RunOutputDelta(d) => {
                     saw_delta = saw_delta || !d.text.is_empty();
                 }
+                MusePayload::RunUsage(u) => {
+                    saw_usage = u.calls > 0 && !u.models.is_empty();
+                }
                 _ => {}
             }
         })
@@ -43,6 +47,7 @@ async fn echo_run_streams_to_terminal() {
     assert_eq!(terminal.terminal, "completed");
     assert!(saw_prompt, "turn.input.user should carry the prompt");
     assert!(saw_delta, "run.output.delta should stream text");
+    assert!(saw_usage, "run.usage should report the run's model calls");
     assert!(
         records >= 20,
         "expected a full journal, saw {records} records"
