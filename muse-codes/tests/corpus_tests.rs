@@ -97,6 +97,12 @@ fn envelope_invariants_hold() {
             }
             let r: MuseRecord = serde_json::from_str(line).unwrap();
             assert_eq!(r.schema_version, muse_codes::version::STREAM_SCHEMA_VERSION);
+            // `run.usage` (1.4.11+) rides its own one-record usage stream;
+            // everything else is session-scoped.
+            if r.payload_type == "run.usage" {
+                assert_eq!(r.stream.kind, StreamKind::ExecUsage);
+                continue;
+            }
             assert_eq!(
                 r.stream.kind,
                 StreamKind::Session,

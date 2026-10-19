@@ -7,8 +7,8 @@
 //! tool-name ↔ `tool.<name>`-task correlation consumers key on.
 
 use crate::state::{CheckStatus, Reporter};
-use muse_codes::{ExecRun, MuseExecBuilder, MusePayload, MuseRecord, Provider};
-use std::collections::{BTreeMap, BTreeSet};
+use muse_codes::{ExecRun, MuseExecBuilder, MusePayload, MuseRecord, Provider, StreamRef};
+use std::collections::{BTreeSet, HashMap};
 
 pub async fn run_suite(reporter: Reporter) {
     let Some(version) = binary_check(&reporter).await else {
@@ -121,7 +121,8 @@ async fn envelope_invariants(reporter: &Reporter, records: &[MuseRecord]) {
         )
         .await;
     let mut problems = Vec::new();
-    let mut last_seq: BTreeMap<&str, u64> = BTreeMap::new();
+    // Keyed by (kind, id): the `exec.usage` stream reuses the session id.
+    let mut last_seq: HashMap<&StreamRef, u64> = HashMap::new();
     for r in records {
         if r.schema_version != 1 {
             problems.push(format!(
@@ -129,15 +130,15 @@ async fn envelope_invariants(reporter: &Reporter, records: &[MuseRecord]) {
                 r.schema_version, r.payload_type
             ));
         }
-        if let Some(prev) = last_seq.get(r.stream.id.as_str()) {
+        if let Some(prev) = last_seq.get(&r.stream) {
             if r.sequence <= *prev {
                 problems.push(format!(
-                    "sequence not increasing in stream {}: {} after {}",
-                    r.stream.id, r.sequence, prev
+                    "sequence not increasing in stream {:?}/{}: {} after {}",
+                    r.stream.kind, r.stream.id, r.sequence, prev
                 ));
             }
         }
-        last_seq.insert(&r.stream.id, r.sequence);
+        last_seq.insert(&r.stream, r.sequence);
         if let Err(e) = r.typed_payload() {
             problems.push(format!("{} failed typed lift: {e}", r.payload_type));
         }
@@ -475,8 +476,16 @@ async fn continuity_across_turns(reporter: &Reporter) {
             problems.push(format!("session stream drifted to {}", r.stream.id));
         }
     }
-    let min1 = one.iter().map(|r| r.sequence).min().unwrap_or(0);
-    let min2 = two.iter().map(|r| r.sequence).min().unwrap_or(0);
+    let session_min = |records: &[muse_codes::MuseRecord]| {
+        records
+            .iter()
+            .filter(|r| r.stream.kind == muse_codes::StreamKind::Session)
+            .map(|r| r.sequence)
+            .min()
+            .unwrap_or(0)
+    };
+    let min1 = session_min(&one);
+    let min2 = session_min(&two);
     if min2 > min1 + 5 {
         problems.push(format!(
             "sequence did not restart on turn 2 (turn1 min {min1}, turn2 min {min2}) — \

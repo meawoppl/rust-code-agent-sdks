@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.11] - 2026-10-19
+
+### Added
+
+- `MusePayload::RunUsage` / `RunUsage` for the new `run.usage` record
+  (Muse Code 1.4.11): per-run call counts (`calls`, `completed_calls`,
+  `failed_calls`, `cancelled_calls`), `children_included`, a per-model
+  token breakdown (`RunUsageModel`: input/cached/output/reasoning
+  tokens), and an `allowance` snapshot (`RunUsageAllowance`, `null` on
+  every observed run; fields taken from the binary's serde names).
+- `StreamKind::ExecUsage` (`exec.usage`): `run.usage` arrives on its own
+  one-record stream, as an ephemeral `status` record just before
+  `run.terminal.*`. That stream reuses the **session id** with `sequence`
+  restarting at 1, so per-stream state must be keyed by `(kind, id)`.
+- 1.4.11 echo capture `test_cases/echo_basic_1_4_11.jsonl`.
+
+### Changed
+
+- **Breaking (wire)**: on Muse Code 1.4.11, older crate versions fail to
+  parse the `run.usage` record's envelope (`exec.usage` is not a known
+  `StreamKind`), so every 1.4.11 stream errors once per run.
+- **Breaking**: `MuseModel::catalog_default()` is now
+  `Spark13Contributor`. The server catalog moved its `is_default` flag
+  from `muse-spark-1.3` to `muse-spark-1.3-contributor` (the same with
+  `--contributor-mode off`). The catalog also gained a hidden
+  image-generation row, `muse-image-1.0`, which stays `MuseModel::Custom`.
+- Re-baseline the tested pin to Muse Code **1.4.11 (1.4.11-R6667.1)**
+  (from 1.4.10-R6427.1). Top-level and `exec --help` are byte-identical.
+  The MSP schema (not modeled) added `session/leave`, a `damagedRange`
+  item kind (`DamagedRange`), `scheduledFire` fields (`jobId`,
+  `deliveryNumber`, `scheduledFireAtMs`, `nextFireAtMs`), goal
+  `createdAtMs`/`updatedAtMs` and `recoveryObservation`. New env names:
+  `MUSE_EXPERIMENTAL_SUBAGENT_WAIT_RELEASE`,
+  `MUSE_EXPERIMENTAL_REQUEST_GZIP`, `MUSE_SERVE_*`.
+- wirecheck's muse envelope check now keys sequence monotonicity by
+  `(kind, id)`, and the continuity check computes the per-turn
+  sequence-restart minimum over session-stream records only.
+
 ## [1.4.10] - 2026-10-16
 
 ### Changed
