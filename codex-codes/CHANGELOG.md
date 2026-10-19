@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.163.2] - 2026-10-19
+
+### Added
+
+- `HookEventName::PreModelRequest` / `HookEventName::PostModelRequest` (wire
+  `preModelRequest` / `postModelRequest`): observation-only hooks around each
+  model request (openai/codex#55144). **Breaking** for exhaustive matches on
+  `HookEventName`.
+
+### Changed
+
+- Refresh the schema snapshot to `openai/codex@main` (`89461ea683`), which also
+  adds `PreModelRequest` / `PostModelRequest` matcher groups to
+  `ManagedHooksRequirements` (not modeled by the crate). Still tested against
+  Codex CLI **0.163.0**; the 0.163.0 release does not emit the new hook events.
+  The bundled `models.json` slug set is unchanged.
+
 ## [0.163.1] - 2026-10-16
 
 ### Added
