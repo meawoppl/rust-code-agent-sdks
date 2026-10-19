@@ -435,4 +435,18 @@ mod tests {
             serde_json::json!({"decision": {"denied": {"rejection": "keep the original file"}}})
         );
     }
+
+    #[test]
+    fn hook_event_name_model_request_round_trips() {
+        for (event, wire) in [
+            (HookEventName::PreModelRequest, "preModelRequest"),
+            (HookEventName::PostModelRequest, "postModelRequest"),
+        ] {
+            assert_eq!(serde_json::to_value(&event).unwrap(), wire);
+            assert_eq!(
+                serde_json::from_value::<HookEventName>(serde_json::json!(wire)).unwrap(),
+                event
+            );
+        }
+    }
 }

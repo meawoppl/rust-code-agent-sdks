@@ -3247,6 +3247,10 @@ pub struct HookErrorInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum HookEventName {
+    #[serde(rename = "preModelRequest")]
+    PreModelRequest,
+    #[serde(rename = "postModelRequest")]
+    PostModelRequest,
     #[serde(rename = "preToolUse")]
     PreToolUse,
     #[serde(rename = "permissionRequest")]
