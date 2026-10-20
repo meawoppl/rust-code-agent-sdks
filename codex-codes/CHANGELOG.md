@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.163.3] - 2026-10-19
+
+### Added
+
+- `PlanType::Sci` / `PlanType::Sci_plus` (wire `sci` / `sci_plus`): Academic
+  Researchers plans (openai/codex#55387). **Breaking** for exhaustive matches
+  on `PlanType`.
+
+### Changed
+
+- Refresh the schema snapshot to `openai/codex@main` (`fea1d7f7d1`). Still
+  tested against Codex CLI **0.163.0**. The bundled `models.json` slug set is
+  unchanged.
+
 ## [0.163.2] - 2026-10-19
 
 ### Added

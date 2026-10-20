@@ -5299,6 +5299,10 @@ pub enum PlanType {
     Enterprise,
     #[serde(rename = "edu")]
     Edu,
+    #[serde(rename = "sci")]
+    Sci,
+    #[serde(rename = "sci_plus")]
+    Sci_plus,
     #[serde(rename = "unknown")]
     Unknown,
 }
