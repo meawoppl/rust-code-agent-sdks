@@ -1,0 +1,6 @@
+{
+  "timestamp": "2026-10-20T20:13:29Z",
+  "error": "unknown variant `control_cancel_request` (issue #489)",
+  "raw_json": "{\"request_id\":\"00aea85d-70f9-4cc4-becc-b0f05f5037f3\",\"type\":\"control_cancel_request\"}",
+  "pretty_json": "{\n  \"request_id\": \"00aea85d-70f9-4cc4-becc-b0f05f5037f3\",\n  \"type\": \"control_cancel_request\"\n}"
+}

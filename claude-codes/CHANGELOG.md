@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.305] - 2026-10-20
+
+Crate-side release; still tested against Claude CLI **2.1.304**.
+
+### Added
+
+- `ClaudeOutput::ControlCancelRequest(ControlCancelRequest)` for the
+  `control_cancel_request` frame (#489). The CLI sends it to withdraw one of
+  its own in-flight `control_request`s, such as a `can_use_tool` prompt after
+  the turn was interrupted or after another client answered it. The CLI
+  ignores any later `control_response` for that `request_id`, and the cancel
+  itself gets no reply. Fields: `request_id`, plus an optional `session_id`
+  (stamped only by the remote bridge). Also adds
+  `is_control_cancel_request()` and `as_control_cancel_request()`.
+  Previously this frame failed to deserialize.
+
+### Breaking
+
+- `ClaudeOutput` gains a variant, so exhaustive `match`es on it need a new arm.
+
 ## [2.1.304] - 2026-10-19
 
 Re-baseline against Claude CLI **2.1.304**.

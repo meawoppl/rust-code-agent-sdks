@@ -2,7 +2,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Map, Value};
 
 use super::content_blocks::{ContentBlock, ToolUseBlock};
-use super::control::{ControlRequest, ControlResponse};
+use super::control::{ControlCancelRequest, ControlRequest, ControlResponse};
 use super::errors::{AnthropicError, ParseError};
 use super::message_types::{AssistantMessage, SystemMessage, UserMessage};
 use super::rate_limit::RateLimitEvent;
@@ -34,6 +34,10 @@ pub enum ClaudeOutput {
 
     /// Control response from CLI (ack for initialization, etc.)
     ControlResponse(ControlResponse),
+
+    /// Withdrawal of an earlier control request (e.g. a permission prompt
+    /// that is no longer needed). Dismiss any pending UI for its `request_id`.
+    ControlCancelRequest(ControlCancelRequest),
 
     /// API error from Anthropic (500, 529 overloaded, etc.)
     Error(AnthropicError),
@@ -465,6 +469,7 @@ impl ClaudeOutput {
             ClaudeOutput::TranscriptResult(_) => "result".to_string(),
             ClaudeOutput::ControlRequest(_) => "control_request".to_string(),
             ClaudeOutput::ControlResponse(_) => "control_response".to_string(),
+            ClaudeOutput::ControlCancelRequest(_) => "control_cancel_request".to_string(),
             ClaudeOutput::Error(_) => "error".to_string(),
             ClaudeOutput::RateLimitEvent(_) => "rate_limit_event".to_string(),
             ClaudeOutput::StreamEvent(_) => "stream_event".to_string(),
@@ -507,6 +512,19 @@ impl ClaudeOutput {
     pub fn as_control_request(&self) -> Option<&ControlRequest> {
         match self {
             ClaudeOutput::ControlRequest(req) => Some(req),
+            _ => None,
+        }
+    }
+
+    /// Check if this is a control cancel request
+    pub fn is_control_cancel_request(&self) -> bool {
+        matches!(self, ClaudeOutput::ControlCancelRequest(_))
+    }
+
+    /// Get the control cancel request if this is one
+    pub fn as_control_cancel_request(&self) -> Option<&ControlCancelRequest> {
+        match self {
+            ClaudeOutput::ControlCancelRequest(req) => Some(req),
             _ => None,
         }
     }
@@ -607,6 +625,7 @@ impl ClaudeOutput {
             ClaudeOutput::User(_) => None,
             ClaudeOutput::ControlRequest(_) => None,
             ClaudeOutput::ControlResponse(_) => None,
+            ClaudeOutput::ControlCancelRequest(msg) => msg.session_id.as_deref(),
             ClaudeOutput::Error(_) => None,
             ClaudeOutput::RateLimitEvent(evt) => Some(&evt.session_id),
             ClaudeOutput::StreamEvent(msg) => Some(&msg.session_id),
@@ -859,6 +878,7 @@ impl<'de> Deserialize<'de> for ClaudeOutput {
             "result" => parse(payload).map(Self::TranscriptResult),
             "control_request" => parse(payload).map(Self::ControlRequest),
             "control_response" => parse(payload).map(Self::ControlResponse),
+            "control_cancel_request" => parse(payload).map(Self::ControlCancelRequest),
             "error" => parse(payload).map(Self::Error),
             "rate_limit_event" => parse(payload).map(Self::RateLimitEvent),
             "stream_event" => parse(payload).map(Self::StreamEvent),
@@ -888,6 +908,7 @@ impl<'de> Deserialize<'de> for ClaudeOutput {
                     "result",
                     "control_request",
                     "control_response",
+                    "control_cancel_request",
                     "error",
                     "rate_limit_event",
                     "stream_event",
@@ -917,6 +938,24 @@ impl<'de> Deserialize<'de> for ClaudeOutput {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_deserialize_control_cancel_request() {
+        let json = r#"{"request_id":"00aea85d-70f9-4cc4-becc-b0f05f5037f3","type":"control_cancel_request"}"#;
+        let output: ClaudeOutput = serde_json::from_str(json).unwrap();
+        assert!(output.is_control_cancel_request());
+        assert_eq!(output.message_type(), "control_cancel_request");
+        assert_eq!(output.session_id(), None);
+        let cancel = output.as_control_cancel_request().unwrap();
+        assert_eq!(cancel.request_id, "00aea85d-70f9-4cc4-becc-b0f05f5037f3");
+
+        let round_trip: Value = serde_json::to_value(&output).unwrap();
+        assert_eq!(round_trip, serde_json::from_str::<Value>(json).unwrap());
+
+        let bridged = r#"{"type":"control_cancel_request","request_id":"r1","session_id":"s1"}"#;
+        let output: ClaudeOutput = serde_json::from_str(bridged).unwrap();
+        assert_eq!(output.session_id(), Some("s1"));
+    }
 
     #[test]
     fn test_deserialize_assistant_message() {

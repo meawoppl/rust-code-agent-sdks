@@ -229,6 +229,23 @@ pub struct ControlRequest {
     pub request: ControlRequestPayload,
 }
 
+/// Withdrawal of an in-flight [`ControlRequest`] (`control_cancel_request`).
+///
+/// Either side may send this for a request it originated. The CLI sends it
+/// when it no longer needs the answer, for example a pending `can_use_tool`
+/// prompt after the turn was interrupted, or one another client already
+/// answered. The receiver should drop any UI or pending state for
+/// `request_id`; a [`ControlResponse`] sent afterwards is ignored. There is
+/// no reply to the cancel itself.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ControlCancelRequest {
+    /// The `request_id` of the [`ControlRequest`] being withdrawn.
+    pub request_id: String,
+    /// Session id, stamped only by the remote bridge.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
+}
+
 /// Control request payload variants
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "subtype", rename_all = "snake_case")]

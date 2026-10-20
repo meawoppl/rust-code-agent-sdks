@@ -268,6 +268,9 @@ fn handle_output(output: ClaudeOutput) {
         ClaudeOutput::ControlResponse(resp) => {
             debug!("Control response received: {:?}", resp.response);
         }
+        ClaudeOutput::ControlCancelRequest(cancel) => {
+            debug!("Control request cancelled: {:?}", cancel.request_id);
+        }
         ClaudeOutput::Error(err) => {
             eprintln!("\n⚠️  API ERROR: {}", err.error.message);
             eprintln!("   Type: {}", err.error.error_type);
