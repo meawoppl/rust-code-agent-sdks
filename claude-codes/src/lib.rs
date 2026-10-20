@@ -152,13 +152,13 @@ pub use io::{
 
 // Control protocol types for tool permission handling
 pub use io::{
-    AskUserQuestionResponseError, ControlRequest, ControlRequestMessage, ControlRequestPayload,
-    ControlResponse, ControlResponseMessage, ControlResponsePayload, GetUsageResponse,
-    HookCallbackRequest, InitializeRequest, McpMessageRequest, ModelScopedRateLimit, Permission,
-    PermissionBehavior, PermissionDenial, PermissionDestination, PermissionModeName,
-    PermissionResult, PermissionRule, PermissionSuggestion, PermissionType, ToolCaller,
-    ToolPermissionRequest, ToolUseBlock, UsageBehavior, UsageBehaviors, UsageModelUsage,
-    UsageRateLimitWindow, UsageRateLimits, UsageSession,
+    AskUserQuestionResponseError, ControlCancelRequest, ControlRequest, ControlRequestMessage,
+    ControlRequestPayload, ControlResponse, ControlResponseMessage, ControlResponsePayload,
+    GetUsageResponse, HookCallbackRequest, InitializeRequest, McpMessageRequest,
+    ModelScopedRateLimit, Permission, PermissionBehavior, PermissionDenial, PermissionDestination,
+    PermissionModeName, PermissionResult, PermissionRule, PermissionSuggestion, PermissionType,
+    ToolCaller, ToolPermissionRequest, ToolUseBlock, UsageBehavior, UsageBehaviors,
+    UsageModelUsage, UsageRateLimitWindow, UsageRateLimits, UsageSession,
 };
 
 // System message and assistant message types
