@@ -454,6 +454,77 @@ pub struct RateLimitInfo {
         skip_serializing_if = "Option::is_none"
     )]
     pub has_chargeable_saved_payment_method: Option<bool>,
+    /// Limited-time usage-credit offer the account holds at this limit, for
+    /// the IDE extension's limit banner (CLI 2.1.304+, `@internal`). Present
+    /// only on a rejected frame from a session the VS Code extension owns.
+    #[serde(rename = "usageCreditOffer", skip_serializing_if = "Option::is_none")]
+    pub usage_credit_offer: Option<UsageCreditOffer>,
+}
+
+/// A limited-time offer on usage credits, from
+/// [`RateLimitInfo::usage_credit_offer`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UsageCreditOffer {
+    /// Kind of offer: a steeper discount, or extra credit for the same price.
+    pub kind: UsageCreditOfferKind,
+    /// Headline percent that every credit pack meets or beats.
+    #[serde(rename = "headlinePct")]
+    pub headline_pct: i64,
+    /// Whole days left in the account's offer window.
+    #[serde(rename = "daysLeft")]
+    pub days_left: i64,
+    /// Ready-made banner text.
+    pub label: String,
+}
+
+/// Kind of a [`UsageCreditOffer`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum UsageCreditOfferKind {
+    /// A steeper discount on credit packs.
+    PctOff,
+    /// Extra credit for the same price.
+    ExtraCredit,
+    /// A kind not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl UsageCreditOfferKind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::PctOff => "pct_off",
+            Self::ExtraCredit => "extra_credit",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for UsageCreditOfferKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for UsageCreditOfferKind {
+    fn from(s: &str) -> Self {
+        match s {
+            "pct_off" => Self::PctOff,
+            "extra_credit" => Self::ExtraCredit,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for UsageCreditOfferKind {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for UsageCreditOfferKind {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// Spend-cap utilization for an overage billing period.
@@ -542,7 +613,7 @@ impl<'de> Deserialize<'de> for RateLimitErrorCode {
 mod tests {
     use super::{
         OverageDisabledReason, OveragePeriodUtilization, OverageStatus, RateLimitErrorCode,
-        RateLimitStatus, RateLimitWindow,
+        RateLimitStatus, RateLimitWindow, UsageCreditOffer, UsageCreditOfferKind,
     };
     use crate::io::ClaudeOutput;
 
@@ -673,6 +744,40 @@ mod tests {
         let round_trip = serde_json::to_value(output).unwrap();
         let original: serde_json::Value = serde_json::from_str(json).unwrap();
         assert_eq!(round_trip, original);
+    }
+
+    #[test]
+    fn test_rate_limit_usage_credit_offer_round_trip() {
+        let json = r#"{"type":"rate_limit_event","rate_limit_info":{"status":"rejected","errorCode":"credits_required","usageCreditOffer":{"kind":"pct_off","headlinePct":20,"daysLeft":3,"label":"20% off usage credits for 3 more days"}},"session_id":"abc"}"#;
+
+        let output: ClaudeOutput = serde_json::from_str(json).unwrap();
+        let evt = output.as_rate_limit_event().unwrap();
+        assert_eq!(
+            evt.rate_limit_info.usage_credit_offer,
+            Some(UsageCreditOffer {
+                kind: UsageCreditOfferKind::PctOff,
+                headline_pct: 20,
+                days_left: 3,
+                label: "20% off usage credits for 3 more days".to_string(),
+            })
+        );
+
+        let round_trip = serde_json::to_value(output).unwrap();
+        let original: serde_json::Value = serde_json::from_str(json).unwrap();
+        assert_eq!(round_trip, original);
+    }
+
+    #[test]
+    fn test_usage_credit_offer_kind_round_trip() {
+        for s in ["pct_off", "extra_credit", "future_kind"] {
+            let kind: UsageCreditOfferKind = serde_json::from_value(serde_json::json!(s)).unwrap();
+            assert_eq!(kind.as_str(), s);
+            assert_eq!(serde_json::to_value(&kind).unwrap(), serde_json::json!(s));
+        }
+        assert_eq!(
+            UsageCreditOfferKind::from("future_kind"),
+            UsageCreditOfferKind::Unknown("future_kind".to_string())
+        );
     }
 
     #[test]

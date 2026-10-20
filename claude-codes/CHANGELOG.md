@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.304] - 2026-10-19
+
+Re-baseline against Claude CLI **2.1.304**.
+
+### Added
+
+- `RateLimitInfo.usage_credit_offer: Option<UsageCreditOffer>` (wire
+  `usageCreditOffer`, `@internal`): a limited-time usage-credit offer for the
+  IDE extension's limit banner, with `kind` (`UsageCreditOfferKind::PctOff` /
+  `ExtraCredit`, open set), `headline_pct`, `days_left` and `label`. Present
+  only on rejected frames from VS Code extension sessions.
+
+### Notes
+
+- The `get_context_usage` control reply's category rows gained an optional
+  `id` (`system_prompt`, `messages`, `free_space`, …). The crate does not model
+  that reply. The assistant `context_usage` rows (`ContextCategory`) are
+  unchanged.
+- The `system/init.cloud_session` docs list a new `device-mcp-policy` notice
+  key (an open set). `cloud_session` is carried as an opaque `Value`, so no
+  type change is needed.
+- `--help` changes are wording only (no new or removed flags), and the
+  model-id set is identical to 2.1.303.
+
 ## [2.1.303] - 2026-10-19
 
 Re-baseline against Claude CLI **2.1.303**. No stream-json drift: the
