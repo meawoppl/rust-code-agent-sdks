@@ -568,6 +568,7 @@ mod samples {
             methods::ACCOUNT_RATELIMITS_READ,
             methods::ACCOUNT_SENDADDCREDITSNUDGEEMAIL,
             methods::FEEDBACK_UPLOAD,
+            methods::FEEDBACK_SAVE,
             methods::COMMAND_EXEC,
             methods::COMMAND_EXEC_WRITE,
             methods::COMMAND_EXEC_TERMINATE,

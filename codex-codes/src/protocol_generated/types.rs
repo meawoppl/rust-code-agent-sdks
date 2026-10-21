@@ -2321,6 +2321,36 @@ pub struct FeedbackRequirements {
     pub enabled: Option<bool>,
 }
 
+/// Params for `feedback/save`: the `feedback/upload` payload, written to a
+/// local ZIP instead of being uploaded.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackSaveParams {
+    #[serde(flatten)]
+    pub feedback: FeedbackUploadParams,
+    /// Absolute, previously unused ZIP path on the app-server host. The
+    /// caller owns this file, including after a disconnected RPC.
+    #[serde(rename = "savePath")]
+    pub save_path: LegacyAppPathString,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackSaveResponse {
+    #[serde(rename = "savedPath")]
+    pub saved_path: LegacyAppPathString,
+    #[serde(rename = "threadId", default)]
+    pub thread_id: String,
+    /// Same prompt hash as `feedback/upload`; `None` when prompt metadata is
+    /// absent.
+    #[serde(
+        rename = "promptHash",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub prompt_hash: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedbackUploadParams {

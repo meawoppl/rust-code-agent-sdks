@@ -2,8 +2,9 @@ use codex_codes::io::items::{
     CommandExecutionStatus, FileChangeItem, PatchApplyStatus, PatchChangeKind, ThreadItem,
 };
 use codex_codes::protocol::{
-    ConfigReadResponse, FeedbackUploadResponse, GetAccountRateLimitsParams,
-    GetAccountRateLimitsResponse, McpServerStatus, Thread, ThreadListParams, TurnToolOutput,
+    ConfigReadResponse, FeedbackSaveParams, FeedbackSaveResponse, FeedbackUploadResponse,
+    GetAccountRateLimitsParams, GetAccountRateLimitsResponse, McpServerStatus, Thread,
+    ThreadListParams, TurnToolOutput,
 };
 use codex_codes::{
     JsonRpcMessage, JsonRpcNotification, McpServerElicitationRequestParams, Notification,
@@ -261,6 +262,31 @@ fn feedback_upload_response_decodes_prompt_hash() {
         .unwrap()
         .get("promptHash")
         .is_none());
+}
+
+/// FeedbackSaveParams flattens the feedback/upload fields alongside savePath, and FeedbackSaveResponse decodes savedPath.
+#[test]
+fn feedback_save_params_flatten_upload_fields() {
+    let wire = serde_json::json!({
+        "classification": "bug",
+        "includeLogs": true,
+        "threadId": "thr_123",
+        "savePath": "/tmp/feedback.zip"
+    });
+    let params: FeedbackSaveParams = serde_json::from_value(wire.clone()).unwrap();
+    assert_eq!(params.feedback.classification, "bug");
+    assert_eq!(params.feedback.include_logs, Some(true));
+    assert_eq!(params.save_path.0, "/tmp/feedback.zip");
+    assert_eq!(serde_json::to_value(&params).unwrap(), wire);
+
+    let response: FeedbackSaveResponse = serde_json::from_value(serde_json::json!({
+        "savedPath": "/tmp/feedback.zip",
+        "threadId": "thr_123",
+        "promptHash": null
+    }))
+    .unwrap();
+    assert_eq!(response.saved_path.0, "/tmp/feedback.zip");
+    assert_eq!(response.prompt_hash, None);
 }
 
 /// MCP elicitation requests with the newer camelCase "openaiForm" mode decode to the OpenAiElicitationForm arm.

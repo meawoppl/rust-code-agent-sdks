@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.163.4] - 2026-10-21
+
+### Added
+
+- `feedback/save` client request (`methods::FEEDBACK_SAVE`) with
+  `FeedbackSaveParams` (flattened `FeedbackUploadParams` + `save_path`) and
+  `FeedbackSaveResponse`: writes the feedback/diagnostic bundle to a local ZIP
+  instead of uploading it (openai/codex#55940).
+
+### Changed
+
+- Refresh the schema snapshot to `openai/codex@main` (`57232f111`). Upstream
+  also added `ApplicationStorageRequirements` under the experimental
+  `ApplicationRequirements` (openai/codex#55965); it is not reachable from a
+  stable field, so it is not modeled. Still tested against Codex CLI
+  **0.163.0**. The bundled `models.json` slug set is unchanged.
+
 ## [0.163.3] - 2026-10-19
 
 ### Added

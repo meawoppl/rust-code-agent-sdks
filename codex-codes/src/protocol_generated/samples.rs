@@ -336,6 +336,10 @@ pub fn client_request_samples() -> Vec<(&'static str, Value)> {
             "externalAgentConfig/import/recordHistory",
             json!({"itemTypeResults": [], "providerId": "x"}),
         ),
+        (
+            "feedback/save",
+            json!({"classification": "x", "savePath": "/tmp/feedback.zip"}),
+        ),
         ("feedback/upload", json!({"classification": "x"})),
         (
             "fs/copy",
