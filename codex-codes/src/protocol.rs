@@ -104,6 +104,7 @@ pub mod methods {
     pub const ACCOUNT_RATELIMITS_READ: &str = "account/rateLimits/read";
     pub const ACCOUNT_SENDADDCREDITSNUDGEEMAIL: &str = "account/sendAddCreditsNudgeEmail";
     pub const FEEDBACK_UPLOAD: &str = "feedback/upload";
+    pub const FEEDBACK_SAVE: &str = "feedback/save";
     pub const COMMAND_EXEC: &str = "command/exec";
     pub const COMMAND_EXEC_WRITE: &str = "command/exec/write";
     pub const COMMAND_EXEC_TERMINATE: &str = "command/exec/terminate";
