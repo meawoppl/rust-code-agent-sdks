@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.306] - 2026-10-20
+
+Re-baseline against Claude CLI **2.1.306**. No wire changes: the key, enum,
+and literal set-diffs between the 2.1.304 and 2.1.306 schema extracts are
+empty, the per-block diff shows only minifier renames, and `--help` and the
+embedded model-id set are unchanged.
+
 ## [2.1.305] - 2026-10-20
 
 Crate-side release; still tested against Claude CLI **2.1.304**.
