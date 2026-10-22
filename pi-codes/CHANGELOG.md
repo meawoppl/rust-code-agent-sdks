@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-10-21
+
+### Changed
+
+- Re-baseline the tested pin to pi **1.4.0** (from 1.3.0). No wire changes:
+  `dist/modes/rpc/`, `json-event.d.ts`, `docs/rpc*.md`, `docs/json.md` and
+  `pi --help` are identical, and the exact-version `pi-ai` /
+  `pi-agent-core` `.d.ts` diffs touch only request options (client
+  identity, telemetry span, System One compat), not messages, events or
+  content blocks.
+
 ## [1.3.0] - 2026-10-15
 
 ### Added
