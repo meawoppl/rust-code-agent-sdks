@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.163.5] - 2026-10-22
+
+### Changed
+
+- Refresh the schema snapshot to `openai/codex@main` (`9a8a85bc5`). Upstream
+  added `NetworkRequirements.reviewDomains` (host patterns routed to network
+  approval before ordinary allow rules, openai/codex#56154). It lives under the
+  experimental `ApplicationRequirements`, which is not reachable from a stable
+  field, so it is not modeled. Still tested against Codex CLI **0.163.0**. The
+  bundled `models.json` slug set is unchanged.
+
 ## [0.163.4] - 2026-10-21
 
 ### Added
