@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.12] - 2026-10-22
+
+### Changed
+
+- Re-pinned to Muse Code 1.4.12 (`1.4.12-R6909.1`). No crate-visible
+  wire change: the stream fingerprint matches the snapshot, top-level
+  `--help` and `exec --help` are byte-identical to 1.4.11-R6667.1, the
+  live suite and `wirecheck run muse` pass unmodified, and the model
+  catalog (ids, limits, default, effort tiers) is unchanged.
+- MSP schema (not modeled) changed: new `ApprovalCua*`,
+  `BackgroundTerminalCompletion`, `BlockedPrompt`, `CheckpointBoundary`
+  and `TaskExecutionMode` definitions, plus field changes on the
+  approval, session, item and recap types. No methods or notifications
+  were added or removed.
+- New env names: `MUSE_FLAGS`, `MUSE_WEB_SEARCH_MODE`,
+  `MUSE_EXPERIMENTAL_CODE_TO_VIDEO`,
+  `MUSE_EXPERIMENTAL_HOOK_CONTEXT_IN_HISTORY`,
+  `MUSE_EXPERIMENTAL_RULES_REFRESH_AT_COMPACTION`.
+
 ## [1.4.11] - 2026-10-19
 
 ### Added
