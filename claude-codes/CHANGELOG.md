@@ -5,11 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.307] - 2026-10-21
+## [2.1.308] - 2026-10-22
 
-Re-baseline against Claude CLI **2.1.307**. Optional fields only; no new
-message types and no removals. `--help` and the embedded model-id set are
-unchanged.
+Re-baseline against Claude CLI **2.1.308**. The changes below arrived in CLI
+2.1.307; 2.1.308's extracted wire schemas are byte-identical to 2.1.307's.
+Optional fields only; no new message types and no removals. `--help` and the
+embedded model-id set are unchanged.
 
 ### Added
 

@@ -103,6 +103,7 @@ fn user_input_serializes_requeue_window() {
     assert_eq!(value["requeue_if_interrupted_within_ms"], 2000);
 }
 
+/// The feature-disabled remedy cause accepts the new `unsupported_runtime`.
 #[test]
 fn remedy_feature_cause_unsupported_runtime() {
     let cause = RemedyFeatureCause::from("unsupported_runtime");
