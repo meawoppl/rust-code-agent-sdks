@@ -82,6 +82,7 @@ impl ClaudeInput {
             historical: None,
             server_received_wall_ms: None,
             refused_message_id: None,
+            requeue_if_interrupted_within_ms: None,
         })
     }
 
@@ -126,6 +127,7 @@ impl ClaudeInput {
             historical: None,
             server_received_wall_ms: None,
             refused_message_id: None,
+            requeue_if_interrupted_within_ms: None,
         })
     }
 

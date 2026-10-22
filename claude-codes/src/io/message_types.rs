@@ -1100,6 +1100,10 @@ pub enum RemedyFeatureCause {
     /// The user's own `/config` setting is off (including a
     /// `disableWorkflows` in their own settings).
     UserSetting,
+    /// This Claude Code process is not running on Bun, the runtime its
+    /// binary is built with, and workflow scripts run only there
+    /// (CLI 2.1.307+).
+    UnsupportedRuntime,
     /// A cause not yet known to this version of the crate.
     Unknown(String),
 }
@@ -1111,6 +1115,7 @@ impl RemedyFeatureCause {
             Self::OrgPolicy => "org_policy",
             Self::Unavailable => "unavailable",
             Self::UserSetting => "user_setting",
+            Self::UnsupportedRuntime => "unsupported_runtime",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -1129,6 +1134,7 @@ impl From<&str> for RemedyFeatureCause {
             "org_policy" => Self::OrgPolicy,
             "unavailable" => Self::Unavailable,
             "user_setting" => Self::UserSetting,
+            "unsupported_runtime" => Self::UnsupportedRuntime,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -1324,6 +1330,14 @@ pub struct UserMessage {
     /// CLI has no well-formed id for it (CLI 2.1.290+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub refused_message_id: Option<String>,
+    /// Input only: asks the CLI to put this prompt back at the front of its
+    /// queue, under the same uuid, when an interrupt without `cancel_queued`
+    /// stops the turn taking it in within this many milliseconds (counted
+    /// from the turn's `system/status` `requesting` frame) and before the
+    /// model's reply begins. Values above 10000 count as 10000
+    /// (CLI 2.1.307+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requeue_if_interrupted_within_ms: Option<u64>,
 }
 
 impl UserMessage {
@@ -5357,10 +5371,13 @@ pub struct AssistantMessage {
     /// `org_disabled_credential`, `invalid_credential_header`,
     /// `model_requires_usage_credits`, `long_context_credits_required`,
     /// `consent_unanswered`, `no_allowed_fallback`,
-    /// `model_substitution_disabled`, `field_not_granted` and (CLI 2.1.292+)
+    /// `model_substitution_disabled`, `field_not_granted`, (CLI 2.1.292+)
     /// `usage_limit_reached` — the request was refused by the account's own
     /// usage limit, a plan limit or a spend cap on usage credits;
-    /// [`ApiErrorParams::rate_limit_info`] says which and when it resets.
+    /// [`ApiErrorParams::rate_limit_info`] says which and when it resets —
+    /// and (CLI 2.1.307+) `empty_completion` — the model ended its turn with
+    /// no visible text and its one retry had no content block, so the turn
+    /// ends as an error instead of a blank reply.
     /// Kinds with parameters carry them in [`Self::api_error_params`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_error: Option<String>,

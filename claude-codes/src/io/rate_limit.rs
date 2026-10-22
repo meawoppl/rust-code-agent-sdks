@@ -459,6 +459,98 @@ pub struct RateLimitInfo {
     /// only on a rejected frame from a session the VS Code extension owns.
     #[serde(rename = "usageCreditOffer", skip_serializing_if = "Option::is_none")]
     pub usage_credit_offer: Option<UsageCreditOffer>,
+    /// The IDE limit banner's offer to ask the member's admin for a higher
+    /// spend limit (CLI 2.1.307+, `@internal`). Present only on a rejected
+    /// frame from a VS Code extension session for a Team or Enterprise
+    /// member at their own spend limit.
+    #[serde(rename = "adminRequestOffer", skip_serializing_if = "Option::is_none")]
+    pub admin_request_offer: Option<AdminRequestOffer>,
+}
+
+/// An offer to ask the member's admin for a higher spend limit, from
+/// [`RateLimitInfo::admin_request_offer`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AdminRequestOffer {
+    /// Where the request stands.
+    pub state: AdminRequestOfferState,
+    /// Banner button text.
+    pub label: String,
+    /// Banner text once the request is sent.
+    #[serde(rename = "doneLabel")]
+    pub done_label: String,
+    /// Whether the banner asks for confirmation before filing.
+    pub confirm: bool,
+    /// Text of the confirmation prompt.
+    #[serde(rename = "confirmPrompt")]
+    pub confirm_prompt: String,
+    /// Whether the last filing failed.
+    #[serde(
+        rename = "lastFileFailed",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub last_file_failed: Option<bool>,
+    /// Counter that moves when a click could not be acted on.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub revision: Option<i64>,
+}
+
+/// State of an [`AdminRequestOffer`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AdminRequestOfferState {
+    /// The member can ask their admin.
+    CanAsk,
+    /// A request is already pending.
+    Pending,
+    /// The request is being sent.
+    Sending,
+    /// The request was sent.
+    Sent,
+    /// A state not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl AdminRequestOfferState {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::CanAsk => "can_ask",
+            Self::Pending => "pending",
+            Self::Sending => "sending",
+            Self::Sent => "sent",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for AdminRequestOfferState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for AdminRequestOfferState {
+    fn from(s: &str) -> Self {
+        match s {
+            "can_ask" => Self::CanAsk,
+            "pending" => Self::Pending,
+            "sending" => Self::Sending,
+            "sent" => Self::Sent,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for AdminRequestOfferState {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for AdminRequestOfferState {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// A limited-time offer on usage credits, from
