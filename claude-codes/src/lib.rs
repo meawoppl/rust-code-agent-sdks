@@ -78,7 +78,7 @@
 //! ⚠️ **Important**: The Claude CLI protocol is unstable and evolving. This crate
 //! automatically checks your Claude CLI version and warns if it's newer than tested.
 //!
-//! Current tested version: **2.1.306**
+//! Current tested version: **2.1.308**
 //!
 //! Report compatibility issues at: <https://github.com/meawoppl/rust-claude-codes/pulls>
 //!
@@ -199,8 +199,9 @@ pub use io::{
 // Additional top-level output message wrappers
 pub use io::{
     AbandonedBlocks, AuthStatusMessage, CommandLifecycleMessage, CommandLifecycleState,
-    ConversationResetMessage, ConversationResetTrigger, PromptSuggestionMessage,
-    StreamEventMessage, SubagentRetry, ToolProgressMessage, ToolUseSummaryMessage,
+    CommandWakeupSource, ConversationResetMessage, ConversationResetTrigger,
+    PromptSuggestionMessage, StreamEventMessage, SubagentRetry, ToolProgressMessage,
+    ToolUseSummaryMessage,
 };
 
 // Wire-fidelity audit for verifying frames are fully typed
@@ -208,9 +209,9 @@ pub use io::{assert_fully_wrapped, audit_frame, FrameAudit};
 
 // Rate limit types
 pub use io::{
-    OverageDisabledReason, OveragePeriodUtilization, OverageStatus, RateLimitErrorCode,
-    RateLimitEvent, RateLimitInfo, RateLimitScope, RateLimitStatus, RateLimitWindow,
-    UsageCreditOffer, UsageCreditOfferKind,
+    AdminRequestOffer, AdminRequestOfferState, OverageDisabledReason, OveragePeriodUtilization,
+    OverageStatus, RateLimitErrorCode, RateLimitEvent, RateLimitInfo, RateLimitScope,
+    RateLimitStatus, RateLimitWindow, UsageCreditOffer, UsageCreditOfferKind,
 };
 
 // Usage types

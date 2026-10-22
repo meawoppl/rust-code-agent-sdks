@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.308] - 2026-10-22
+
+Re-baseline against Claude CLI **2.1.308**. The changes below arrived in CLI
+2.1.307; 2.1.308's extracted wire schemas are byte-identical to 2.1.307's.
+Optional fields only; no new message types and no removals. `--help` and the
+embedded model-id set are unchanged.
+
+### Added
+
+- `CommandLifecycleMessage::wakeup_source` (`CommandWakeupSource`:
+  `loop_wakeup` / `schedule_wakeup`, open set) and
+  `CommandLifecycleMessage::scheduled_for` — on `started` frames for scheduler
+  fires.
+- `UserMessage::requeue_if_interrupted_within_ms` — input-only request to
+  requeue a prompt when an interrupt crosses with the turn taking it in.
+- `RateLimitInfo::admin_request_offer` (`AdminRequestOffer`,
+  `AdminRequestOfferState`) — the IDE limit banner's offer to ask an admin for
+  a higher spend limit (`@internal`).
+- `RemedyFeatureCause::UnsupportedRuntime` (`unsupported_runtime`).
+- `empty_completion` documented as an `api_error` kind.
+
+### Breaking
+
+- New public fields on `UserMessage`, `CommandLifecycleMessage`, and
+  `RateLimitInfo` break struct-literal construction, and the new
+  `RemedyFeatureCause` variant breaks exhaustive matches.
+
 ## [2.1.306] - 2026-10-20
 
 Re-baseline against Claude CLI **2.1.306**. No wire changes: the key, enum,

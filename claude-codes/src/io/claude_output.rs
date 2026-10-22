@@ -244,8 +244,77 @@ pub struct CommandLifecycleMessage {
     /// still queued, and its own turn prints the answer (CLI 2.1.300+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ran_ahead: Option<bool>,
+    /// Only on `started`, and only when the command being started is a
+    /// scheduler fire; matches the `UserPromptSubmit` hook's `source`. A fire
+    /// removed from the queue without being started gets only its terminal
+    /// state, without this key. Advertised by the
+    /// `lifecycle_wakeup_source_v1` capability on `system/init`
+    /// (CLI 2.1.307+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wakeup_source: Option<CommandWakeupSource>,
+    /// Only beside [`CommandWakeupSource::LoopWakeup`]: the epoch-millisecond
+    /// time the fired wakeup was set for (the `scheduledFor` of the
+    /// `ScheduleWakeup` call that armed it). The fire itself can come earlier
+    /// or later. A host keeping an idle session alive for a wakeup should stop
+    /// waiting only when this equals the time it is waiting for, and needs a
+    /// time limit of its own past it, since a fire that never starts sends no
+    /// such frame (CLI 2.1.307+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scheduled_for: Option<f64>,
     pub uuid: String,
     pub session_id: String,
+}
+
+/// Which scheduler fired a command, from
+/// [`CommandLifecycleMessage::wakeup_source`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum CommandWakeupSource {
+    /// A `ScheduleWakeup` (dynamic `/loop`) wakeup fired.
+    LoopWakeup,
+    /// Any other scheduled-task fire, such as a `CronCreate` job or the
+    /// notice for scheduled tasks that were missed.
+    ScheduleWakeup,
+    /// A source not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl CommandWakeupSource {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::LoopWakeup => "loop_wakeup",
+            Self::ScheduleWakeup => "schedule_wakeup",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl std::fmt::Display for CommandWakeupSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for CommandWakeupSource {
+    fn from(s: &str) -> Self {
+        match s {
+            "loop_wakeup" => Self::LoopWakeup,
+            "schedule_wakeup" => Self::ScheduleWakeup,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for CommandWakeupSource {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for CommandWakeupSource {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// Lifecycle state carried by a [`CommandLifecycleMessage`].
