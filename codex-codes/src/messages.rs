@@ -1073,6 +1073,10 @@ mod tests {
             CodexErrorInfo::ContextWindowExceeded
         );
         assert_eq!(
+            serde_json::from_value::<CodexErrorInfo>(serde_json::json!("modelNotFound")).unwrap(),
+            CodexErrorInfo::ModelNotFound
+        );
+        assert_eq!(
             serde_json::from_value::<CodexErrorInfo>(
                 serde_json::json!({"httpConnectionFailed": {"httpStatusCode": 502}})
             )

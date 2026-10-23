@@ -822,6 +822,10 @@ pub enum CodexErrorInfo {
     FlexUnavailable,
     #[serde(rename = "serverOverloaded")]
     ServerOverloaded,
+    /// The provider reported that the requested model does not exist. The
+    /// turn fails terminally instead of retrying.
+    #[serde(rename = "modelNotFound")]
+    ModelNotFound,
     #[serde(rename = "cyberPolicy")]
     CyberPolicy,
     #[serde(rename = "misalignmentPolicyViolation")]
