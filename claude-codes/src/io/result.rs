@@ -489,6 +489,23 @@ pub struct ResultMessage {
     #[serde(skip_serializing_if = "Option::is_none", rename = "modelUsage")]
     pub model_usage: Option<std::collections::BTreeMap<String, ModelUsageEntry>>,
 
+    /// Per-model usage and cost of the calls this process counted since it
+    /// wrote its previous result (since it started, for its first), keyed and
+    /// shaped like `modelUsage` and covering the same calls. Sum it over a
+    /// conversation's results instead of subtracting `modelUsage` totals: each
+    /// call is stated on at most one result, whatever a resume or a kill does
+    /// to `modelUsage`. Calls that finish after a result (a background
+    /// subagent, a late title call) are stated on the next result. Nothing is
+    /// carried across processes, so calls counted after a process's last
+    /// result (including a turn in flight when it is killed) are stated
+    /// nowhere. A model with nothing counted is left out; `{}` means nothing
+    /// was counted, and absent is not `{}`. Set by stream-json and `--sdk-url`
+    /// runs only; not set on hand-numbered error results (start-up failures,
+    /// errors that escape the run). Absent from CLIs before 2.1.309. Marked
+    /// `@internal` upstream.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_usage_since_last_result: Option<std::collections::BTreeMap<String, ModelUsageEntry>>,
+
     /// Subagents started through the Agent tool in this session, as running
     /// totals. Cumulative like `modelUsage`: read the latest result rather
     /// than summing across results. Absent from CLIs before 2.1.239.
@@ -858,7 +875,8 @@ impl<'de> Deserialize<'de> for RunnerExitPhase {
 }
 
 /// Usage and cost for a single model within a session, as found in
-/// [`ResultMessage::model_usage`].
+/// [`ResultMessage::model_usage`] and
+/// [`ResultMessage::model_usage_since_last_result`].
 ///
 /// The `extra` field captures any keys the CLI adds that aren't modeled here,
 /// so new wire fields deserialize without error.
