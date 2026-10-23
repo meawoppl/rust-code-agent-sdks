@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.164.2] - 2026-10-23
+
+### Added
+
+- `HookMetadata.environment_id` (`environmentId`, optional): the execution
+  environment that owns a hook, when the hook came from that environment's
+  requirements.
+- `HooksListParams.thread_id` (`threadId`, optional): `hooks/list` can now list
+  a loaded thread's hooks, including those from its selected environments.
+  Omit `cwds` when you set it.
+
+### Changed
+
+- `HookRunSummary.source_path` is now `LegacyAppPathString` (was
+  `AbsolutePathBuf`), matching upstream. Both wrap a `String`, so the wire
+  format is unchanged, but code that names the field type must be updated.
+
 ## [0.164.1] - 2026-10-23
 
 ### Added
