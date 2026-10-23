@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.309] - 2026-10-22
+
+Re-baseline against Claude CLI **2.1.309**. One optional field; no new message
+types and no removals. `--help` and the embedded model-id set are unchanged.
+
+### Added
+
+- `ResultMessage::model_usage_since_last_result` — per-model usage and cost
+  of the calls counted since the previous result, keyed and shaped like
+  `modelUsage` (`ModelUsageEntry`). Sum it across a conversation's results
+  instead of subtracting `modelUsage` totals. Carried on both success and
+  error results (`@internal`).
+
+### Breaking
+
+- The new public field on `ResultMessage` breaks struct-literal construction.
+
 ## [2.1.308] - 2026-10-22
 
 Re-baseline against Claude CLI **2.1.308**. The changes below arrived in CLI
