@@ -3359,6 +3359,13 @@ pub struct HookMetadata {
     pub display_order: i64,
     #[serde(default)]
     pub enabled: bool,
+    /// The owning execution environment, if this hook came from its requirements.
+    #[serde(
+        rename = "environmentId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub environment_id: Option<String>,
     #[serde(rename = "eventName")]
     pub event_name: HookEventName,
     #[serde(
@@ -3478,7 +3485,7 @@ pub struct HookRunSummary {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<Value>,
     #[serde(rename = "sourcePath")]
-    pub source_path: AbsolutePathBuf,
+    pub source_path: LegacyAppPathString,
     #[serde(rename = "startedAt", default)]
     pub started_at: i64,
     #[serde()]
@@ -3564,8 +3571,12 @@ pub struct HooksListEntry {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct HooksListParams {
+    /// Working directories to inspect when no thread is specified. An empty list uses the session cwd.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cwds: Option<Vec<String>>,
+    /// List a loaded thread's hooks, including its selected environments. Omit `cwds` in this mode.
+    #[serde(rename = "threadId", default, skip_serializing_if = "Option::is_none")]
+    pub thread_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
