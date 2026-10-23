@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.164.0] - 2026-10-23
+
+### Changed
+
+- Tested against Codex CLI **0.164.0** (was 0.163.0). No type changes are
+  needed. Compared with 0.163.0, the release adds `feedback/save`,
+  `ImageGeneration.inputImages`, `McpServerStatus.toolListMeta`, the
+  model-request hook events, and `PlanType` `sci`/`sci_plus`. All of these were
+  already modeled in 0.163.0–0.163.4. It also adds the experimental
+  `ApplicationStorageRequirements`, which is not modeled because it is
+  reachable only from the unmodeled `ApplicationRequirements`. The release
+  schema is a strict subset of the tracked `openai/codex@main` snapshot. Main
+  is ahead only by `Account::Gcp` and `NetworkRequirements.reviewDomains`. The
+  bundled `models.json` slug set is unchanged.
+
 ## [0.163.6] - 2026-10-22
 
 ### Added
