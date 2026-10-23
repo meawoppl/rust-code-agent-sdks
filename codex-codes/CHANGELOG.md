@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.164.1] - 2026-10-23
+
+### Added
+
+- `CodexErrorInfo::ModelNotFound` (`"modelNotFound"`): turns that fail because
+  the provider reports an unknown model now end with this error code instead
+  of being retried (openai/codex#56445). It previously decoded as
+  `CodexErrorInfo::Other`. Exhaustive matches on `CodexErrorInfo` need a new
+  arm.
+
 ## [0.164.0] - 2026-10-23
 
 ### Changed
