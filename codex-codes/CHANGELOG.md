@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.163.6] - 2026-10-22
+
+### Added
+
+- `Account::Gcp` (`{"type": "gcp"}`): `account/read` can now report a Google
+  Cloud Vertex AI account with externally managed credentials, from the new
+  built-in Vertex AI provider (openai/codex#56265). Exhaustive matches on
+  `Account` need a new arm.
+
+### Changed
+
+- Refresh the schema snapshot to `openai/codex@main` (`3fd148a20`). Still
+  tested against Codex CLI **0.163.0**. The bundled `models.json` slug set is
+  unchanged.
+
 ## [0.163.5] - 2026-10-22
 
 ### Changed

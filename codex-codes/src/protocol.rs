@@ -450,4 +450,20 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn gcp_account_round_trips() {
+        let wire = serde_json::json!({"type": "gcp"});
+        assert_eq!(serde_json::to_value(Account::Gcp).unwrap(), wire);
+        assert_eq!(
+            serde_json::from_value::<Account>(wire).unwrap(),
+            Account::Gcp
+        );
+        let response: GetAccountResponse = serde_json::from_value(serde_json::json!({
+            "account": {"type": "gcp"},
+            "requiresOpenaiAuth": false
+        }))
+        .unwrap();
+        assert_eq!(response.account, Some(Account::Gcp));
+    }
 }
