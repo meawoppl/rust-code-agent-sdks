@@ -43,6 +43,9 @@ pub enum Account {
         )]
         uses_codex_managed_credentials: Option<bool>,
     },
+    /// Google Cloud Vertex AI with externally managed credentials.
+    #[serde(rename = "gcp")]
+    Gcp,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
