@@ -420,8 +420,10 @@ impl MuseExecBuilder {
         self
     }
 
-    /// Disable approval and sandbox, trust this workspace, and withhold the
-    /// `request_user_input` tool for the run (`--yolo`).
+    /// Disable approval and sandbox and trust this workspace for the run
+    /// (`--yolo`). Since Muse Code 1.4.13 this no longer withholds
+    /// `request_user_input`; combine with
+    /// [`MuseExecBuilder::disable_request_user_input`] for that.
     pub fn yolo(mut self, enabled: bool) -> Self {
         self.yolo = enabled;
         self
