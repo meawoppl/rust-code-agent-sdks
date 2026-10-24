@@ -653,6 +653,21 @@ pub struct UnifiedWindowUsage {
     /// Unix epoch seconds when this window resets.
     #[serde(rename = "resetsAt")]
     pub resets_at: u64,
+    /// Status the server sent for this window: `allowed_warning` once past a
+    /// warning threshold, `rejected` at or past its limit. A rejected window
+    /// alone does not mean requests are refused; the top-level
+    /// [`RateLimitInfo::status`] says whether they are. Absent when the server
+    /// sent none (CLI 2.1.310+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<RateLimitStatus>,
+    /// Highest warning threshold passed, as a fraction of the window's limit
+    /// (1.0 once rejected). Absent when the server sent none (CLI 2.1.310+).
+    #[serde(
+        rename = "surpassedThreshold",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub surpassed_threshold: Option<f64>,
 }
 
 /// Error code carried on a rate limit event when a request was refused.
