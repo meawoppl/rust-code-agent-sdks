@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.13] - 2026-10-24
+
+### Changed
+
+- Re-pinned to Muse Code 1.4.13 (`1.4.13-R6996.1`). No crate-visible
+  wire change: the stream fingerprint matches the snapshot, the live
+  suite and `wirecheck run muse` pass unmodified, and the model catalog
+  (ids, limits, default, effort tiers) is unchanged.
+- `MuseExecBuilder::yolo` docs: `--yolo` no longer withholds
+  `request_user_input` (the top-level help now says it enables async
+  questions). Pair it with `disable_request_user_input` to keep the old
+  behavior.
+- Top-level `--help` gained a `usage` subcommand (subscription
+  allowance); not modeled.
+- MSP schema (not modeled) changed: new `ApprovalCuaDataFact`,
+  `ApprovalCuaMask`, `QueuedInput` and `ReplayHint` definitions,
+  `queuedInputs` on the session read response, and `replayHint` /
+  `terminalRowAfterItemId` / `workId` on items. No methods or
+  notifications were added or removed.
+- New env names: `MUSE_DAEMON_LANE`, `MUSE_EXPERIMENTAL_CUA_SHIFT_DIFF`,
+  `MUSE_EXPERIMENTAL_CUA_FOLD_OFFSCREEN`,
+  `MUSE_EXPERIMENTAL_CUA_RANKED_VIEW`,
+  `MUSE_EXPERIMENTAL_CUA_LEAN_SCREENSHOTS`.
+
 ## [1.4.12] - 2026-10-22
 
 ### Changed
