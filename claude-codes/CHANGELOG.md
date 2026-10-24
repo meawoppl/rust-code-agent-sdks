@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.310] - 2026-10-23
+
+Re-baseline against Claude CLI **2.1.310**. Two optional nested fields; no new
+message types and no removals. `--help` and the embedded model-id set are
+unchanged.
+
+### Added
+
+- `UnifiedWindowUsage::status` — the status the server sent for each
+  `rate_limit_info.unifiedWindows` entry (`allowed_warning` past a warning
+  threshold, `rejected` at or past the window's limit). A rejected window alone
+  does not mean requests are refused; the top-level status still decides that.
+- `UnifiedWindowUsage::surpassed_threshold` — the highest warning threshold
+  passed for the window, as a fraction of its limit (1.0 once rejected).
+
+### Breaking
+
+- The new public fields on `UnifiedWindowUsage` break struct-literal
+  construction.
+
 ## [2.1.309] - 2026-10-22
 
 Re-baseline against Claude CLI **2.1.309**. One optional field; no new message
