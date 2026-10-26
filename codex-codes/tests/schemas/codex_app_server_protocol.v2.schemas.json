@@ -269,6 +269,13 @@
         "kind": {
           "$ref": "#/definitions/AdditionalContextKind"
         },
+        "name": {
+          "description": "Optional name for untrusted context, used to label its tool output.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "value": {
           "type": "string"
         }
@@ -20030,6 +20037,7 @@
       "type": "object"
     },
     "ThreadItem": {
+      "description": "A thread item and its recorded lifecycle times. The payload stays flat on the wire.",
       "oneOf": [
         {
           "properties": {
@@ -20932,7 +20940,28 @@
           "title": "ContextCompactionThreadItem",
           "type": "object"
         }
-      ]
+      ],
+      "properties": {
+        "completedAtMs": {
+          "default": null,
+          "description": "Unix timestamp in milliseconds when the item completed, if recorded.",
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "startedAtMs": {
+          "default": null,
+          "description": "Unix timestamp in milliseconds when the item started, if recorded.",
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
     },
     "ThreadItemEntry": {
       "properties": {

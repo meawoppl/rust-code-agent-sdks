@@ -921,7 +921,9 @@ fn function_call_output_input_image_round_trips_image_url_and_file_id() {
 /// `fileId`; migration-era items with both prefer the file reference.
 #[test]
 fn image_generation_item_accepts_file_id_or_inline_result() {
-    use codex_codes::protocol::{GeneratedImageRef, ThreadItem as ProtocolThreadItem};
+    use codex_codes::protocol::{
+        GeneratedImageRef, ThreadItem as ProtocolThreadItem, ThreadItemPayload,
+    };
 
     let inline: ProtocolThreadItem = serde_json::from_value(serde_json::json!({
         "type": "imageGeneration",
@@ -930,7 +932,7 @@ fn image_generation_item_accepts_file_id_or_inline_result() {
         "result": "iVBORw0KGgo="
     }))
     .unwrap();
-    let ProtocolThreadItem::ImageGeneration { image, .. } = &inline else {
+    let ThreadItemPayload::ImageGeneration { image, .. } = &inline.payload else {
         panic!("expected ImageGeneration");
     };
     assert_eq!(
@@ -951,7 +953,7 @@ fn image_generation_item_accepts_file_id_or_inline_result() {
         "fileId": "file_7"
     }))
     .unwrap();
-    let ProtocolThreadItem::ImageGeneration { image, .. } = &migrated else {
+    let ThreadItemPayload::ImageGeneration { image, .. } = &migrated.payload else {
         panic!("expected ImageGeneration");
     };
     assert_eq!(
@@ -971,7 +973,7 @@ fn image_generation_item_accepts_file_id_or_inline_result() {
 fn image_generation_item_carries_input_images() {
     use codex_codes::protocol::{
         AbsolutePathBuf, GeneratedImageRef, ImageGenerationInputImage,
-        ThreadItem as ProtocolThreadItem,
+        ThreadItem as ProtocolThreadItem, ThreadItemPayload,
     };
 
     let sha = "ab".repeat(32);
@@ -983,11 +985,11 @@ fn image_generation_item_carries_input_images() {
         "inputImages": [{"path": "/tmp/reference.png", "sha256": sha}]
     }))
     .unwrap();
-    let ProtocolThreadItem::ImageGeneration {
+    let ThreadItemPayload::ImageGeneration {
         image,
         input_images,
         ..
-    } = &item
+    } = &item.payload
     else {
         panic!("expected ImageGeneration");
     };
@@ -1016,7 +1018,7 @@ fn image_generation_item_carries_input_images() {
         "fileId": "file_9"
     }))
     .unwrap();
-    let ProtocolThreadItem::ImageGeneration { input_images, .. } = &older else {
+    let ThreadItemPayload::ImageGeneration { input_images, .. } = &older.payload else {
         panic!("expected ImageGeneration");
     };
     assert!(input_images.is_none());
@@ -1030,7 +1032,9 @@ fn image_generation_item_carries_input_images() {
 /// `mcpAppResourceUri`, and older history without it still parses.
 #[test]
 fn mcp_tool_call_item_carries_mcp_app_ui() {
-    use codex_codes::protocol::{McpAppDisplayMode, McpAppUi, ThreadItem as ProtocolThreadItem};
+    use codex_codes::protocol::{
+        McpAppDisplayMode, McpAppUi, ThreadItem as ProtocolThreadItem, ThreadItemPayload,
+    };
 
     let item: ProtocolThreadItem = serde_json::from_value(serde_json::json!({
         "type": "mcpToolCall",
@@ -1046,11 +1050,11 @@ fn mcp_tool_call_item_carries_mcp_app_ui() {
         }
     }))
     .unwrap();
-    let ProtocolThreadItem::McpToolCall {
+    let ThreadItemPayload::McpToolCall {
         mcp_app_ui,
         mcp_app_resource_uri,
         ..
-    } = &item
+    } = &item.payload
     else {
         panic!("expected McpToolCall");
     };
@@ -1077,7 +1081,7 @@ fn mcp_tool_call_item_carries_mcp_app_ui() {
         "status": "inProgress"
     }))
     .unwrap();
-    let ProtocolThreadItem::McpToolCall { mcp_app_ui, .. } = &legacy else {
+    let ThreadItemPayload::McpToolCall { mcp_app_ui, .. } = &legacy.payload else {
         panic!("expected McpToolCall");
     };
     assert!(mcp_app_ui.is_none());
@@ -1085,6 +1089,47 @@ fn mcp_tool_call_item_carries_mcp_app_ui() {
         .unwrap()
         .get("mcpAppUi")
         .is_none());
+}
+
+/// A thread item carries flat `startedAtMs`/`completedAtMs` lifecycle times
+/// beside its tagged payload; items without them still parse and stay untimed.
+#[test]
+fn thread_item_carries_lifecycle_timestamps() {
+    use codex_codes::protocol::{ThreadItem as ProtocolThreadItem, ThreadItemPayload};
+
+    let timed: ProtocolThreadItem = serde_json::from_value(serde_json::json!({
+        "type": "contextCompaction",
+        "id": "item_9",
+        "startedAtMs": 1_700_000_000_000_i64,
+        "completedAtMs": 1_700_000_000_250_i64
+    }))
+    .unwrap();
+    assert_eq!(timed.started_at_ms, Some(1_700_000_000_000));
+    assert_eq!(timed.completed_at_ms, Some(1_700_000_000_250));
+    assert!(matches!(
+        &timed.payload,
+        ThreadItemPayload::ContextCompaction { id } if id == "item_9"
+    ));
+    let wire = serde_json::to_value(&timed).unwrap();
+    assert_eq!(wire["type"], "contextCompaction");
+    assert_eq!(wire["completedAtMs"], 1_700_000_000_250_i64);
+
+    let untimed: ProtocolThreadItem = serde_json::from_value(serde_json::json!({
+        "type": "contextCompaction",
+        "id": "item_10",
+        "startedAtMs": null
+    }))
+    .unwrap();
+    assert_eq!(
+        untimed,
+        ProtocolThreadItem::untimed(ThreadItemPayload::ContextCompaction {
+            id: "item_10".into()
+        })
+    );
+    assert_eq!(
+        serde_json::to_value(&untimed).unwrap(),
+        serde_json::json!({"type": "contextCompaction", "id": "item_10"})
+    );
 }
 
 /// `ConfigRequirements` reads the new `allowedLoginMethods` list and the

@@ -6,7 +6,7 @@
 use codex_codes::{
     AsyncClient, CommandExecutionApprovalDecision, CommandExecutionRequestApprovalResponse,
     FileChangeApprovalDecision, FileChangeRequestApprovalResponse, Notification, ServerMessage,
-    ServerRequest, ThreadItem, ThreadStartParams, TurnStartParams, UserInput,
+    ServerRequest, ThreadItemPayload, ThreadStartParams, TurnStartParams, UserInput,
 };
 use std::io::{self, Write};
 
@@ -94,11 +94,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Notification::ReasoningDelta(d) => {
                         print!("[thinking] {}", d.delta);
                     }
-                    Notification::ItemStarted(item_event) => match item_event.item {
-                        ThreadItem::CommandExecution { command, .. } => {
+                    Notification::ItemStarted(item_event) => match item_event.item.payload {
+                        ThreadItemPayload::CommandExecution { command, .. } => {
                             println!("\n[Command: {}]", command);
                         }
-                        ThreadItem::FileChange { .. } => {
+                        ThreadItemPayload::FileChange { .. } => {
                             println!("\n[File change]");
                         }
                         _ => {}

@@ -3051,7 +3051,7 @@ pub struct ThreadUsageBreakdownGroup {
 }
 
 /// Either inline generated-image data or its durable attachment-store
-/// identity. Flattened into [`ThreadItem::ImageGeneration`]; untagged, and
+/// identity. Flattened into [`ThreadItemPayload::ImageGeneration`]; untagged, and
 /// `File` must stay first so migration-era items carrying both an empty
 /// `result` and a `fileId` keep the file reference (`openai/codex@main` aabf13307a).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -4608,7 +4608,7 @@ pub struct McpServerToolCallResponse {
 }
 
 /// UI resource and display preference for model invocations, captured from
-/// the tool descriptor (`ThreadItem::McpToolCall::mcp_app_ui`).
+/// the tool descriptor (`ThreadItemPayload::McpToolCall::mcp_app_ui`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct McpAppUi {
@@ -8004,9 +8004,49 @@ pub struct ThreadInjectItemsResponse {
     pub extra: serde_json::Map<String, Value>,
 }
 
+/// A thread item and its recorded lifecycle times. The payload stays flat on the wire.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadItem {
+    #[serde(flatten)]
+    pub payload: ThreadItemPayload,
+    /// Unix timestamp in milliseconds when the item started, if recorded.
+    #[serde(
+        rename = "startedAtMs",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub started_at_ms: Option<i64>,
+    /// Unix timestamp in milliseconds when the item completed, if recorded.
+    #[serde(
+        rename = "completedAtMs",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub completed_at_ms: Option<i64>,
+}
+
+impl ThreadItem {
+    /// Creates an item with no recorded start or completion time.
+    pub fn untimed(payload: ThreadItemPayload) -> Self {
+        Self {
+            payload,
+            started_at_ms: None,
+            completed_at_ms: None,
+        }
+    }
+}
+
+impl From<ThreadItemPayload> for ThreadItem {
+    fn from(payload: ThreadItemPayload) -> Self {
+        Self::untimed(payload)
+    }
+}
+
+/// The type-tagged body of a [`ThreadItem`], flattened into it on the wire.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
-pub enum ThreadItem {
+pub enum ThreadItemPayload {
     #[serde(rename = "userMessage")]
     UserMessage {
         #[serde(rename = "clientId", default, skip_serializing_if = "Option::is_none")]

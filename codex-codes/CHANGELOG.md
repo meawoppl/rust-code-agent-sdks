@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.164.3] - 2026-10-26
+
+### Added
+
+- `ThreadItem.started_at_ms` / `ThreadItem.completed_at_ms` (`startedAtMs` /
+  `completedAtMs`, optional Unix milliseconds): recorded lifecycle times on
+  every thread item, in live notifications and in turn history
+  (openai/codex#57172). `ThreadItem::untimed(payload)` and
+  `From<ThreadItemPayload>` build an item with neither set.
+
+### Changed
+
+- **Breaking:** `ThreadItem` is now a struct that wraps the item body in a
+  flattened `payload: ThreadItemPayload` field, matching upstream. The old
+  `ThreadItem` enum is renamed `ThreadItemPayload`. The JSON stays flat, so
+  the wire format is unchanged. Match on `item.payload` with
+  `ThreadItemPayload::…` instead of `ThreadItem::…`.
+- Schema snapshot refreshed to openai/codex@8ebd272491. It also picks up the
+  optional `AdditionalContextEntry.name` (openai/codex#57181), which the crate
+  does not model.
+
 ## [0.164.2] - 2026-10-23
 
 ### Added
