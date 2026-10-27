@@ -172,6 +172,73 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub process_wall_ms_turn: Option<u64>,
 
+    /// How long, within the
+    /// [`process_cpu_ms_turn`](Self::process_cpu_ms_turn) stretch and by its
+    /// clock, a response stream of a main-conversation model request was
+    /// open, in ms: from the stream's first event until the CLI stopped
+    /// reading it. Summed over the turn's requests; overlapping streams count
+    /// once. Subagent, side-request and compaction streams are not in it
+    /// (CLI 2.1.311+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_wall_ms_streaming: Option<u64>,
+
+    /// CPU time, counted as in
+    /// [`process_cpu_ms_between_turns`](Self::process_cpu_ms_between_turns),
+    /// used inside
+    /// [`process_wall_ms_streaming`](Self::process_wall_ms_streaming); part
+    /// of [`process_cpu_ms_turn`](Self::process_cpu_ms_turn). Always comes
+    /// with `process_wall_ms_streaming`, `main_stream_count` and
+    /// `main_stream_event_count` (CLI 2.1.311+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_cpu_ms_streaming: Option<u64>,
+
+    /// How many streams
+    /// [`process_wall_ms_streaming`](Self::process_wall_ms_streaming)
+    /// covers: one per attempt of a main-conversation model request that
+    /// brought a first event, so a retry counts again (CLI 2.1.311+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub main_stream_count: Option<u64>,
+
+    /// How many stream events the API sent on those streams, leaving out
+    /// keepalive pings the CLI makes up itself (CLI 2.1.311+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub main_stream_event_count: Option<u64>,
+
+    /// In how many chunks the runtime's fetch handed over the bodies of
+    /// those streams. Absent, never 0, when chunks were not counted (Bedrock,
+    /// Vertex, Foundry, Mantle, byte watchdog off, or a stream still open)
+    /// (CLI 2.1.311+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub main_stream_chunk_count: Option<u64>,
+
+    /// Bit set of the runtime tuning variables the CLI process was started
+    /// with (set and not empty): 1 `BUN_GC_TIMER_INTERVAL`, 2
+    /// `MIMALLOC_PURGE_HOLES_MIN_INTERVAL`, 4 `BUN_IDLE_GC_SECONDS`, 8
+    /// `MIMALLOC_PURGE_DELAY`, 16 `BUN_JSC_useFTLJIT`, 32
+    /// `BUN_JSC_percentCPUPerMBForEdenTimer`, 64
+    /// `BUN_JSC_percentCPUPerMBForFullTimer`. Names only, never values. Sent
+    /// only by the workers named under
+    /// [`process_rss_mib_turn_start`](Self::process_rss_mib_turn_start), on
+    /// results of any subtype (CLI 2.1.311+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_start_tuning: Option<u64>,
+
+    /// `MIMALLOC_PURGE_DELAY` in ms as the CLI process was started with it.
+    /// Sent only beside
+    /// [`process_start_tuning`](Self::process_start_tuning), and absent when
+    /// the variable was unset, empty or not one to seven digits
+    /// (CLI 2.1.311+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_start_purge_delay_ms: Option<u64>,
+
+    /// Garbage collections on the CLI process's main thread, counted from
+    /// early start-up. Only on the process's first numbered result within an
+    /// hour of its start, when started with
+    /// `CLAUDE_CODE_COUNT_GARBAGE_COLLECTIONS=1`, and only from
+    /// Anthropic-hosted cloud workers with telemetry on (CLI 2.1.311+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_garbage_collections: Option<ProcessGarbageCollections>,
+
     /// What the `input_attachments` phase of `time_to_request_phases_ms` did
     /// on the turn, to tell a wait inside one attachment producer from a
     /// process that was busy. Present on turns where the phase started,
@@ -665,6 +732,36 @@ pub struct ResumeStoreConfirmDetail {
     /// Rows queued since then that a POST delivered, the carried lines among
     /// them.
     pub rows: u64,
+}
+
+/// [`ResultMessage::process_garbage_collections`] — garbage collections on
+/// the CLI process's main thread (CLI 2.1.311+). A worker claimed from a
+/// warm spare counts from the spare's own start.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct ProcessGarbageCollections {
+    /// Up to the start of the process's first turn. Absent if no turn began
+    /// first or its count failed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub to_first_message: Option<GarbageCollectionCounts>,
+    /// Up to this result, including
+    /// [`to_first_message`](Self::to_first_message)'s.
+    pub to_first_result: GarbageCollectionCounts,
+}
+
+/// One window of [`ProcessGarbageCollections`] (CLI 2.1.311+). A collection
+/// still running at the window's end is not counted.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GarbageCollectionCounts {
+    /// Collections of young objects only (under Bun the process's first also
+    /// marks the whole heap).
+    pub eden: u64,
+    /// Collections of the whole heap.
+    pub full: u64,
+    /// Their summed wall-clock time in ms, not CPU time.
+    pub wall_ms: u64,
+    /// Heap in use after the last one, in MiB. Absent if none ran.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub heap_after_mib: Option<u64>,
 }
 
 /// Why Claude Code refused to start, carried as

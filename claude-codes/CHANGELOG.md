@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Modeling for Claude CLI **2.1.311** stream-json drift. One new system subtype,
+optional fields on `result`, `system/turn_handoff_available` and
+`system/ui_panes`, and two `api_error` kinds; no removals. `--help` changed
+only the `purge` description, and the embedded model-id set is unchanged.
+
+### Added
+
+- `system/inherited_asks_settled` → `SystemSubtype::InheritedAsksSettled`,
+  `InheritedAsksSettledMessage { kept_request_ids }`,
+  `KnownSystemEvent::InheritedAsksSettled` and the
+  `is_/as_inherited_asks_settled` accessors. A cloud worker sends it before
+  its first turn; any earlier ask it does not name is over.
+- `ResultMessage` streaming telemetry: `process_wall_ms_streaming`,
+  `process_cpu_ms_streaming`, `main_stream_count`, `main_stream_event_count`,
+  `main_stream_chunk_count`.
+- `ResultMessage` process start-up telemetry: `process_start_tuning` (bit set
+  of runtime tuning variables), `process_start_purge_delay_ms`, and
+  `process_garbage_collections` → new `ProcessGarbageCollections` /
+  `GarbageCollectionCounts` types.
+- `TurnHandoffAvailableMessage::requires_rewind_request_id`.
+- `UiPane::background_color`.
+- `api_error` doc now lists `unattended_start_limit` (terminal; do not re-send
+  the prompt on replay) and `unattended_start_unconfirmed` (not terminal).
+
+### Breaking
+
+- New public fields on `ResultMessage`, `TurnHandoffAvailableMessage` and
+  `UiPane` break struct-literal construction, and the new
+  `SystemSubtype`/`KnownSystemEvent` variants break exhaustive matches.
+
 ## [2.1.310] - 2026-10-23
 
 Re-baseline against Claude CLI **2.1.310**. Two optional nested fields; no new

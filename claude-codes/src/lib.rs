@@ -172,10 +172,10 @@ pub use io::{
     DevIntentKind, DevIntentMessage, DevIntentTrigger, ElicitationCompleteMessage,
     FailedPersistedFile, FeedbackDraftQueuedMessage, FileAttachmentsMissingMessage,
     FilesPersistedMessage, HandbackReport, HookProgressMessage, HookResponseMessage,
-    HookStartedMessage, InformationalMessage, InitMessage, InitPermissionMode,
-    InstructionSizeWarningMessage, KnownSystemEvent, LocalCommandOutcome, LocalCommandOutcomeKind,
-    LocalCommandOutputMessage, LocalCommandRun, McpMeta, McpServerError, MemoryPaths,
-    MemoryRecallItem, MemoryRecallMessage, MessageOrigin, MessageRole, MirrorErrorKey,
+    HookStartedMessage, InformationalMessage, InheritedAsksSettledMessage, InitMessage,
+    InitPermissionMode, InstructionSizeWarningMessage, KnownSystemEvent, LocalCommandOutcome,
+    LocalCommandOutcomeKind, LocalCommandOutputMessage, LocalCommandRun, McpMeta, McpServerError,
+    MemoryPaths, MemoryRecallItem, MemoryRecallMessage, MessageOrigin, MessageRole, MirrorErrorKey,
     MirrorErrorMessage, MissingFileAttachment, ModelRefusalFallbackMessage,
     ModelRefusalNoFallbackMessage, NotificationMessage, OutputStyle, PeerMessageHoldCause,
     PeerMessageHoldMessage, PeerMessageHoldOutcome, PeerMessageHoldState, PeerMessageLane,
@@ -217,9 +217,10 @@ pub use io::{
 // Usage types
 pub use io::{
     AssistantUsage, CacheCreationDetails, DeferredToolUse, FastModeDisabledReason,
-    InputAttachmentsDetail, ResumeStoreConfirmDetail, RunnerExit, RunnerExitPhase, ServerToolUse,
-    StartupFailureReason, StreamPostQueuedBehind, SubagentKillCounts, SubagentRefusalCounts,
-    SubagentResult, SubagentSpawnRequests, SubagentStats, SubagentToolStats, SubagentUsageRollup,
+    GarbageCollectionCounts, InputAttachmentsDetail, ProcessGarbageCollections,
+    ResumeStoreConfirmDetail, RunnerExit, RunnerExitPhase, ServerToolUse, StartupFailureReason,
+    StreamPostQueuedBehind, SubagentKillCounts, SubagentRefusalCounts, SubagentResult,
+    SubagentSpawnRequests, SubagentStats, SubagentToolStats, SubagentUsageRollup,
     TouchCompareCounts, TurnStartResumeKind, UsageInfo,
 };
 
