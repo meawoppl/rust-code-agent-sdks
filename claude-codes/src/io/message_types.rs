@@ -55,6 +55,7 @@ pub enum SystemSubtype {
     InstructionSizeWarning,
     FileAttachmentsMissing,
     PermissionCheckStatus,
+    InheritedAsksSettled,
     UiFocus,
     UiInvalidate,
     UiLog,
@@ -110,6 +111,7 @@ impl SystemSubtype {
             Self::InstructionSizeWarning => "instruction_size_warning",
             Self::FileAttachmentsMissing => "file_attachments_missing",
             Self::PermissionCheckStatus => "permission_check_status",
+            Self::InheritedAsksSettled => "inherited_asks_settled",
             Self::UiFocus => "ui_focus",
             Self::UiInvalidate => "ui_invalidate",
             Self::UiLog => "ui_log",
@@ -172,6 +174,7 @@ impl From<&str> for SystemSubtype {
             "instruction_size_warning" => Self::InstructionSizeWarning,
             "file_attachments_missing" => Self::FileAttachmentsMissing,
             "permission_check_status" => Self::PermissionCheckStatus,
+            "inherited_asks_settled" => Self::InheritedAsksSettled,
             "ui_focus" => Self::UiFocus,
             "ui_invalidate" => Self::UiInvalidate,
             "ui_log" => Self::UiLog,
@@ -1805,6 +1808,19 @@ impl SystemMessage {
         serde_json::from_value(self.data.clone()).ok()
     }
 
+    /// Check if this is an inherited_asks_settled message.
+    pub fn is_inherited_asks_settled(&self) -> bool {
+        self.subtype == SystemSubtype::InheritedAsksSettled
+    }
+
+    /// Try to parse as an inherited_asks_settled message.
+    pub fn as_inherited_asks_settled(&self) -> Option<InheritedAsksSettledMessage> {
+        if self.subtype != SystemSubtype::InheritedAsksSettled {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
     /// Check if this is a file_attachments_missing message.
     pub fn is_file_attachments_missing(&self) -> bool {
         self.subtype == SystemSubtype::FileAttachmentsMissing
@@ -1995,6 +2011,9 @@ impl SystemMessage {
             SystemSubtype::PermissionCheckStatus => {
                 parse!(PermissionCheckStatus, PermissionCheckStatusMessage)
             }
+            SystemSubtype::InheritedAsksSettled => {
+                parse!(InheritedAsksSettled, InheritedAsksSettledMessage)
+            }
             SystemSubtype::UiFocus => parse!(UiFocus, UiFocusMessage),
             SystemSubtype::UiInvalidate => parse!(UiInvalidate, UiInvalidateMessage),
             SystemSubtype::UiLog => parse!(UiLog, UiLogMessage),
@@ -2104,6 +2123,9 @@ impl SystemMessage {
             SystemSubtype::PermissionCheckStatus => {
                 reserialize(parse_system::<PermissionCheckStatusMessage>(self))
             }
+            SystemSubtype::InheritedAsksSettled => {
+                reserialize(parse_system::<InheritedAsksSettledMessage>(self))
+            }
             SystemSubtype::UiFocus => reserialize(parse_system::<UiFocusMessage>(self)),
             SystemSubtype::UiInvalidate => reserialize(parse_system::<UiInvalidateMessage>(self)),
             SystemSubtype::UiLog => reserialize(parse_system::<UiLogMessage>(self)),
@@ -2169,6 +2191,7 @@ pub enum KnownSystemEvent {
     InstructionSizeWarning(InstructionSizeWarningMessage),
     FileAttachmentsMissing(FileAttachmentsMissingMessage),
     PermissionCheckStatus(PermissionCheckStatusMessage),
+    InheritedAsksSettled(InheritedAsksSettledMessage),
     UiFocus(UiFocusMessage),
     UiInvalidate(UiInvalidateMessage),
     UiLog(UiLogMessage),
@@ -4124,6 +4147,12 @@ pub struct TurnHandoffAvailableMessage {
     /// there (CLI 2.1.300+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shared_message_id: Option<bool>,
+    /// Present, and true, only on a worker that reads the
+    /// `requires_rewind_request_id` member of a `turn_handoff` request; a
+    /// worker without this key ignores the member and appends the turn
+    /// whether or not the rewind was made (CLI 2.1.311+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requires_rewind_request_id: Option<bool>,
     pub uuid: String,
     pub session_id: String,
     #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
@@ -4532,6 +4561,19 @@ pub struct PermissionCheckStatusMessage {
     pub session_id: String,
 }
 
+/// `system/inherited_asks_settled` — a cloud worker's report, before its
+/// first turn, of which asks it inherited from the earlier worker and keeps
+/// answerable. Any ask stored before this event that it does not name is
+/// over (CLI 2.1.311+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InheritedAsksSettledMessage {
+    /// The request ids of the earlier worker's asks that this worker keeps
+    /// answerable.
+    pub kept_request_ids: Vec<String>,
+    pub uuid: String,
+    pub session_id: String,
+}
+
 /// Phase of a [`PermissionCheckStatusMessage`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PermissionCheckStatus {
@@ -4749,6 +4791,12 @@ pub struct UiPane {
     /// the one shown, and shows them once it closes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hold_toasts: Option<bool>,
+    /// What the surface paints under this pane's body while it is the one
+    /// shown: a theme key, a raw color, or `transparent` for nothing.
+    /// Plugin-authored: parse it, never write it into a style. Absent, the
+    /// surface's own look stands (CLI 2.1.311+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background_color: Option<String>,
     /// The body rows its content asked for while seated inline; a request
     /// the person's own sizing overrides.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5377,7 +5425,13 @@ pub struct AssistantMessage {
     /// [`ApiErrorParams::rate_limit_info`] says which and when it resets —
     /// and (CLI 2.1.307+) `empty_completion` — the model ended its turn with
     /// no visible text and its one retry had no content block, so the turn
-    /// ends as an error instead of a blank reply.
+    /// ends as an error instead of a blank reply — and (CLI 2.1.311+)
+    /// `unattended_start_limit` — a cloud session's restarted process hit
+    /// the configured limit of unattended carry-ons within 24 hours, so no
+    /// request was sent; terminal for the turn, so a consumer replaying
+    /// history must not re-send the prompt that led to it — and
+    /// `unattended_start_unconfirmed` — the process could not check whether
+    /// it was allowed to carry on, so no request was sent; not terminal.
     /// Kinds with parameters carry them in [`Self::api_error_params`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_error: Option<String>,
