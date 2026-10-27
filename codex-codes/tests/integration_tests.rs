@@ -1018,14 +1018,36 @@ fn image_generation_item_carries_input_images() {
         "fileId": "file_9"
     }))
     .unwrap();
-    let ThreadItemPayload::ImageGeneration { input_images, .. } = &older.payload else {
+    let ThreadItemPayload::ImageGeneration {
+        input_images,
+        generation_id,
+        ..
+    } = &older.payload
+    else {
         panic!("expected ImageGeneration");
     };
     assert!(input_images.is_none());
-    assert!(serde_json::to_value(&older)
-        .unwrap()
-        .get("inputImages")
-        .is_none());
+    assert!(generation_id.is_none());
+    let older_wire = serde_json::to_value(&older).unwrap();
+    assert!(older_wire.get("inputImages").is_none());
+    assert!(older_wire.get("generationId").is_none());
+
+    let tagged: ProtocolThreadItem = serde_json::from_value(serde_json::json!({
+        "type": "imageGeneration",
+        "id": "ig_5",
+        "status": "completed",
+        "fileId": "file_10",
+        "generationId": "gen_abc"
+    }))
+    .unwrap();
+    let ThreadItemPayload::ImageGeneration { generation_id, .. } = &tagged.payload else {
+        panic!("expected ImageGeneration");
+    };
+    assert_eq!(generation_id.as_deref(), Some("gen_abc"));
+    assert_eq!(
+        serde_json::to_value(&tagged).unwrap()["generationId"],
+        "gen_abc"
+    );
 }
 
 /// An `mcpToolCall` item carries the new `mcpAppUi` block beside the legacy

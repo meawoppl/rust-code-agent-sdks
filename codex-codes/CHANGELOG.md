@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.164.6] - 2026-10-27
+
+Model the `openai/codex@main` (`33d306d45`) app-server schema drift. The
+tested pin stays at Codex CLI **0.164.0**.
+
+### Added
+
+- `ThreadItemPayload::ImageGeneration.generation_id` (`generationId`): the
+  image backend's generation identifier, when provided. Optional, so existing
+  payloads still deserialize; struct-literal construction of the variant needs
+  the new field.
+
+### Changed
+
+- Schema snapshot refreshed to openai/codex@33d306d45. The new
+  `AccountSession`, `AccountSessionWorkspace`, and
+  `AccountSessionWorkspaceKind` definitions back the `#[experimental]`
+  `accountSession/list` and `accountSession/switch` methods, which are stripped
+  from the published schema, so they are not modeled.
+
 ## [0.164.5] - 2026-10-27
 
 Model the `openai/codex@main` (`6a6e2fb1f0`) app-server schema drift. The
