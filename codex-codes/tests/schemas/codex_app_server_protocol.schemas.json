@@ -6805,6 +6805,13 @@
                 ],
                 "title": "ChatgptAccountType",
                 "type": "string"
+              },
+              "workspaceName": {
+                "description": "Display name of the selected ChatGPT workspace, when available.",
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
@@ -16294,7 +16301,7 @@
             "additionalProperties": {
               "$ref": "#/definitions/v2/NetworkDomainPermission"
             },
-            "description": "Canonical network permission map for `experimental_network`.",
+            "description": "Canonical managed network permission map.",
             "type": [
               "object",
               "null"
@@ -16343,7 +16350,7 @@
             "additionalProperties": {
               "$ref": "#/definitions/v2/NetworkUnixSocketPermission"
             },
-            "description": "Canonical unix socket permission map for `experimental_network`.",
+            "description": "Canonical managed unix socket permission map.",
             "type": [
               "object",
               "null"
@@ -25898,6 +25905,14 @@
               "$ref": "#/definitions/v2/ThreadUsageBreakdownGroup"
             },
             "type": "array"
+          },
+          "nativeUsageUsdMicros": {
+            "description": "Native dollar usage, independent of credit estimates. None means unknown, not zero.",
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "threadId": {
             "type": "string"
