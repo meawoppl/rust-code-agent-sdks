@@ -10,8 +10,8 @@
 //! faster than this crate; GPT-6.1 Sol was verified against the live Codex
 //! catalog and official model documentation (2026-10-04); GPT-6-Sol and
 //! GPT-6-Luna were added from the bundled catalog at `openai/codex@d63a9b83`
-//! (2026-10-06). Unknown slugs round-trip through
-//! [`CodexModel::Custom`].
+//! (2026-10-06); GPT-6.1 Terra from `openai/codex@126a0ee9` (2026-10-27).
+//! Unknown slugs round-trip through [`CodexModel::Custom`].
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
@@ -21,6 +21,9 @@ use std::fmt;
 pub enum CodexModel {
     /// GPT-6.1 Sol (`gpt-6.1-sol`). Availability depends on the server/account.
     Gpt61Sol,
+    /// GPT-6.1 Terra (`gpt-6.1-terra`). Availability depends on the
+    /// server/account.
+    Gpt61Terra,
     /// GPT-6-Astra (`gpt-6-astra`) — first GPT-6-family model in the
     /// catalog (272k context). Live-probed 2026-09-04: the backend
     /// recognizes the slug but rejects it for ChatGPT-plan auth
@@ -63,6 +66,7 @@ impl CodexModel {
     pub fn cli_arg(&self) -> &str {
         match self {
             Self::Gpt61Sol => "gpt-6.1-sol",
+            Self::Gpt61Terra => "gpt-6.1-terra",
             Self::Gpt6Astra => "gpt-6-astra",
             Self::Gpt6Sol => "gpt-6-sol",
             Self::Gpt6Luna => "gpt-6-luna",
@@ -90,6 +94,7 @@ impl CodexModel {
     pub fn display_name(&self) -> &str {
         match self {
             Self::Gpt61Sol => "GPT-6.1-Sol",
+            Self::Gpt61Terra => "GPT-6.1 Terra",
             Self::Gpt6Astra => "GPT-6-Astra",
             Self::Gpt6Sol => "GPT-6-Sol",
             Self::Gpt6Luna => "GPT-6-Luna",
@@ -111,6 +116,7 @@ impl CodexModel {
     pub fn known() -> &'static [CodexModel] {
         &[
             Self::Gpt61Sol,
+            Self::Gpt61Terra,
             Self::Gpt6Astra,
             Self::Gpt6Sol,
             Self::Gpt6Luna,
@@ -138,6 +144,7 @@ impl From<&str> for CodexModel {
     fn from(s: &str) -> Self {
         match s {
             "gpt-6.1-sol" => Self::Gpt61Sol,
+            "gpt-6.1-terra" => Self::Gpt61Terra,
             "gpt-6-astra" => Self::Gpt6Astra,
             "gpt-6-sol" => Self::Gpt6Sol,
             "gpt-6-luna" => Self::Gpt6Luna,
@@ -194,10 +201,11 @@ mod tests {
     }
 
     #[test]
-    fn test_gpt6_sol_and_luna_catalog_entries() {
+    fn test_gpt6_family_catalog_entries() {
         for (slug, model, label) in [
             ("gpt-6-sol", CodexModel::Gpt6Sol, "GPT-6-Sol"),
             ("gpt-6-luna", CodexModel::Gpt6Luna, "GPT-6-Luna"),
+            ("gpt-6.1-terra", CodexModel::Gpt61Terra, "GPT-6.1 Terra"),
         ] {
             assert_eq!(CodexModel::from(slug), model);
             assert!(CodexModel::known().contains(&model));

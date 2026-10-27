@@ -33,6 +33,13 @@ pub enum Account {
         email: Option<String>,
         #[serde(rename = "planType")]
         plan_type: PlanType,
+        /// Display name of the selected ChatGPT workspace, when available.
+        #[serde(
+            rename = "workspaceName",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        workspace_name: Option<String>,
     },
     #[serde(rename = "amazonBedrock")]
     AmazonBedrock {
@@ -2997,6 +3004,14 @@ pub struct ThreadUsage {
         skip_serializing_if = "Option::is_none"
     )]
     pub estimated_usage_usd_micros: Option<i64>,
+    /// Native dollar usage, independent of credit estimates. `None` means
+    /// unknown, not zero.
+    #[serde(
+        rename = "nativeUsageUsdMicros",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub native_usage_usd_micros: Option<i64>,
     #[serde(default)]
     pub groups: Vec<ThreadUsageBreakdownGroup>,
     #[serde(rename = "threadId", default)]

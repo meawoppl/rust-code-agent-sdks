@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.164.4] - 2026-10-27
+
+Model the `openai/codex@main` (`6fe77fc12`) app-server schema drift. The
+tested pin stays at Codex CLI **0.164.0**.
+
+### Added
+
+- `Account::Chatgpt.workspace_name` (`workspaceName`, optional): display name
+  of the selected ChatGPT workspace (openai/codex#57366). Code that builds or
+  destructures `Account::Chatgpt` without `..` must name the new field.
+- `ThreadUsage.native_usage_usd_micros` (`nativeUsageUsdMicros`, optional):
+  native dollar usage, independent of credit estimates; `None` means unknown,
+  not zero (openai/codex#57251).
+- `CodexModel::Gpt61Terra` for `gpt-6.1-terra` ("GPT-6.1 Terra"), from the
+  bundled catalog at `openai/codex@126a0ee9` (openai/codex#57293). Exhaustive
+  matches on `CodexModel` need a new arm.
+
+### Changed
+
+- Schema snapshot refreshed to openai/codex@6fe77fc12. `NetworkRequirements`
+  changed only in field descriptions (openai/codex#57286).
+
 ## [0.164.3] - 2026-10-26
 
 ### Added
