@@ -1077,6 +1077,13 @@ mod tests {
             CodexErrorInfo::ModelNotFound
         );
         assert_eq!(
+            serde_json::from_value::<CodexErrorInfo>(serde_json::json!(
+                "policyCapacityUnavailable"
+            ))
+            .unwrap(),
+            CodexErrorInfo::PolicyCapacityUnavailable
+        );
+        assert_eq!(
             serde_json::from_value::<CodexErrorInfo>(
                 serde_json::json!({"httpConnectionFailed": {"httpStatusCode": 502}})
             )
