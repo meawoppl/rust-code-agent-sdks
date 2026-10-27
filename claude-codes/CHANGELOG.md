@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.1.311] - 2026-10-27
 
-Modeling for Claude CLI **2.1.311** stream-json drift. One new system subtype,
+Re-baseline against Claude CLI **2.1.311**. One new system subtype,
 optional fields on `result`, `system/turn_handoff_available` and
 `system/ui_panes`, and two `api_error` kinds; no removals. `--help` changed
 only the `purge` description, and the embedded model-id set is unchanged.
