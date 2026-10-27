@@ -833,6 +833,10 @@ pub enum CodexErrorInfo {
     /// turn fails terminally instead of retrying.
     #[serde(rename = "modelNotFound")]
     ModelNotFound,
+    /// Policy-restricted capacity is unavailable. Distinct from
+    /// `ServerOverloaded`, but retried the same way (honouring `Retry-After`).
+    #[serde(rename = "policyCapacityUnavailable")]
+    PolicyCapacityUnavailable,
     #[serde(rename = "cyberPolicy")]
     CyberPolicy,
     #[serde(rename = "misalignmentPolicyViolation")]
