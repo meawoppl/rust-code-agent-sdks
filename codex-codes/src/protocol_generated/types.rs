@@ -8279,6 +8279,13 @@ pub enum ThreadItemPayload {
     ImageGeneration {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         failure: Option<ImageGenerationFailure>,
+        /// Image generation identifier, when provided by the image backend.
+        #[serde(
+            rename = "generationId",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        generation_id: Option<String>,
         id: String,
         #[serde(flatten)]
         image: GeneratedImageRef,
