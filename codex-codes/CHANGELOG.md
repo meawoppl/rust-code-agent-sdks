@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.164.7] - 2026-10-28
+
+Model the `openai/codex@main` (`26ad281fd`) app-server schema drift. The
+tested pin stays at Codex CLI **0.164.0**.
+
+### Added
+
+- `ConfigRequirements.otel` (openai/codex#57658, #57654): managed
+  OpenTelemetry settings, typed as the new `OtelRequirements`,
+  `OtelExporter` (`none` / `statsig` / `otlp-http` / `otlp-grpc`),
+  `OtelHttpProtocol`, `OtelTlsConfig`, and `OtelToolResultLogConfig`. Keys
+  are snake_case on the wire (exporters and TLS fields kebab-case), mirroring
+  upstream; header values arrive redacted. Optional, so existing payloads
+  still deserialize; struct-literal construction of `ConfigRequirements`
+  needs the new field.
+- `ProcessExitedNotification.output_drain_timed_out` (`outputDrainTimedOut`,
+  openai/codex#57569): whether output collection hit its post-exit deadline
+  before EOF or the byte cap. Optional; older servers omit it.
+
+### Removed
+
+- **Breaking:** `ReviewDelivery::Detached` (openai/codex#57667). `review/start`
+  now runs inline only; to review on a separate thread, start a thread first
+  and pass its id. `ReviewStartResponse.review_thread_id` is now always the
+  supplied thread id.
+
+### Changed
+
+- Schema snapshot refreshed to openai/codex@26ad281fd.
+
 ## [0.164.6] - 2026-10-27
 
 Model the `openai/codex@main` (`33d306d45`) app-server schema drift. The

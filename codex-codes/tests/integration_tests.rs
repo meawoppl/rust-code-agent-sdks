@@ -1188,6 +1188,90 @@ fn config_requirements_reads_login_methods_and_sandbox_implementations() {
     assert!(wire.get("allowedLoginMethods").is_none());
 }
 
+/// `ConfigRequirements.otel` reads managed OpenTelemetry settings with their
+/// snake_case keys and externally-tagged kebab-case exporters.
+#[test]
+fn config_requirements_reads_otel() {
+    use codex_codes::protocol::{ConfigRequirements, OtelExporter, OtelHttpProtocol};
+
+    let original = serde_json::json!({
+        "otel": {
+            "tool_result": { "max_bytes": 4096 },
+            "log_user_prompt": false,
+            "environment": "prod",
+            "exporter": {
+                "otlp-http": {
+                    "endpoint": "https://otel.example/v1/logs",
+                    "headers": { "authorization": "[REDACTED]" },
+                    "protocol": "binary",
+                    "tls": { "ca-certificate": "/etc/ca.pem" }
+                }
+            },
+            "trace_exporter": "statsig",
+            "metrics_exporter": {
+                "otlp-grpc": { "endpoint": "https://otel.example:4317", "headers": {} }
+            },
+            "tracestate": { "vendor": { "k": "v" } }
+        }
+    });
+    let reqs: ConfigRequirements = serde_json::from_value(original.clone()).unwrap();
+    let otel = reqs.otel.as_ref().expect("otel");
+    assert_eq!(otel.tool_result.as_ref().unwrap().max_bytes, 4096);
+    assert_eq!(otel.log_user_prompt, Some(false));
+    assert_eq!(otel.environment.as_deref(), Some("prod"));
+    let Some(OtelExporter::OtlpHttp {
+        protocol,
+        tls,
+        headers,
+        ..
+    }) = &otel.exporter
+    else {
+        panic!("expected otlp-http exporter");
+    };
+    assert_eq!(*protocol, OtelHttpProtocol::Binary);
+    assert_eq!(headers["authorization"], "[REDACTED]");
+    assert_eq!(
+        tls.as_ref().unwrap().ca_certificate.as_deref(),
+        Some("/etc/ca.pem")
+    );
+    assert_eq!(otel.trace_exporter, Some(OtelExporter::Statsig));
+    assert!(matches!(
+        otel.metrics_exporter,
+        Some(OtelExporter::OtlpGrpc { .. })
+    ));
+    assert_eq!(serde_json::to_value(&reqs).unwrap(), original);
+
+    let wire = serde_json::to_value(ConfigRequirements::default()).unwrap();
+    assert!(wire.get("otel").is_none());
+}
+
+/// `process/exited` reads the new `outputDrainTimedOut` flag, and older
+/// servers that omit it still parse.
+#[test]
+fn process_exited_reads_output_drain_timed_out() {
+    use codex_codes::protocol::ProcessExitedNotification;
+
+    let base = serde_json::json!({
+        "exitCode": 0,
+        "processHandle": "proc_1",
+        "stdout": "",
+        "stderr": "",
+        "stdoutCapReached": false,
+        "stderrCapReached": false
+    });
+    let older: ProcessExitedNotification = serde_json::from_value(base.clone()).unwrap();
+    assert_eq!(older.output_drain_timed_out, None);
+    assert!(serde_json::to_value(&older)
+        .unwrap()
+        .get("outputDrainTimedOut")
+        .is_none());
+
+    let mut newer = base;
+    newer["outputDrainTimedOut"] = serde_json::json!(true);
+    let newer: ProcessExitedNotification = serde_json::from_value(newer).unwrap();
+    assert_eq!(newer.output_drain_timed_out, Some(true));
+}
+
 /// `thread/resume` reports the effective `collaborationMode` when the server
 /// is new enough, and older servers that omit it still parse.
 #[test]
