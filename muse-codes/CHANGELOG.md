@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.14] - 2026-10-28
+
+### Changed
+
+- Re-pinned to Muse Code 1.4.14 (`1.4.14-R7309.1`). No crate-visible
+  wire change: the stream fingerprint matches the snapshot, `exec --help`
+  and top-level `--help` are byte-identical to 1.4.13, the live suite
+  passes unmodified, and the model catalog is unchanged after a live turn.
+- MSP schema (not modeled) changed additively: new `EarlierHistory` /
+  `EarlierHistoryMessage` (and the `earlierHistory` item kind), `HeldFor`
+  with `held` / `heldFor` on tool-call items, `RuntimeWorktree*`,
+  `SessionSpawnedBy`, `reviewerReason` on approval requests,
+  `requestDenied` on turn errors, and new optional session/read, resume,
+  start and `view/page` parameters. No methods or notifications were added
+  or removed.
+- New env names: `MUSE_PARENT_SESSION_ID`, `MUSE_PARENT_SESSION_PROJECT`,
+  `MUSE_PARENT_SESSION_THREAD`.
+
 ## [1.4.13] - 2026-10-24
 
 ### Changed
