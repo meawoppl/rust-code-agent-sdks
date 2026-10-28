@@ -5,6 +5,36 @@ All notable changes to `antigravity-codes` are documented here.
 The version tracks the `google-antigravity` release whose harness the crate was
 generated from and tested against.
 
+## [0.1.23] - 2026-10-28
+
+Re-baseline against `google-antigravity` 0.1.23: types regenerated from the
+0.1.23 wheel's descriptors (33 enums, up from 31; no new structs). Regen
+against the committed 0.1.22 descriptors was verified as a byte-identical
+no-op first. The change is purely additive, with no renames or removals. The
+new fields are public, so code that builds the touched structs with exhaustive
+struct literals (no `..Default::default()`) has to add them. Some existing
+fields also moved within their structs because the descriptors list them in
+a new order. That changes nothing on the wire.
+
+### Added
+
+- `CompactionConfig.include_last_user_message: Option<bool>`.
+- `CustomSystemInstructionsPart.title: Option<String>`.
+- `SkillsConfig`: `skill_versions: HashMap<String, String>`,
+  `presentation_mode: Option<SkillsConfigPresentationMode>`
+  (`Tool` / `FileSystem`), `materialized_skills_dir: Option<String>` and
+  `preactivate_skills: Vec<String>`.
+- `SubagentsConfig.disable_define_subagent_tool: Option<bool>`.
+- `SystemInstructions.section_header_format:
+  Option<SystemInstructionsSectionHeaderFormat>` (`Xml` / `None`).
+- `Tool.tool_output_truncation: Option<ToolOutputTruncation>` (the type
+  already existed; `Tool` now refers to it).
+- `FunctionResultSubcontent.video: Option<VideoContent>`, plus a matching
+  `FunctionResultSubcontentType::Video` arm on the oneof view enum.
+- `Skill`: `version: Option<String>` and `channels: Vec<String>`.
+- `CodeExecutionCallContentCodeExecutionCallArgumentsLanguage::Bash` (wire
+  value `2`).
+
 ## [0.1.22] - 2026-10-14
 
 Re-baseline against `google-antigravity` 0.1.22: types regenerated from the

@@ -365,6 +365,7 @@ pub enum CodeExecutionCallContentCodeExecutionCallArgumentsLanguage {
     #[default]
     Unspecified,
     Python,
+    Bash,
     /// A value this crate does not know about yet.
     ///
     /// The harness is versioned independently of this crate, so an
@@ -379,6 +380,7 @@ impl CodeExecutionCallContentCodeExecutionCallArgumentsLanguage {
         match self {
             Self::Unspecified => "LANGUAGE_UNSPECIFIED",
             Self::Python => "PYTHON",
+            Self::Bash => "BASH",
             Self::Unknown(s) => s,
         }
     }
@@ -401,8 +403,10 @@ impl<'de> Deserialize<'de> for CodeExecutionCallContentCodeExecutionCallArgument
         Ok(match crate::wire::EnumRepr::deserialize(d)? {
             crate::wire::EnumRepr::Name(n) if n == "LANGUAGE_UNSPECIFIED" => Self::Unspecified,
             crate::wire::EnumRepr::Name(n) if n == "PYTHON" => Self::Python,
+            crate::wire::EnumRepr::Name(n) if n == "BASH" => Self::Bash,
             crate::wire::EnumRepr::Number(0) => Self::Unspecified,
             crate::wire::EnumRepr::Number(1) => Self::Python,
+            crate::wire::EnumRepr::Number(2) => Self::Bash,
             crate::wire::EnumRepr::Name(n) => Self::Unknown(n),
             crate::wire::EnumRepr::Number(n) => Self::Unknown(n.to_string()),
         })
@@ -1329,6 +1333,62 @@ impl<'de> Deserialize<'de> for PreTurnResultDecision {
     }
 }
 
+/// `antigravity.localharness.SkillsConfig.PresentationMode`
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub enum SkillsConfigPresentationMode {
+    #[default]
+    Unspecified,
+    Tool,
+    FileSystem,
+    /// A value this crate does not know about yet.
+    ///
+    /// The harness is versioned independently of this crate, so an
+    /// unrecognised enum value is treated as forward compatibility rather
+    /// than as a decode error.
+    Unknown(String),
+}
+
+impl SkillsConfigPresentationMode {
+    /// The protobuf-JSON spelling of this value.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Unspecified => "PRESENTATION_MODE_UNSPECIFIED",
+            Self::Tool => "TOOL",
+            Self::FileSystem => "FILE_SYSTEM",
+            Self::Unknown(s) => s,
+        }
+    }
+}
+
+impl std::fmt::Display for SkillsConfigPresentationMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Serialize for SkillsConfigPresentationMode {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for SkillsConfigPresentationMode {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(match crate::wire::EnumRepr::deserialize(d)? {
+            crate::wire::EnumRepr::Name(n) if n == "PRESENTATION_MODE_UNSPECIFIED" => {
+                Self::Unspecified
+            }
+            crate::wire::EnumRepr::Name(n) if n == "TOOL" => Self::Tool,
+            crate::wire::EnumRepr::Name(n) if n == "FILE_SYSTEM" => Self::FileSystem,
+            crate::wire::EnumRepr::Number(0) => Self::Unspecified,
+            crate::wire::EnumRepr::Number(1) => Self::Tool,
+            crate::wire::EnumRepr::Number(2) => Self::FileSystem,
+            crate::wire::EnumRepr::Name(n) => Self::Unknown(n),
+            crate::wire::EnumRepr::Number(n) => Self::Unknown(n.to_string()),
+        })
+    }
+}
+
 /// `antigravity.localharness.StepUpdate.Source`
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum StepUpdateSource {
@@ -1555,6 +1615,62 @@ impl<'de> Deserialize<'de> for StopResultDecision {
             crate::wire::EnumRepr::Number(0) => Self::Unspecified,
             crate::wire::EnumRepr::Number(1) => Self::AllowStop,
             crate::wire::EnumRepr::Number(2) => Self::Continue,
+            crate::wire::EnumRepr::Name(n) => Self::Unknown(n),
+            crate::wire::EnumRepr::Number(n) => Self::Unknown(n.to_string()),
+        })
+    }
+}
+
+/// `antigravity.localharness.SystemInstructions.SectionHeaderFormat`
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub enum SystemInstructionsSectionHeaderFormat {
+    #[default]
+    Unspecified,
+    Xml,
+    None,
+    /// A value this crate does not know about yet.
+    ///
+    /// The harness is versioned independently of this crate, so an
+    /// unrecognised enum value is treated as forward compatibility rather
+    /// than as a decode error.
+    Unknown(String),
+}
+
+impl SystemInstructionsSectionHeaderFormat {
+    /// The protobuf-JSON spelling of this value.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Unspecified => "SECTION_HEADER_FORMAT_UNSPECIFIED",
+            Self::Xml => "SECTION_HEADER_FORMAT_XML",
+            Self::None => "SECTION_HEADER_FORMAT_NONE",
+            Self::Unknown(s) => s,
+        }
+    }
+}
+
+impl std::fmt::Display for SystemInstructionsSectionHeaderFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Serialize for SystemInstructionsSectionHeaderFormat {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for SystemInstructionsSectionHeaderFormat {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(match crate::wire::EnumRepr::deserialize(d)? {
+            crate::wire::EnumRepr::Name(n) if n == "SECTION_HEADER_FORMAT_UNSPECIFIED" => {
+                Self::Unspecified
+            }
+            crate::wire::EnumRepr::Name(n) if n == "SECTION_HEADER_FORMAT_XML" => Self::Xml,
+            crate::wire::EnumRepr::Name(n) if n == "SECTION_HEADER_FORMAT_NONE" => Self::None,
+            crate::wire::EnumRepr::Number(0) => Self::Unspecified,
+            crate::wire::EnumRepr::Number(1) => Self::Xml,
+            crate::wire::EnumRepr::Number(2) => Self::None,
             crate::wire::EnumRepr::Name(n) => Self::Unknown(n),
             crate::wire::EnumRepr::Number(n) => Self::Unknown(n.to_string()),
         })
@@ -2125,6 +2241,8 @@ pub struct ActionListDirectory {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActionListDirectoryResult {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     #[serde(
         alias = "is_directory",
         default,
@@ -2138,8 +2256,6 @@ pub struct ActionListDirectoryResult {
         with = "crate::wire::opt_int"
     )]
     pub file_size: Option<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
 }
 
 /// The `info` oneof of [`ActionListDirectoryResult`], as an owned value.
@@ -2358,14 +2474,6 @@ pub struct AppendedSystemInstructionsSection {
 #[serde(rename_all = "camelCase")]
 pub struct AudioContent {
     #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "crate::wire::opt_bytes"
-    )]
-    pub data: Option<Vec<u8>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub uri: Option<String>,
-    #[serde(
         rename = "legacy_mime_type_enum",
         alias = "mime_type",
         default,
@@ -2378,6 +2486,14 @@ pub struct AudioContent {
         skip_serializing_if = "Option::is_none"
     )]
     pub mime_type_string: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::wire::opt_bytes"
+    )]
+    pub data: Option<Vec<u8>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub uri: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub channels: Option<i32>,
     #[serde(
@@ -2468,6 +2584,14 @@ pub struct BudgetConfig {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CallHookRequest {
+    #[serde(alias = "request_id", default, skip_serializing_if = "Option::is_none")]
+    pub request_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<LifecycleHook>,
+    #[serde(alias = "client_id", default, skip_serializing_if = "Option::is_none")]
+    pub client_id: Option<String>,
     #[serde(
         alias = "pre_turn_args",
         default,
@@ -2506,14 +2630,6 @@ pub struct CallHookRequest {
     pub on_compaction_args: Option<OnCompactionArgs>,
     #[serde(alias = "stop_args", default, skip_serializing_if = "Option::is_none")]
     pub stop_args: Option<StopArgs>,
-    #[serde(alias = "request_id", default, skip_serializing_if = "Option::is_none")]
-    pub request_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#type: Option<LifecycleHook>,
-    #[serde(alias = "client_id", default, skip_serializing_if = "Option::is_none")]
-    pub client_id: Option<String>,
 }
 
 /// The `args` oneof of [`CallHookRequest`], as an owned value.
@@ -2571,6 +2687,8 @@ impl CallHookRequest {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CallHookResponse {
+    #[serde(alias = "request_id", default, skip_serializing_if = "Option::is_none")]
+    pub request_id: Option<String>,
     #[serde(
         alias = "pre_turn_result",
         default,
@@ -2607,8 +2725,6 @@ pub struct CallHookResponse {
         skip_serializing_if = "Option::is_none"
     )]
     pub stop_result: Option<StopResult>,
-    #[serde(alias = "request_id", default, skip_serializing_if = "Option::is_none")]
-    pub request_id: Option<String>,
 }
 
 /// The `result` oneof of [`CallHookResponse`], as an owned value.
@@ -2739,6 +2855,12 @@ pub struct CompactionConfig {
         skip_serializing_if = "Option::is_none"
     )]
     pub use_model_reported_token_count: Option<bool>,
+    #[serde(
+        alias = "include_last_user_message",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub include_last_user_message: Option<bool>,
 }
 
 /// `genai.Content`
@@ -2901,6 +3023,8 @@ pub struct CustomSystemInstructionsPart {
         skip_serializing_if = "Option::is_none"
     )]
     pub builtin_section: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
 }
 
 /// The `part` oneof of [`CustomSystemInstructionsPart`], as an owned value.
@@ -2937,14 +3061,6 @@ impl CustomSystemInstructionsPart {
 #[serde(rename_all = "camelCase")]
 pub struct DocumentContent {
     #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "crate::wire::opt_bytes"
-    )]
-    pub data: Option<Vec<u8>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub uri: Option<String>,
-    #[serde(
         rename = "legacy_mime_type_enum",
         alias = "mime_type",
         default,
@@ -2957,6 +3073,14 @@ pub struct DocumentContent {
         skip_serializing_if = "Option::is_none"
     )]
     pub mime_type_string: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::wire::opt_bytes"
+    )]
+    pub data: Option<Vec<u8>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub uri: Option<String>,
 }
 
 /// The `data_or_uri` oneof of [`DocumentContent`], as an owned value.
@@ -3111,6 +3235,10 @@ pub struct FunctionCallContent {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FunctionResultContent {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(alias = "is_error", default, skip_serializing_if = "Option::is_none")]
+    pub is_error: Option<bool>,
     #[serde(
         alias = "struct_result",
         default,
@@ -3129,10 +3257,6 @@ pub struct FunctionResultContent {
         skip_serializing_if = "Option::is_none"
     )]
     pub string_result: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(alias = "is_error", default, skip_serializing_if = "Option::is_none")]
-    pub is_error: Option<bool>,
 }
 
 /// The `result` oneof of [`FunctionResultContent`], as an owned value.
@@ -3172,6 +3296,8 @@ pub struct FunctionResultSubcontent {
     pub text: Option<TextContent>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image: Option<ImageContent>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub video: Option<VideoContent>,
 }
 
 /// The `type` oneof of [`FunctionResultSubcontent`], as an owned value.
@@ -3179,6 +3305,7 @@ pub struct FunctionResultSubcontent {
 pub enum FunctionResultSubcontentType {
     Text(TextContent),
     Image(ImageContent),
+    Video(VideoContent),
 }
 
 impl FunctionResultSubcontent {
@@ -3190,12 +3317,15 @@ impl FunctionResultSubcontent {
         if let Some(v) = self.image {
             return Some(FunctionResultSubcontentType::Image(v));
         }
+        if let Some(v) = self.video {
+            return Some(FunctionResultSubcontentType::Video(v));
+        }
         None
     }
 
     /// True when any arm of the `type` oneof is set.
     pub fn has_type(&self) -> bool {
-        self.text.is_some() || self.image.is_some()
+        self.text.is_some() || self.image.is_some() || self.video.is_some()
     }
 }
 
@@ -3581,14 +3711,6 @@ pub struct HarnessSideTools {
 #[serde(rename_all = "camelCase")]
 pub struct ImageContent {
     #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "crate::wire::opt_bytes"
-    )]
-    pub data: Option<Vec<u8>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub uri: Option<String>,
-    #[serde(
         rename = "legacy_mime_type_enum",
         alias = "mime_type",
         default,
@@ -3601,6 +3723,14 @@ pub struct ImageContent {
         skip_serializing_if = "Option::is_none"
     )]
     pub mime_type_string: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::wire::opt_bytes"
+    )]
+    pub data: Option<Vec<u8>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub uri: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resolution: Option<MediaResolution>,
 }
@@ -3857,11 +3987,11 @@ pub struct McpHttpTransport {
 #[serde(rename_all = "camelCase")]
 pub struct McpServerConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stdio: Option<McpStdioTransport>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub http: Option<McpHttpTransport>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
     #[serde(
         alias = "enabled_tools",
         default,
@@ -3939,6 +4069,14 @@ pub struct McpServerToolCallContent {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct McpServerToolResultContent {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(
+        alias = "server_name",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub server_name: Option<String>,
     #[serde(
         alias = "struct_result",
         default,
@@ -3957,14 +4095,6 @@ pub struct McpServerToolResultContent {
         skip_serializing_if = "Option::is_none"
     )]
     pub string_result: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(
-        alias = "server_name",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub server_name: Option<String>,
 }
 
 /// The `result` oneof of [`McpServerToolResultContent`], as an owned value.
@@ -4073,6 +4203,10 @@ pub struct ModelAPIRetryConfig {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub types: Vec<ModelType>,
     #[serde(
         alias = "gemini_api_endpoint",
         default,
@@ -4097,10 +4231,6 @@ pub struct ModelConfig {
         skip_serializing_if = "Option::is_none"
     )]
     pub custom_endpoint: Option<CustomEndpoint>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub types: Vec<ModelType>,
 }
 
 /// The `endpoint` oneof of [`ModelConfig`], as an owned value.
@@ -4258,6 +4388,20 @@ pub struct OutputConfig {
 #[serde(rename_all = "camelCase")]
 pub struct OutputEvent {
     #[serde(
+        alias = "seq_num",
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::wire::opt_int"
+    )]
+    pub seq_num: Option<i64>,
+    #[serde(
+        alias = "timestamp_micros",
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::wire::opt_int"
+    )]
+    pub timestamp_micros: Option<i64>,
+    #[serde(
         alias = "step_update",
         default,
         skip_serializing_if = "Option::is_none"
@@ -4301,20 +4445,6 @@ pub struct OutputEvent {
         skip_serializing_if = "Option::is_none"
     )]
     pub usage_update: Option<UsageUpdate>,
-    #[serde(
-        alias = "seq_num",
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "crate::wire::opt_int"
-    )]
-    pub seq_num: Option<i64>,
-    #[serde(
-        alias = "timestamp_micros",
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "crate::wire::opt_int"
-    )]
-    pub timestamp_micros: Option<i64>,
 }
 
 /// The `event` oneof of [`OutputEvent`], as an owned value.
@@ -4719,18 +4849,6 @@ pub struct SearchWebToolConfig {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Skill {
-    #[serde(
-        alias = "inline_resources",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub inline_resources: Option<SkillInlineResources>,
-    #[serde(
-        alias = "zipped_resources",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub zipped_resources: Option<SkillFile>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(alias = "skill_id", default, skip_serializing_if = "Option::is_none")]
@@ -4747,6 +4865,22 @@ pub struct Skill {
     pub allowed_tools: Vec<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub metadata: HashMap<String, String>,
+    #[serde(
+        alias = "inline_resources",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub inline_resources: Option<SkillInlineResources>,
+    #[serde(
+        alias = "zipped_resources",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub zipped_resources: Option<SkillFile>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub channels: Vec<String>,
 }
 
 /// The `resources` oneof of [`Skill`], as an owned value.
@@ -4778,6 +4912,8 @@ impl Skill {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SkillFile {
+    #[serde(alias = "mime_type", default, skip_serializing_if = "Option::is_none")]
+    pub mime_type: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
     #[serde(
@@ -4786,8 +4922,6 @@ pub struct SkillFile {
         with = "crate::wire::opt_bytes"
     )]
     pub data: Option<Vec<u8>>,
-    #[serde(alias = "mime_type", default, skip_serializing_if = "Option::is_none")]
-    pub mime_type: Option<String>,
 }
 
 /// The `content` oneof of [`SkillFile`], as an owned value.
@@ -4871,6 +5005,30 @@ pub struct SkillsConfig {
     pub enabled: Option<bool>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub skills: Vec<SkillSource>,
+    #[serde(
+        alias = "skill_versions",
+        default,
+        skip_serializing_if = "HashMap::is_empty"
+    )]
+    pub skill_versions: HashMap<String, String>,
+    #[serde(
+        alias = "presentation_mode",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub presentation_mode: Option<SkillsConfigPresentationMode>,
+    #[serde(
+        alias = "materialized_skills_dir",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub materialized_skills_dir: Option<String>,
+    #[serde(
+        alias = "preactivate_skills",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub preactivate_skills: Vec<String>,
 }
 
 /// `genai.SpeechAnnotation`
@@ -5184,6 +5342,12 @@ pub struct SubagentsConfig {
         skip_serializing_if = "Vec::is_empty"
     )]
     pub allowed_subagents: Vec<String>,
+    #[serde(
+        alias = "disable_define_subagent_tool",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub disable_define_subagent_tool: Option<bool>,
 }
 
 /// `antigravity.localharness.SystemInstructionTemplate`
@@ -5216,6 +5380,12 @@ pub struct SystemInstructions {
     pub appended: Option<AppendedSystemInstructions>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub overrides: Vec<TemplateOverride>,
+    #[serde(
+        alias = "section_header_format",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub section_header_format: Option<SystemInstructionsSectionHeaderFormat>,
 }
 
 /// The `type` oneof of [`SystemInstructions`], as an owned value.
@@ -5272,6 +5442,14 @@ pub struct TextContent {
 #[serde(rename_all = "camelCase")]
 pub struct TextContentAnnotation {
     #[serde(
+        alias = "start_index",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub start_index: Option<i32>,
+    #[serde(alias = "end_index", default, skip_serializing_if = "Option::is_none")]
+    pub end_index: Option<i32>,
+    #[serde(
         alias = "url_citation",
         default,
         skip_serializing_if = "Option::is_none"
@@ -5297,14 +5475,6 @@ pub struct TextContentAnnotation {
         skip_serializing_if = "Option::is_none"
     )]
     pub speech_metadata: Option<SpeechAnnotation>,
-    #[serde(
-        alias = "start_index",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub start_index: Option<i32>,
-    #[serde(alias = "end_index", default, skip_serializing_if = "Option::is_none")]
-    pub end_index: Option<i32>,
 }
 
 /// The `type` oneof of [`TextContentAnnotation`], as an owned value.
@@ -5423,6 +5593,12 @@ pub struct Tool {
         skip_serializing_if = "Option::is_none"
     )]
     pub defer_loading: Option<bool>,
+    #[serde(
+        alias = "tool_output_truncation",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub tool_output_truncation: Option<ToolOutputTruncation>,
 }
 
 /// `antigravity.localharness.ToolCall`
@@ -5453,6 +5629,14 @@ pub struct ToolCall {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolCallContent {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::wire::opt_bytes"
+    )]
+    pub signature: Option<Vec<u8>>,
     #[serde(
         alias = "function_call",
         default,
@@ -5495,14 +5679,6 @@ pub struct ToolCallContent {
         skip_serializing_if = "Option::is_none"
     )]
     pub google_maps_call: Option<GoogleMapsCallContent>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "crate::wire::opt_bytes"
-    )]
-    pub signature: Option<Vec<u8>>,
 }
 
 /// The `type` oneof of [`ToolCallContent`], as an owned value.
@@ -5672,6 +5848,14 @@ pub struct ToolResponse {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolResultContent {
+    #[serde(alias = "call_id", default, skip_serializing_if = "Option::is_none")]
+    pub call_id: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::wire::opt_bytes"
+    )]
+    pub signature: Option<Vec<u8>>,
     #[serde(
         alias = "function_result",
         default,
@@ -5714,14 +5898,6 @@ pub struct ToolResultContent {
         skip_serializing_if = "Option::is_none"
     )]
     pub google_maps_result: Option<GoogleMapsResultContent>,
-    #[serde(alias = "call_id", default, skip_serializing_if = "Option::is_none")]
-    pub call_id: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "crate::wire::opt_bytes"
-    )]
-    pub signature: Option<Vec<u8>>,
 }
 
 /// The `type` oneof of [`ToolResultContent`], as an owned value.
@@ -6125,10 +6301,6 @@ pub struct UserQuestionsRequest {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserQuestionsResponse {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cancelled: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub response: Option<UserQuestionsResponseQuestionsResponse>,
     #[serde(
         alias = "trajectory_id",
         default,
@@ -6137,6 +6309,10 @@ pub struct UserQuestionsResponse {
     pub trajectory_id: Option<String>,
     #[serde(alias = "step_index", default, skip_serializing_if = "Option::is_none")]
     pub step_index: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cancelled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub response: Option<UserQuestionsResponseQuestionsResponse>,
 }
 
 /// The `result` oneof of [`UserQuestionsResponse`], as an owned value.
@@ -6297,26 +6473,6 @@ pub struct VertexEndpoint {
 #[serde(rename_all = "camelCase")]
 pub struct VideoContent {
     #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "crate::wire::opt_bytes"
-    )]
-    pub data: Option<Vec<u8>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub uri: Option<String>,
-    #[serde(
-        alias = "processing_type",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub processing_type: Option<VideoContentProcessing>,
-    #[serde(
-        alias = "processing_config",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub processing_config: Option<VideoContentMediaProcessing>,
-    #[serde(
         rename = "legacy_mime_type_enum",
         alias = "mime_type",
         default,
@@ -6329,8 +6485,28 @@ pub struct VideoContent {
         skip_serializing_if = "Option::is_none"
     )]
     pub mime_type_string: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::wire::opt_bytes"
+    )]
+    pub data: Option<Vec<u8>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub uri: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resolution: Option<MediaResolution>,
+    #[serde(
+        alias = "processing_type",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub processing_type: Option<VideoContentProcessing>,
+    #[serde(
+        alias = "processing_config",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub processing_config: Option<VideoContentMediaProcessing>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 }
