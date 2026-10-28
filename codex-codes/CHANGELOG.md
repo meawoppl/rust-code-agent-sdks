@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.165.0] - 2026-10-28
+
+Re-pin to Codex CLI **0.165.0**. No type changes: the 0.165.0
+`codex app-server generate-json-schema` output is a subset of the tracked
+`openai/codex@main` snapshot, and every 0.164.0→0.165.0 addition was already
+modeled. The release still lists `ReviewDelivery` `detached`, which main
+removed and this crate dropped in 0.164.7. That value is client-sent only, so
+the gap is harmless. The bundled model catalog (`models-manager/models.json`
+at `rust-v0.165.0`) is unchanged and fully covered by `CodexModel`.
+
 ## [0.164.7] - 2026-10-28
 
 Model the `openai/codex@main` (`26ad281fd`) app-server schema drift. The
