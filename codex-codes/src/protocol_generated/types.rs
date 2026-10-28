@@ -1694,6 +1694,8 @@ pub struct ConfigRequirements {
     pub model_providers: Option<serde_json::Map<String, Value>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub models: Option<ModelsRequirements>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub otel: Option<OtelRequirements>,
     #[serde(
         rename = "sqliteHome",
         default,
@@ -5161,6 +5163,81 @@ pub enum NonSteerableTurnKind {
     Compact,
 }
 
+/// An OpenTelemetry exporter pinned by managed requirements.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum OtelExporter {
+    None,
+    Statsig,
+    OtlpHttp {
+        endpoint: String,
+        /// Header names are retained; values are redacted by the server.
+        headers: std::collections::BTreeMap<String, String>,
+        protocol: OtelHttpProtocol,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        tls: Option<OtelTlsConfig>,
+    },
+    OtlpGrpc {
+        endpoint: String,
+        /// Header names are retained; values are redacted by the server.
+        headers: std::collections::BTreeMap<String, String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        tls: Option<OtelTlsConfig>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum OtelHttpProtocol {
+    Binary,
+    Json,
+}
+
+/// OpenTelemetry settings enforced by managed requirements
+/// (`ConfigRequirements::otel`). Keys are snake_case on the wire.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub struct OtelRequirements {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_result: Option<OtelToolResultLogConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub log_user_prompt: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub log_agent_responses: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub log_guardian_assessments: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub environment: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exporter: Option<OtelExporter>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trace_exporter: Option<OtelExporter>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub metrics_exporter: Option<OtelExporter>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub span_attributes: Option<std::collections::BTreeMap<String, String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tracestate:
+        Option<std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub struct OtelTlsConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ca_certificate: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_certificate: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_private_key: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub struct OtelToolResultLogConfig {
+    pub max_bytes: u64,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OverriddenMetadata {
@@ -6151,6 +6228,15 @@ pub struct PluginsMigration {
 pub struct ProcessExitedNotification {
     #[serde(rename = "exitCode", default)]
     pub exit_code: i64,
+    /// Whether output collection hit its post-exit deadline before seeing EOF
+    /// or reaching the requested byte cap on either stream. Older servers omit
+    /// this field.
+    #[serde(
+        rename = "outputDrainTimedOut",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub output_drain_timed_out: Option<bool>,
     #[serde(rename = "processHandle", default)]
     pub process_handle: String,
     #[serde(default)]
@@ -6523,13 +6609,14 @@ pub enum ReviewDecision {
 pub enum ReviewDelivery {
     #[serde(rename = "inline")]
     Inline,
-    #[serde(rename = "detached")]
-    Detached,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReviewStartParams {
+    /// Reviews run inline on the supplied thread. Omit this field or pass
+    /// `inline`. To review on a separate thread, start a thread first and use
+    /// its id.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub delivery: Option<ReviewDelivery>,
     #[serde()]
@@ -6541,6 +6628,7 @@ pub struct ReviewStartParams {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReviewStartResponse {
+    /// The thread id supplied to `review/start`.
     #[serde(rename = "reviewThreadId", default)]
     pub review_thread_id: String,
     #[serde()]

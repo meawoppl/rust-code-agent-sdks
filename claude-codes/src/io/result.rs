@@ -172,6 +172,37 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub process_wall_ms_turn: Option<u64>,
 
+    /// CPU time (user plus system), in ms, of the programs in the CLI's shell
+    /// CPU accounting group over the
+    /// [`process_cpu_ms_turn`](Self::process_cpu_ms_turn) stretch: the Bash
+    /// and Monitor tool shells and everything they start. Not part of
+    /// [`process_cpu_ms_turn`](Self::process_cpu_ms_turn), which leaves out
+    /// child processes. Hooks, MCP/LSP servers and plugin monitors are not
+    /// counted, and a command whose shell could not join the group (e.g.
+    /// under the command sandbox) makes it read lower rather than absent.
+    /// Present where `process_cpu_ms_turn` is, only on Linux with a cgroup v1
+    /// `cpuacct` hierarchy; absent, never 0, otherwise (CLI 2.1.312+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shell_cpu_ms_turn: Option<u64>,
+
+    /// Shell CPU time, counted as in
+    /// [`shell_cpu_ms_turn`](Self::shell_cpu_ms_turn), from just before the
+    /// previous result that carried `shell_cpu_ms_turn` was built until this
+    /// turn's start, so summed over a process's results the two never count a
+    /// millisecond twice. Always comes with
+    /// [`shell_wall_ms_since_last_result`](Self::shell_wall_ms_since_last_result).
+    /// Absent on the process's first such result and after a gap in the
+    /// figures (CLI 2.1.312+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shell_cpu_ms_since_last_result: Option<u64>,
+
+    /// Monotonic wall time of the
+    /// [`shell_cpu_ms_since_last_result`](Self::shell_cpu_ms_since_last_result)
+    /// stretch, in ms, by the same clock as
+    /// [`process_wall_ms_turn`](Self::process_wall_ms_turn) (CLI 2.1.312+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shell_wall_ms_since_last_result: Option<u64>,
+
     /// How long, within the
     /// [`process_cpu_ms_turn`](Self::process_cpu_ms_turn) stretch and by its
     /// clock, a response stream of a main-conversation model request was
