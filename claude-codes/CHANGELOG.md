@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.312] - 2026-10-28
+
+Re-baseline against Claude CLI **2.1.312**. Three optional `result` fields;
+no new wire labels and no removals. `--help`, the embedded model-id set and
+the alias table are unchanged.
+
+### Added
+
+- `ResultMessage` shell CPU accounting telemetry: `shell_cpu_ms_turn` (CPU
+  time of the Bash/Monitor tool shells and their children over the turn,
+  Linux cgroup v1 `cpuacct` only), `shell_cpu_ms_since_last_result` and
+  `shell_wall_ms_since_last_result`.
+
+### Changed
+
+- Doc-only upstream changes, not modeled: the `system/init` `capabilities`
+  description now lists `ask_user_question_unanswered_v1` (AskUserQuestion
+  `annotations[question].unanswered`; `annotations` stays untyped JSON), and
+  the effort-level wording changed.
+- Schema snapshot refreshed to 2.1.312.
+
 ## [2.1.311] - 2026-10-27
 
 Re-baseline against Claude CLI **2.1.311**. One new system subtype,
