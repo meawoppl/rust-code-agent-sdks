@@ -1063,6 +1063,60 @@ mod tests {
     }
 
     #[test]
+    fn test_model_provider_error_round_trips_from_jsonrpc_error_data() {
+        use crate::protocol_generated::types::ModelProviderError;
+
+        let wire = serde_json::json!({
+            "code": -32600,
+            "message": "thread was created with a different model provider",
+            "data": {
+                "type": "modelProviderMismatch",
+                "modelProvider": "old-provider",
+                "currentModelProvider": "current-provider",
+            },
+        });
+        let err: crate::JsonRpcErrorData = serde_json::from_value(wire.clone()).unwrap();
+        let data: ModelProviderError = serde_json::from_value(err.data.unwrap()).unwrap();
+        assert_eq!(
+            data,
+            ModelProviderError::ModelProviderMismatch {
+                model_provider: "old-provider".to_string(),
+                current_model_provider: "current-provider".to_string(),
+            }
+        );
+        assert_eq!(serde_json::to_value(&data).unwrap(), wire["data"]);
+
+        for (wire, expected) in [
+            (
+                serde_json::json!({
+                    "type": "modelProviderNotConfigured",
+                    "modelProvider": "old-provider",
+                }),
+                ModelProviderError::ModelProviderNotConfigured {
+                    model_provider: "old-provider".to_string(),
+                },
+            ),
+            (
+                serde_json::json!({
+                    "type": "modelProviderPolicyConflict",
+                    "modelProvider": "old-provider",
+                    "requiredModelProvider": "required-provider",
+                }),
+                ModelProviderError::ModelProviderPolicyConflict {
+                    model_provider: "old-provider".to_string(),
+                    required_model_provider: "required-provider".to_string(),
+                },
+            ),
+        ] {
+            assert_eq!(
+                serde_json::from_value::<ModelProviderError>(wire.clone()).unwrap(),
+                expected
+            );
+            assert_eq!(serde_json::to_value(&expected).unwrap(), wire);
+        }
+    }
+
+    #[test]
     fn test_codex_error_info_other_accepts_unknown_codes() {
         use crate::protocol_generated::types::CodexErrorInfo;
 
