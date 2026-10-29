@@ -225,6 +225,7 @@ async fn test_async_client_custom_initialize() {
                 opt_out_notification_methods: None,
                 explicit_gateway_oauth: None,
                 request_attestation: None,
+                required_human_approval: None,
             }),
         })
         .await
