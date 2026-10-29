@@ -1212,6 +1212,12 @@ pub enum CommandExecutionApprovalDecision {
 pub enum CommandExecutionApprovalKind {
     #[serde(rename = "command")]
     Command,
+    /// A managed checkpoint requiring a fresh human decision. Only `accept`,
+    /// `decline`, and `cancel` are valid. Requires the `requiredHumanApproval`
+    /// initialize capability. This prompt does not itself start a command
+    /// execution item.
+    #[serde(rename = "humanCommand")]
+    HumanCommand,
     #[serde(rename = "writeStdin")]
     WriteStdin,
 }
@@ -3657,6 +3663,15 @@ pub struct InitializeCapabilities {
         skip_serializing_if = "Option::is_none"
     )]
     pub request_attestation: Option<bool>,
+    /// Present `humanCommand` approvals to a person and return only a
+    /// one-time decision. Requires `experimentalApi`. Pending requests can be
+    /// replayed to compatible clients.
+    #[serde(
+        rename = "requiredHumanApproval",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub required_human_approval: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -5228,6 +5243,8 @@ pub enum OtelHttpProtocol {
 pub struct OtelRequirements {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_result: Option<OtelToolResultLogConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub log_sse_deltas: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub log_user_prompt: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

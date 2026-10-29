@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.165.2] - 2026-10-29
+
+Model the `openai/codex@main` (`b75d1e896`) app-server schema drift
+reported in #520. The tested pin stays at Codex CLI **0.165.0**.
+
+### Added
+
+- `CommandExecutionApprovalKind::HumanCommand` (openai/codex#58045): a
+  managed checkpoint that needs a fresh human decision. Only `accept`,
+  `decline`, and `cancel` are valid responses. Exhaustive matches on
+  `CommandExecutionApprovalKind` need a new arm.
+- `InitializeCapabilities::required_human_approval` (openai/codex#58045):
+  opts into `humanCommand` approvals. Requires `experimentalApi`.
+- `OtelRequirements::log_sse_deltas` (openai/codex#58034).
+
+### Model catalog
+
+`models-manager/models.json` on `openai/codex@main` (`b75d1e896`) has no
+slugs missing from `CodexModel`. Claude (2.1.312), Muse, opencode, and
+antigravity (0.1.23) show no drift.
+
 ## [0.165.1] - 2026-10-28
 
 Model the `openai/codex@main` (`7ce5fa7bd`) app-server schema drift. The

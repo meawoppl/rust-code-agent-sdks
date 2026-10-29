@@ -1117,6 +1117,35 @@ mod tests {
     }
 
     #[test]
+    fn test_human_command_approval_request_decodes() {
+        use crate::protocol_generated::types::CommandExecutionApprovalKind;
+
+        let msg = ServerMessage::from_value(serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 7,
+            "method": "item/commandExecution/requestApproval",
+            "params": {
+                "threadId": "t1",
+                "turnId": "u1",
+                "itemId": "i1",
+                "startedAtMs": 0,
+                "kind": "humanCommand",
+            },
+        }))
+        .unwrap();
+        match msg {
+            ServerMessage::Request {
+                request: ServerRequest::CmdExecApproval(params),
+                ..
+            } => assert_eq!(
+                params.kind,
+                Some(CommandExecutionApprovalKind::HumanCommand)
+            ),
+            other => panic!("expected CmdExecApproval, got {:?}", other),
+        }
+    }
+
+    #[test]
     fn test_codex_error_info_other_accepts_unknown_codes() {
         use crate::protocol_generated::types::CodexErrorInfo;
 
