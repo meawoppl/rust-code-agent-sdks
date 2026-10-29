@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.165.1] - 2026-10-28
+
+Model the `openai/codex@main` (`7ce5fa7bd`) app-server schema drift. The
+tested pin stays at Codex CLI **0.165.0**.
+
+### Added
+
+- `ModelProviderError` (openai/codex#57840): structured JSON-RPC
+  `error.data` returned when a thread's stored model provider blocks resume
+  or new input. It's internally tagged on `type`, with three variants:
+  `modelProviderMismatch`, `modelProviderNotConfigured`, and
+  `modelProviderPolicyConflict`. No method references it, so callers decode it
+  from `JsonRpcErrorData::data` and keep their usual fallback for other
+  error payloads.
+
+### Model catalog
+
+`models-manager/models.json` is unchanged on `openai/codex@main`, so
+`CodexModel` is still fully covered. Claude, Muse, opencode, and
+antigravity show no drift.
+
 ## [0.165.0] - 2026-10-28
 
 Re-pin to Codex CLI **0.165.0**. No type changes: the 0.165.0

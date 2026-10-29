@@ -4972,6 +4972,34 @@ pub struct ModelProviderCapabilitiesReadResponse {
     pub web_search: bool,
 }
 
+/// Structured JSON-RPC error data. Unknown errors must retain the client's normal fallback.
+///
+/// Carried in [`crate::JsonRpcErrorData::data`] when a thread's stored model
+/// provider can't be used for resume or new input.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ModelProviderError {
+    #[serde(rename = "modelProviderMismatch")]
+    ModelProviderMismatch {
+        #[serde(rename = "modelProvider")]
+        model_provider: String,
+        #[serde(rename = "currentModelProvider")]
+        current_model_provider: String,
+    },
+    #[serde(rename = "modelProviderNotConfigured")]
+    ModelProviderNotConfigured {
+        #[serde(rename = "modelProvider")]
+        model_provider: String,
+    },
+    #[serde(rename = "modelProviderPolicyConflict")]
+    ModelProviderPolicyConflict {
+        #[serde(rename = "modelProvider")]
+        model_provider: String,
+        #[serde(rename = "requiredModelProvider")]
+        required_model_provider: String,
+    },
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ModelRerouteReason {
     #[serde(rename = "highRiskCyberActivity")]
