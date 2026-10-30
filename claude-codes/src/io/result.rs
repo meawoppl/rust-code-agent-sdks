@@ -856,6 +856,11 @@ pub enum StartupFailureReason {
     /// signing in again or an admin's change is the fix, not a retry
     /// (CLI 2.1.293+).
     OrgConfigRefused,
+    /// A working sandbox is required and it cannot run in this session, for
+    /// example because bubblewrap is missing or the platform is not
+    /// supported; make the sandbox available or have the requirement
+    /// changed (CLI 2.1.314+).
+    SandboxRequiredUnavailable,
     /// A cause not yet known to this version of the crate.
     Unknown(String),
 }
@@ -882,6 +887,7 @@ impl StartupFailureReason {
             Self::BypassRoot => "bypass_root",
             Self::OrgConfigRequiredUnavailable => "org_config_required_unavailable",
             Self::OrgConfigRefused => "org_config_refused",
+            Self::SandboxRequiredUnavailable => "sandbox_required_unavailable",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -915,6 +921,7 @@ impl From<&str> for StartupFailureReason {
             "bypass_root" => Self::BypassRoot,
             "org_config_required_unavailable" => Self::OrgConfigRequiredUnavailable,
             "org_config_refused" => Self::OrgConfigRefused,
+            "sandbox_required_unavailable" => Self::SandboxRequiredUnavailable,
             other => Self::Unknown(other.to_string()),
         }
     }

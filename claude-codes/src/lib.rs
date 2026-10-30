@@ -78,7 +78,7 @@
 //! ⚠️ **Important**: The Claude CLI protocol is unstable and evolving. This crate
 //! automatically checks your Claude CLI version and warns if it's newer than tested.
 //!
-//! Current tested version: **2.1.312**
+//! Current tested version: **2.1.314**
 //!
 //! Report compatibility issues at: <https://github.com/meawoppl/rust-claude-codes/pulls>
 //!
@@ -190,10 +190,10 @@ pub use io::{
     ThinkingTokensMessage, ToolPermissionDecision, ToolResultMeta, ToolResultRemedy,
     ToolResultRemedyKind, ToolUseMeta, TurnHandoffAvailableMessage, TurnPreemptedMessage,
     UiFocusMessage, UiInvalidateMessage, UiInvalidatedInstance, UiLogMessage, UiPane,
-    UiPanesMessage, UiScrollMessage, UiSiteComponent, UiStatusMessage, UiToastMessage, UsageReport,
-    UsageReportExtraUsage, UsageReportLimit, UsageReportRateLimits, UsageReportScope,
-    UsageReportScopeLabel, VcsMutationKind, VcsStateChangedMessage, ViewMode,
-    WorkerShuttingDownMessage,
+    UiPanesMessage, UiPlacedMessage, UiPlacedRow, UiScrollMessage, UiSiteComponent,
+    UiStatusMessage, UiToastMessage, UsageReport, UsageReportExtraUsage, UsageReportLimit,
+    UsageReportRateLimits, UsageReportScope, UsageReportScopeLabel, VcsMutationKind,
+    VcsStateChangedMessage, ViewMode, WorkerShuttingDownMessage,
 };
 
 // Additional top-level output message wrappers
