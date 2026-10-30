@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.166.0] - 2026-10-29
+
+Re-pin to Codex CLI **0.166.0**. No type changes.
+
+### Changed
+
+- Tested against Codex CLI 0.166.0. Its `generate-json-schema` output
+  is a strict subset of the committed `openai/codex@main` snapshot. The
+  only differences are `CommandExecutionApprovalKind::HumanCommand`,
+  `InitializeCapabilities::required_human_approval`, and
+  `OtelRequirements::log_sse_deltas`, which are main-only and already
+  modeled in 0.165.2.
+
+### Model catalog
+
+`models-manager/models.json` at `rust-v0.166.0` and on `openai/codex@main`
+(12 slugs each) has no slugs missing from `CodexModel`.
+
 ## [0.165.2] - 2026-10-29
 
 Model the `openai/codex@main` (`b75d1e896`) app-server schema drift
