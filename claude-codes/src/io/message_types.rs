@@ -60,6 +60,7 @@ pub enum SystemSubtype {
     UiInvalidate,
     UiLog,
     UiPanes,
+    UiPlaced,
     UiScroll,
     UiStatus,
     UiToast,
@@ -116,6 +117,7 @@ impl SystemSubtype {
             Self::UiInvalidate => "ui_invalidate",
             Self::UiLog => "ui_log",
             Self::UiPanes => "ui_panes",
+            Self::UiPlaced => "ui_placed",
             Self::UiScroll => "ui_scroll",
             Self::UiStatus => "ui_status",
             Self::UiToast => "ui_toast",
@@ -179,6 +181,7 @@ impl From<&str> for SystemSubtype {
             "ui_invalidate" => Self::UiInvalidate,
             "ui_log" => Self::UiLog,
             "ui_panes" => Self::UiPanes,
+            "ui_placed" => Self::UiPlaced,
             "ui_scroll" => Self::UiScroll,
             "ui_status" => Self::UiStatus,
             "ui_toast" => Self::UiToast,
@@ -1886,6 +1889,19 @@ impl SystemMessage {
         serde_json::from_value(self.data.clone()).ok()
     }
 
+    /// Check if this is a ui_placed message.
+    pub fn is_ui_placed(&self) -> bool {
+        self.subtype == SystemSubtype::UiPlaced
+    }
+
+    /// Try to parse as a ui_placed message.
+    pub fn as_ui_placed(&self) -> Option<UiPlacedMessage> {
+        if self.subtype != SystemSubtype::UiPlaced {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
     /// Check if this is a ui_scroll message.
     pub fn is_ui_scroll(&self) -> bool {
         self.subtype == SystemSubtype::UiScroll
@@ -2018,6 +2034,7 @@ impl SystemMessage {
             SystemSubtype::UiInvalidate => parse!(UiInvalidate, UiInvalidateMessage),
             SystemSubtype::UiLog => parse!(UiLog, UiLogMessage),
             SystemSubtype::UiPanes => parse!(UiPanes, UiPanesMessage),
+            SystemSubtype::UiPlaced => parse!(UiPlaced, UiPlacedMessage),
             SystemSubtype::UiScroll => parse!(UiScroll, UiScrollMessage),
             SystemSubtype::UiStatus => parse!(UiStatus, UiStatusMessage),
             SystemSubtype::UiToast => parse!(UiToast, UiToastMessage),
@@ -2130,6 +2147,7 @@ impl SystemMessage {
             SystemSubtype::UiInvalidate => reserialize(parse_system::<UiInvalidateMessage>(self)),
             SystemSubtype::UiLog => reserialize(parse_system::<UiLogMessage>(self)),
             SystemSubtype::UiPanes => reserialize(parse_system::<UiPanesMessage>(self)),
+            SystemSubtype::UiPlaced => reserialize(parse_system::<UiPlacedMessage>(self)),
             SystemSubtype::UiScroll => reserialize(parse_system::<UiScrollMessage>(self)),
             SystemSubtype::UiStatus => reserialize(parse_system::<UiStatusMessage>(self)),
             SystemSubtype::UiToast => reserialize(parse_system::<UiToastMessage>(self)),
@@ -2196,6 +2214,7 @@ pub enum KnownSystemEvent {
     UiInvalidate(UiInvalidateMessage),
     UiLog(UiLogMessage),
     UiPanes(UiPanesMessage),
+    UiPlaced(UiPlacedMessage),
     UiScroll(UiScrollMessage),
     UiStatus(UiStatusMessage),
     UiToast(UiToastMessage),
@@ -4807,6 +4826,37 @@ pub struct UiPane {
     pub columns: Option<u64>,
 }
 
+/// `system/ui_placed` — a fire-and-forget push from a headless session when
+/// a plugin places a row with `$.ui.place`, and to a client as it joins
+/// (CLI 2.1.314+). A surface inserts each row after
+/// [`UiPlacedRow::after_uuid`] and asks `ui_render` for it. Display only:
+/// no message carries these rows. A surface drops the rows it holds with
+/// the conversation it resets, and a row whose `after_uuid` it no longer
+/// holds. A compaction ends the rows before it, and no push says so.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UiPlacedMessage {
+    /// The main conversation's placed rows, in order.
+    pub rows: Vec<UiPlacedRow>,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// One row in a [`UiPlacedMessage`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UiPlacedRow {
+    /// The plugin that placed the row.
+    pub plugin: String,
+    /// The row's id among that plugin's rows.
+    pub id: String,
+    /// The `instance_id` of the `ui_render` ask, with `component: "Placed"`,
+    /// that draws it.
+    pub request_id: String,
+    /// The conversation message the row follows; absent at the
+    /// conversation's start. Rows sharing it stand in roster order.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub after_uuid: Option<String>,
+}
+
 /// `system/ui_scroll` — a plugin's `$.ui.scroll` moved the window of a site
 /// a remote surface draws: the surface scrolls the site's body there. The
 /// person's own scrolls are never pushed back (CLI 2.1.285+).
@@ -5431,7 +5481,16 @@ pub struct AssistantMessage {
     /// request was sent; terminal for the turn, so a consumer replaying
     /// history must not re-send the prompt that led to it — and
     /// `unattended_start_unconfirmed` — the process could not check whether
-    /// it was allowed to carry on, so no request was sent; not terminal.
+    /// it was allowed to carry on, so no request was sent; not terminal —
+    /// and (CLI 2.1.314+) `stored_login_refused` — the stored claude.ai
+    /// login was about to go out while the administrator's API key helper
+    /// isn't in effect, so no request was sent and only an administrator
+    /// can clear it — `connection_failed` — Claude Code could not reach the
+    /// API host or lost the connection (never set for a TLS error code) —
+    /// `stream_idle_timeout` — Claude Code's own idle timer gave up waiting
+    /// on an open stream, which does not by itself mean the server stalled —
+    /// and `computer_slept` — the machine slept through the wait for the
+    /// response (never sent by a claude-code-server session).
     /// Kinds with parameters carry them in [`Self::api_error_params`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_error: Option<String>,

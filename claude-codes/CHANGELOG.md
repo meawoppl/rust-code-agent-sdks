@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.314] - 2026-10-29
+
+Re-baseline against Claude CLI **2.1.314** (2.1.313 was not published as a
+CLI). One new wire label, one new startup failure reason, four new
+`api_error` kinds. No removals. The embedded model-id set is unchanged,
+and the only `--help` change is the `auto-mode` subcommand's wording.
+
+### Added
+
+- `system/ui_placed` → `SystemSubtype::UiPlaced`,
+  `KnownSystemEvent::UiPlaced`, `UiPlacedMessage` and `UiPlacedRow`
+  (`plugin`, `id`, `request_id`, optional `after_uuid`), with
+  `is_ui_placed`/`as_ui_placed` accessors. It's a display-only push of the
+  rows that plugins placed with `$.ui.place`. Exhaustive matches on
+  `SystemSubtype` or `KnownSystemEvent` need a new arm.
+- `StartupFailureReason::SandboxRequiredUnavailable`
+  (`sandbox_required_unavailable`): a sandbox is required but cannot run,
+  for example because bubblewrap is missing. Exhaustive matches need a new
+  arm.
+
+### Changed
+
+- `AssistantMessage::api_error` docs list the new kinds
+  `stored_login_refused`, `connection_failed`, `stream_idle_timeout` and
+  `computer_slept`. The field stays a `String`.
+- Not modeled: an internal MCP-auth helper list gained
+  `CLIENT_REGISTRATION_UNAVAILABLE` and now covers the `needs-auth` status.
+  It isn't a wire schema field.
+- Schema snapshot refreshed to 2.1.314.
+
 ## [2.1.312] - 2026-10-28
 
 Re-baseline against Claude CLI **2.1.312**. Three optional `result` fields;
