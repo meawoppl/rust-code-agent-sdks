@@ -8663,6 +8663,18 @@ pub struct ThreadReadStateChangedNotification {
     pub thread_id: String,
 }
 
+/// Broadcast after a successful move into, within, or out of a section.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadSectionChangedNotification {
+    #[serde(rename = "threadId")]
+    pub thread_id: String,
+    /// Destination section, or `None` when the thread was removed from its
+    /// section. Always present on the wire (`null` when removed).
+    #[serde(rename = "sectionId")]
+    pub section_id: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreadRealtimeAudioChunk {
@@ -10138,7 +10150,8 @@ pub enum UserInput {
         path: String,
     },
     Audio {
-        url: String,
+        #[serde(flatten)]
+        audio: UserInputAudioReference,
     },
     #[serde(rename = "localAudio")]
     LocalAudio {
@@ -10162,6 +10175,22 @@ pub enum UserInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum UserInputImageReference {
+    Inline {
+        url: String,
+    },
+    File {
+        #[serde(rename = "fileId")]
+        file_id: String,
+    },
+}
+
+/// How a [`UserInput::Audio`] names its audio: an inline `url` or a
+/// previously uploaded `fileId`. Flattened into the variant; untagged, so
+/// exactly one of the two keys is on the wire. Mirrors the v2
+/// `AudioReference` upstream.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum UserInputAudioReference {
     Inline {
         url: String,
     },

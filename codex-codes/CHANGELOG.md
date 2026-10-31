@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.166.1] - 2026-10-30
+
+Model the `openai/codex@main` (`2546265e3`) app-server schema drift. The
+tested pin stays at Codex CLI **0.166.0**.
+
+### Added
+
+- `thread/section/changed` notification (openai/codex#58380):
+  `methods::THREAD_SECTION_CHANGED`, `Notification::ThreadSectionChanged`,
+  and `ThreadSectionChangedNotification { thread_id, section_id }`.
+  `section_id` is always on the wire and `null` when the thread left its
+  section. Broadcast to every connected client after a section move.
+- `UserInputAudioReference` (`Inline { url }` | `File { fileId }`,
+  untagged), flattened into `UserInput::Audio` (openai/codex#58430): audio
+  input may now name a previously uploaded file instead of carrying a URL.
+
+### Changed
+
+- **Breaking:** `UserInput::Audio` replaces its `url: String` field with
+  the flattened `audio` enum above. Construct with
+  `UserInput::Audio { audio: UserInputAudioReference::Inline { url } }`.
+  The wire shape for inline audio is unchanged. No in-workspace caller
+  built this variant.
+- Snapshot refresh. The Responses-API `ContentItem::InputAudio` also gained
+  a `file_id` alternative to `audio_url`; `ContentItem` is not modeled by
+  this crate, so that part is snapshot-only.
+
+### Model catalog
+
+`models-manager/models.json` on `openai/codex@main` has no slugs missing
+from `CodexModel`.
+
 ## [0.166.0] - 2026-10-29
 
 Re-pin to Codex CLI **0.166.0**. No type changes.
