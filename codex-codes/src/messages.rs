@@ -58,10 +58,11 @@ use crate::protocol::{
     ThreadRealtimeOutputAudioDeltaNotification, ThreadRealtimeSdpNotification,
     ThreadRealtimeStartedNotification, ThreadRealtimeTranscriptDeltaNotification,
     ThreadRealtimeTranscriptDoneNotification, ThreadRevertedNotification,
-    ThreadSettingsUpdatedNotification, ThreadStartedNotification, ThreadStatusChangedNotification,
-    ThreadTokenUsageUpdatedNotification, ThreadUnarchivedNotification, TurnCompletedNotification,
-    TurnDiffUpdatedNotification, TurnModerationMetadataNotification, TurnPlanUpdatedNotification,
-    TurnStartedNotification, WarningNotification, WindowsSandboxSetupCompletedNotification,
+    ThreadSectionChangedNotification, ThreadSettingsUpdatedNotification, ThreadStartedNotification,
+    ThreadStatusChangedNotification, ThreadTokenUsageUpdatedNotification,
+    ThreadUnarchivedNotification, TurnCompletedNotification, TurnDiffUpdatedNotification,
+    TurnModerationMetadataNotification, TurnPlanUpdatedNotification, TurnStartedNotification,
+    WarningNotification, WindowsSandboxSetupCompletedNotification,
     WindowsWorldWritableWarningNotification,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -82,6 +83,9 @@ pub enum Notification {
     /// `thread/readState/changed` — experimental upstream; durable local
     /// read receipt for a thread changed.
     ThreadReadStateChanged(ThreadReadStateChangedNotification),
+    /// `thread/section/changed` — a thread moved into, within, or out of a
+    /// section; broadcast to every connected client.
+    ThreadSectionChanged(ThreadSectionChangedNotification),
     /// `thread/tokenUsage/updated`
     ThreadTokenUsageUpdated(ThreadTokenUsageUpdatedNotification),
     /// `turn/started`
@@ -280,6 +284,7 @@ impl Notification {
             }
             Self::ThreadStatusChanged(_) => methods::THREAD_STATUS_CHANGED,
             Self::ThreadReadStateChanged(_) => methods::THREAD_READ_STATE_CHANGED,
+            Self::ThreadSectionChanged(_) => methods::THREAD_SECTION_CHANGED,
             Self::ThreadTokenUsageUpdated(_) => methods::THREAD_TOKEN_USAGE_UPDATED,
             Self::TurnStarted(_) => methods::TURN_STARTED,
             Self::TurnCompleted(_) => methods::TURN_COMPLETED,
@@ -477,6 +482,9 @@ impl Notification {
             }
             methods::THREAD_READ_STATE_CHANGED => {
                 serde_json::from_value(params_value).map(Self::ThreadReadStateChanged)
+            }
+            methods::THREAD_SECTION_CHANGED => {
+                serde_json::from_value(params_value).map(Self::ThreadSectionChanged)
             }
             methods::THREAD_TOKEN_USAGE_UPDATED => {
                 serde_json::from_value(params_value).map(Self::ThreadTokenUsageUpdated)
@@ -711,6 +719,7 @@ impl Notification {
             }
             Self::ThreadStatusChanged(v) => pack(methods::THREAD_STATUS_CHANGED, v),
             Self::ThreadReadStateChanged(v) => pack(methods::THREAD_READ_STATE_CHANGED, v),
+            Self::ThreadSectionChanged(v) => pack(methods::THREAD_SECTION_CHANGED, v),
             Self::ThreadTokenUsageUpdated(v) => pack(methods::THREAD_TOKEN_USAGE_UPDATED, v),
             Self::TurnStarted(v) => pack(methods::TURN_STARTED, v),
             Self::TurnCompleted(v) => pack(methods::TURN_COMPLETED, v),

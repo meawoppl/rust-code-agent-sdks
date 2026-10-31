@@ -877,6 +877,57 @@ fn user_input_image_round_trips_url_and_file_id() {
     assert!(wire.get("detail").is_none());
 }
 
+/// `UserInput::Audio` flattens an untagged audio reference: an inline `url`
+/// or an uploaded `fileId` (openai/codex#58430).
+#[test]
+fn user_input_audio_round_trips_url_and_file_id() {
+    use codex_codes::protocol::{UserInput, UserInputAudioReference};
+
+    let inline = UserInput::Audio {
+        audio: UserInputAudioReference::Inline {
+            url: "data:audio/wav;base64,AAAA".into(),
+        },
+    };
+    let wire = serde_json::to_value(&inline).unwrap();
+    assert_eq!(
+        wire,
+        serde_json::json!({"type": "audio", "url": "data:audio/wav;base64,AAAA"})
+    );
+    assert_eq!(serde_json::from_value::<UserInput>(wire).unwrap(), inline);
+
+    let uploaded: UserInput =
+        serde_json::from_value(serde_json::json!({"type": "audio", "fileId": "file_456"})).unwrap();
+    assert_eq!(
+        uploaded,
+        UserInput::Audio {
+            audio: UserInputAudioReference::File {
+                file_id: "file_456".into()
+            },
+        }
+    );
+    let wire = serde_json::to_value(&uploaded).unwrap();
+    assert_eq!(wire["fileId"], "file_456");
+    assert!(wire.get("url").is_none());
+}
+
+/// `thread/section/changed` decodes to its typed variant, with a `null`
+/// `sectionId` meaning the thread left its section (openai/codex#58380).
+#[test]
+fn thread_section_changed_decodes() {
+    use codex_codes::Notification;
+
+    let n: Notification = serde_json::from_value(serde_json::json!({
+        "method": "thread/section/changed",
+        "params": {"threadId": "thr_1", "sectionId": null}
+    }))
+    .unwrap();
+    let Notification::ThreadSectionChanged(p) = n else {
+        panic!("expected ThreadSectionChanged, got {n:?}");
+    };
+    assert_eq!(p.thread_id, "thr_1");
+    assert_eq!(p.section_id, None);
+}
+
 /// `FunctionCallOutputContentItem::InputImage` keeps its snake_case
 /// Responses-API keys and accepts either `image_url` or `file_id`.
 #[test]
