@@ -249,6 +249,10 @@ pub fn server_notification_samples() -> Vec<(&'static str, Value)> {
             json!({"readState": {"firstUnread": {"type": "turn", "turnId": "x"}, "revision": "x"}, "threadId": "x"}),
         ),
         (
+            "thread/section/changed",
+            json!({"sectionId": null, "threadId": "x"}),
+        ),
+        (
             "thread/tokenUsage/updated",
             json!({"threadId": "x", "tokenUsage": {"last": {"cachedInputTokens": 0, "inputTokens": 0, "outputTokens": 0, "reasoningOutputTokens": 0, "totalTokens": 0}, "total": {"cachedInputTokens": 0, "inputTokens": 0, "outputTokens": 0, "reasoningOutputTokens": 0, "totalTokens": 0}}, "turnId": "x"}),
         ),
