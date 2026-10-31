@@ -78,7 +78,7 @@
 //! ⚠️ **Important**: The Claude CLI protocol is unstable and evolving. This crate
 //! automatically checks your Claude CLI version and warns if it's newer than tested.
 //!
-//! Current tested version: **2.1.314**
+//! Current tested version: **2.1.316**
 //!
 //! Report compatibility issues at: <https://github.com/meawoppl/rust-claude-codes/pulls>
 //!
@@ -216,12 +216,12 @@ pub use io::{
 
 // Usage types
 pub use io::{
-    AssistantUsage, CacheCreationDetails, DeferredToolUse, FastModeDisabledReason,
-    GarbageCollectionCounts, InputAttachmentsDetail, ProcessGarbageCollections,
-    ResumeStoreConfirmDetail, RunnerExit, RunnerExitPhase, ServerToolUse, StartupFailureReason,
-    StreamPostQueuedBehind, SubagentKillCounts, SubagentRefusalCounts, SubagentResult,
-    SubagentSpawnRequests, SubagentStats, SubagentToolStats, SubagentUsageRollup,
-    TouchCompareCounts, TurnStartResumeKind, UsageInfo,
+    AssistantUsage, CacheCreationDetails, DeferredToolUse, DiffersFilesCounts,
+    FastModeDisabledReason, GarbageCollectionCounts, InputAttachmentsDetail,
+    ProcessGarbageCollections, ResumeStoreConfirmDetail, RunnerExit, RunnerExitPhase,
+    ServerToolUse, StartupFailureReason, StreamPostQueuedBehind, SubagentKillCounts,
+    SubagentRefusalCounts, SubagentResult, SubagentSpawnRequests, SubagentStats, SubagentToolStats,
+    SubagentUsageRollup, TouchCompareCounts, TurnStartResumeKind, UsageInfo,
 };
 
 // Typed tool input types

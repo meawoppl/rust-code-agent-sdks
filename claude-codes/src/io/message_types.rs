@@ -3000,6 +3000,16 @@ pub struct InitMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub per_turn_effort_active: Option<bool>,
 
+    /// Whether typing `ultrathink` runs the turn at `xhigh` effort on this
+    /// frame's `model` (and, when the session is already at `xhigh` or
+    /// `max`, leaves the turn as it is); a host highlights the word only
+    /// while this is `true`. After `system/per_turn_effort_changed`, treat it
+    /// as `false` until the next init. The same answer as `get_settings`'
+    /// `applied.ultrathinkAvailable`. Sent by the stream-json (Agent SDK)
+    /// host; absent means unknown (CLI 2.1.316+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ultrathink_available: Option<bool>,
+
     /// Whether the session's transcript is in focus view. Toggled by
     /// `/focus`, including over Remote Control. Present on Remote Control
     /// bridge init frames and on the per-turn init of headless stream-json
@@ -5483,9 +5493,11 @@ pub struct AssistantMessage {
     /// `unattended_start_unconfirmed` — the process could not check whether
     /// it was allowed to carry on, so no request was sent; not terminal —
     /// and (CLI 2.1.314+) `stored_login_refused` — the stored claude.ai
-    /// login was about to go out while the administrator's API key helper
-    /// isn't in effect, so no request was sent and only an administrator
-    /// can clear it — `connection_failed` — Claude Code could not reach the
+    /// login was about to go out while the API key helper set by the
+    /// machine's administrator (or, on 2.1.316+, the organization's
+    /// settings) isn't in effect or its settings couldn't be confirmed, so
+    /// no request was sent and the message text says who can clear it —
+    /// `connection_failed` — Claude Code could not reach the
     /// API host or lost the connection (never set for a TLS error code) —
     /// `stream_idle_timeout` — Claude Code's own idle timer gave up waiting
     /// on an open stream, which does not by itself mean the server stalled —
@@ -5564,6 +5576,17 @@ pub struct ApiErrorParams {
     /// `limitScope` say whose spend cap it is. It is that refusal's record
     /// and is never updated, so compare `resetsAt` with the clock before
     /// calling the limit current (CLI 2.1.292+).
+    ///
+    /// On CLI 2.1.316+ also carried for `model_requires_usage_credits`:
+    /// `status` is rejected and `isUsingOverage` false; `rateLimitType` is
+    /// the response's claim (`seven_day_overage_included` when an included
+    /// allowance was used up) and absent when it named none; `resetsAt`,
+    /// `overageStatus`, `overageResetsAt` and `limitScope` come when the
+    /// response had them; `errorCode` is `credits_required` when the body
+    /// said so; `overageDisabledReason`, `canUserPurchaseCredits` and
+    /// `hasChargeableSavedPaymentMethod` as the response gave them; the
+    /// person's own cap arrives as `org_level_disabled_until`. No other
+    /// member is sent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rate_limit_info: Option<RateLimitInfo>,
 }

@@ -40,8 +40,16 @@ pub struct ResultMessage {
     /// `transcript_persist`, `init_message`, `engine_pickup`,
     /// `memory_recall_wait`, `memory_context_wait`, `autocompact`,
     /// `query_setup`, `tool_schema_build`, `message_normalization`,
-    /// `client_creation` and `other` (the remainder no phase covers). A phase
-    /// that did not run is absent; `other` is always present. Open set —
+    /// `client_creation`, (CLI 2.1.316+) `conversation_append` (from the end
+    /// of `process_user_input` to the start of `tool_pool_refresh`, less
+    /// `transcript_persist`), `init_frame_send` (from the end of
+    /// `init_message` to the start of `engine_pickup`), `loop_entry` (from the
+    /// end of `engine_pickup` to the start of `message_prep`, less the memory
+    /// waits), `request_announcements` (from the end of `autocompact` to the
+    /// start of `query_setup`, less the model choice) and `other` (the
+    /// remainder no phase covers; producers before 2.1.316 count those four
+    /// stretches here). A phase that did not run is absent; `other` is always
+    /// present. Open set —
     /// keep unrecognized phase names. Present where `time_to_request_ms` is,
     /// on `CLAUDE_CODE_REMOTE` sessions and hosts that set
     /// `CLAUDE_CODE_EMIT_STARTUP_TIMING`; absent elsewhere.
@@ -446,6 +454,35 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub first_text_post_wall_ms: Option<f64>,
 
+    /// How many uploads carrying new visible reply text (as
+    /// [`first_text_post_ms`](Self::first_text_post_ms) defines it) the
+    /// remote transport sent during the turn, from the upload
+    /// `first_text_post_ms` measures until this result was built. Uploads
+    /// still queued then are not counted, and a retry counts only if it
+    /// carries text no earlier upload did. Present only when
+    /// `first_text_post_ms` is, and never in a claude-code-server tenant
+    /// (CLI 2.1.316+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_post_count: Option<u64>,
+
+    /// Of the uploads in [`text_post_count`](Self::text_post_count), how
+    /// many were dispatched more than 500 ms after the one before. Tool
+    /// calls, thinking and model pauses make such gaps too, so compare
+    /// groups of turns with each other, not with 0. Present where
+    /// `text_post_count` is (CLI 2.1.316+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_post_gap_over_500ms_count: Option<u64>,
+
+    /// The largest delay, in whole ms, between the remote transport's
+    /// stream-event flush timer falling due and its buffer being emptied,
+    /// from the turn's first frame of visible reply text until this result
+    /// was built — a lower bound on how late that timer fired. Read on the
+    /// wall clock and capped at 60000. Absent when
+    /// [`text_post_count`](Self::text_post_count) is, or when the buffer was
+    /// never emptied at or after a due time (CLI 2.1.316+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_post_flush_timer_max_late_ms: Option<u64>,
+
     /// Wire uuid of the user message this result answers.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user_message_uuid: Option<String>,
@@ -685,6 +722,85 @@ pub struct InputAttachmentsDetail {
     /// counted (CLI 2.1.300+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub touch_compare: Option<TouchCompareCounts>,
+
+    // The members below add up what the main thread's attachment passes
+    // measured of themselves (CLI 2.1.316+). Only a pass that began and
+    // ended within one run of the phase, before the turn's first model
+    // request, counts: not a subagent's or a background agent's, and not a
+    // pass with attachments switched off. The five `_ms` splits run in order,
+    // each rounded down, so their sum is at most the phase's time.
+    /// Work before any producer starts, such as working out which tools the
+    /// tool announcements list (CLI 2.1.316+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub setup_ms: Option<u64>,
+    /// Starting the producers that read the prompt's own text (at-mentioned
+    /// files, MCP resources, mentions of agents, skills and peers) and
+    /// waiting for them (CLI 2.1.316+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt_producers_ms: Option<u64>,
+    /// Starting every other producer, each one's work up to its first wait
+    /// included, so the thread ran code throughout (CLI 2.1.316+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ambient_start_ms: Option<u64>,
+    /// Waiting for the producers [`Self::ambient_start_ms`] started
+    /// (CLI 2.1.316+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ambient_wait_ms: Option<u64>,
+    /// The rest: merging the producers' results, logging the attachments
+    /// with their token estimates and making each into a message
+    /// (CLI 2.1.316+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub render_ms: Option<u64>,
+    /// How many producers the passes started. Present, 0 included, whenever
+    /// a pass was kept (CLI 2.1.316+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub producers: Option<u64>,
+    /// How many times the passes asked the API to count a file's tokens
+    /// (only for text estimated above a quarter of the Read tool's token
+    /// limit). Present, 0 included, whenever a pass was kept
+    /// (CLI 2.1.316+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub token_counts: Option<u64>,
+    /// Time at least one token count was under way, overlaps counted once.
+    /// Absent when [`Self::token_counts`] is 0 (CLI 2.1.316+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub token_count_ms: Option<u64>,
+    /// Time at least one of the `changed_files` producer's Read calls was
+    /// under way, their token counts included. Absent when it made none
+    /// (CLI 2.1.316+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub changed_files_read_ms: Option<u64>,
+    /// The files counted under [`TouchCompareCounts::differs`], sorted by
+    /// size on disk, counting only the passes kept here (so the bands can
+    /// add up to less than `differs`). Absent when no compare in a kept pass
+    /// ended in `differs` (CLI 2.1.316+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub differs_files: Option<DiffersFilesCounts>,
+}
+
+/// [`InputAttachmentsDetail::differs_files`] — the `changed_files`
+/// compares that ended in `differs`, banded by file size on disk (1 KB is
+/// 1,024 bytes; a size on a boundary is in the band above it, except exactly
+/// 256 KB). A zero count is left out (CLI 2.1.316+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct DiffersFilesCounts {
+    /// Under 25 KB.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size_under_25_kb: Option<u64>,
+    /// 25 KB up to 50 KB.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size_25_to_50_kb: Option<u64>,
+    /// 50 KB up to and including 256 KB.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size_50_to_256_kb: Option<u64>,
+    /// Over 256 KB (only where the Read size limit has been raised).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size_over_256_kb: Option<u64>,
+    /// Those files for which the conversation kept only a hash of the
+    /// earlier text, so the model, if told, gets the file's name without a
+    /// diff.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hash_only: Option<u64>,
 }
 
 /// [`InputAttachmentsDetail::touch_compare`] — how the `changed_files`

@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.316] - 2026-10-30
+
+Re-baseline against Claude CLI **2.1.316** (2.1.315 was published but is
+skipped). New optional fields on `result` and `system/init`, plus a new
+nested struct. No new wire labels and no removals. `--help` and the
+embedded model-id set are unchanged.
+
+### Added
+
+- `ResultMessage` remote text-upload pacing telemetry: `text_post_count`,
+  `text_post_gap_over_500ms_count` and `text_post_flush_timer_max_late_ms`.
+- `InputAttachmentsDetail` per-pass timings for the main thread's attachment
+  passes: `setup_ms`, `prompt_producers_ms`, `ambient_start_ms`,
+  `ambient_wait_ms`, `render_ms`, `producers`, `token_counts`,
+  `token_count_ms`, `changed_files_read_ms`, and `differs_files`. The last
+  one is the new `DiffersFilesCounts` struct, which bands `touch_compare`'s
+  `differs` files by size (`size_under_25_kb`, `size_25_to_50_kb`,
+  `size_50_to_256_kb`, `size_over_256_kb`) and adds `hash_only`.
+- `SystemInit::ultrathink_available`: whether typing `ultrathink` runs the
+  turn at `xhigh` effort on the frame's model.
+
+### Changed
+
+- `ResultMessage::time_to_request_phases_ms` docs list four new phase
+  labels: `conversation_append`, `init_frame_send`, `loop_entry` and
+  `request_announcements`. The map stays an open `BTreeMap`.
+- `ApiErrorParams::rate_limit_info` is now also carried for
+  `model_requires_usage_credits`, and the `stored_login_refused` doc
+  covers organization settings as well. Both are doc-only changes.
+- Not modeled: the `get_settings` control response's
+  `applied.ultrathinkAvailable`, because `get_settings` isn't modeled.
+- Schema snapshot refreshed to 2.1.316.
+
 ## [2.1.314] - 2026-10-29
 
 Re-baseline against Claude CLI **2.1.314** (2.1.313 was not published as a
