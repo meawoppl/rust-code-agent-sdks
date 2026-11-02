@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.166.2] - 2026-11-02
+
+Model the `openai/codex@main` (`3026a8e5`) app-server schema drift. The
+tested pin stays at Codex CLI **0.166.0**.
+
+### Added
+
+- `modelProvider/list` client request (openai/codex#58845):
+  `methods::MODELPROVIDER_LIST`, `ModelProviderListParams` (empty), and
+  `ModelProviderListResponse { data, default_provider_id,
+  can_change_default }`. Each `ModelProviderSummary` carries `id`, `name`,
+  `can_edit`, an optional `base_url`, and `settings: ProviderSettings`
+  (`OpenAi` | `CustomGateway { auth: GatewayAuth }` |
+  `Bedrock { profile, region }` |
+  `Gcp { project_id, location, credential_file }`). `GatewayAuth` is
+  `None` | `EnvironmentVariable { env_key }` |
+  `ExternallyConfigured { env_key }`.
+
 ## [0.166.1] - 2026-10-30
 
 Model the `openai/codex@main` (`2546265e3`) app-server schema drift. The

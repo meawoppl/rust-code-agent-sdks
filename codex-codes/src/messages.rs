@@ -1126,6 +1126,59 @@ mod tests {
     }
 
     #[test]
+    fn test_model_provider_list_response_round_trips() {
+        use crate::protocol_generated::types::{
+            GatewayAuth, ModelProviderListResponse, ProviderSettings,
+        };
+
+        let wire = serde_json::json!({
+            "data": [
+                {"id": "openai", "name": "OpenAI", "canEdit": false,
+                 "baseUrl": null, "settings": {"type": "openai"}},
+                {"id": "gw", "name": "Gateway", "canEdit": true,
+                 "baseUrl": "https://gw.example",
+                 "settings": {"type": "customGateway",
+                              "auth": {"mode": "environmentVariable", "envKey": "GW_KEY"}}},
+                {"id": "ext", "name": "External", "canEdit": true, "baseUrl": null,
+                 "settings": {"type": "customGateway",
+                              "auth": {"mode": "externallyConfigured", "envKey": null}}},
+                {"id": "br", "name": "Bedrock", "canEdit": true, "baseUrl": null,
+                 "settings": {"type": "bedrock", "profile": "dev", "region": null}},
+                {"id": "vx", "name": "Vertex", "canEdit": false, "baseUrl": null,
+                 "settings": {"type": "gcp", "projectId": "p", "location": null,
+                              "credentialFile": "/creds.json"}},
+            ],
+            "defaultProviderId": "openai",
+            "canChangeDefault": true,
+        });
+        let resp: ModelProviderListResponse = serde_json::from_value(wire.clone()).unwrap();
+        assert_eq!(resp.default_provider_id, "openai");
+        assert!(resp.can_change_default);
+        assert_eq!(resp.data[0].settings, ProviderSettings::OpenAi);
+        assert_eq!(
+            resp.data[1].settings,
+            ProviderSettings::CustomGateway {
+                auth: GatewayAuth::EnvironmentVariable {
+                    env_key: "GW_KEY".to_string()
+                }
+            }
+        );
+        assert_eq!(
+            resp.data[4].settings,
+            ProviderSettings::Gcp {
+                project_id: Some("p".to_string()),
+                location: None,
+                credential_file: Some("/creds.json".to_string()),
+            }
+        );
+        assert_eq!(serde_json::to_value(&resp).unwrap(), wire);
+
+        let none: GatewayAuth =
+            serde_json::from_value(serde_json::json!({"mode": "none"})).unwrap();
+        assert_eq!(none, GatewayAuth::None);
+    }
+
+    #[test]
     fn test_human_command_approval_request_decodes() {
         use crate::protocol_generated::types::CommandExecutionApprovalKind;
 

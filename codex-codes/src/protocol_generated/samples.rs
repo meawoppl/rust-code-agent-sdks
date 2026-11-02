@@ -378,6 +378,7 @@ pub fn client_request_samples() -> Vec<(&'static str, Value)> {
         ("mcpServerStatus/list", json!({})),
         ("model/list", json!({})),
         ("modelProvider/capabilities/read", json!({})),
+        ("modelProvider/list", json!({})),
         ("permissionProfile/list", json!({})),
         ("plugin/install", json!({"pluginName": "x"})),
         ("plugin/installed", json!({})),
