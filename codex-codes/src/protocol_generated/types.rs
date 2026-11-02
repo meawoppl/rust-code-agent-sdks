@@ -8691,6 +8691,14 @@ pub enum ThreadListCwdFilter {
 pub struct ThreadListParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub archived: Option<bool>,
+    /// Show local history visible to the current ChatGPT account. Defaults to
+    /// false.
+    #[serde(
+        rename = "currentAccountOnly",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub current_account_only: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cursor: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
