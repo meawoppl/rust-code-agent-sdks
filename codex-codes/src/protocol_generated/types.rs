@@ -5067,6 +5067,136 @@ pub enum GatewayAuth {
     },
 }
 
+/// Params for `modelProvider/config/write`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelProviderConfigWriteParams {
+    pub settings: ProviderSettingsPatch,
+}
+
+/// Response to `modelProvider/config/write`: the provider as written.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelProviderConfigWriteResponse {
+    pub provider: ModelProviderSummary,
+}
+
+/// Omitted patch fields preserve their values. Explicit null clears a nullable field.
+///
+/// Nullable patch fields are `Option<Option<String>>`: `None` omits the field
+/// (preserve), `Some(None)` sends `null` (clear), `Some(Some(v))` sets it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ProviderSettingsPatch {
+    #[serde(rename = "customGateway")]
+    CustomGateway {
+        /// Omit or pass null to allocate a new custom provider ID.
+        #[serde(
+            rename = "providerId",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        provider_id: Option<String>,
+        /// Omit to preserve the name. Unlike the other fields it cannot be cleared.
+        #[serde(
+            default,
+            deserialize_with = "deserialize_patch_name",
+            skip_serializing_if = "Option::is_none"
+        )]
+        name: Option<String>,
+        #[serde(
+            rename = "baseUrl",
+            default,
+            deserialize_with = "deserialize_patch_field",
+            skip_serializing_if = "Option::is_none"
+        )]
+        base_url: Option<Option<String>>,
+        #[serde(
+            rename = "envKey",
+            default,
+            deserialize_with = "deserialize_patch_field",
+            skip_serializing_if = "Option::is_none"
+        )]
+        env_key: Option<Option<String>>,
+    },
+    /// AWS configuration fields for built-in Bedrock providers.
+    #[serde(rename = "bedrock")]
+    Bedrock {
+        #[serde(rename = "providerId")]
+        provider_id: BedrockProviderId,
+        #[serde(
+            default,
+            deserialize_with = "deserialize_patch_field",
+            skip_serializing_if = "Option::is_none"
+        )]
+        profile: Option<Option<String>>,
+        #[serde(
+            default,
+            deserialize_with = "deserialize_patch_field",
+            skip_serializing_if = "Option::is_none"
+        )]
+        region: Option<Option<String>>,
+    },
+    /// GCP configuration fields. Credential-file paths refer to the app-server host.
+    #[serde(rename = "gcp")]
+    Gcp {
+        #[serde(rename = "providerId")]
+        provider_id: GcpProviderId,
+        #[serde(
+            rename = "projectId",
+            default,
+            deserialize_with = "deserialize_patch_field",
+            skip_serializing_if = "Option::is_none"
+        )]
+        project_id: Option<Option<String>>,
+        #[serde(
+            default,
+            deserialize_with = "deserialize_patch_field",
+            skip_serializing_if = "Option::is_none"
+        )]
+        location: Option<Option<String>>,
+        #[serde(
+            rename = "credentialFile",
+            default,
+            deserialize_with = "deserialize_patch_field",
+            skip_serializing_if = "Option::is_none"
+        )]
+        credential_file: Option<Option<String>>,
+    },
+}
+
+/// A present field (even `null`) becomes `Some`; a missing one falls back to `None` via `default`.
+fn deserialize_patch_field<'de, D>(deserializer: D) -> Result<Option<Option<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::<String>::deserialize(deserializer).map(Some)
+}
+
+/// A missing name preserves it, but an explicitly supplied name must be a string.
+fn deserialize_patch_name<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    String::deserialize(deserializer).map(Some)
+}
+
+/// Built-in Bedrock provider IDs accepted by [`ProviderSettingsPatch::Bedrock`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum BedrockProviderId {
+    #[serde(rename = "amazon-bedrock")]
+    AmazonBedrock,
+    #[serde(rename = "amazon-bedrock-runtime")]
+    AmazonBedrockRuntime,
+}
+
+/// Built-in GCP provider IDs accepted by [`ProviderSettingsPatch::Gcp`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum GcpProviderId {
+    #[serde(rename = "gcp")]
+    Gcp,
+}
+
 /// Structured JSON-RPC error data. Unknown errors must retain the client's normal fallback.
 ///
 /// Carried in [`crate::JsonRpcErrorData::data`] when a thread's stored model

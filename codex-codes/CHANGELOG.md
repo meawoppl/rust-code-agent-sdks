@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.166.3] - 2026-11-02
+
+Model the `openai/codex@main` (`18c6dbe5`) app-server schema drift. The
+tested pin stays at Codex CLI **0.166.0**.
+
+### Added
+
+- `modelProvider/config/write` client request:
+  `methods::MODELPROVIDER_CONFIG_WRITE`,
+  `ModelProviderConfigWriteParams { settings: ProviderSettingsPatch }`, and
+  `ModelProviderConfigWriteResponse { provider: ModelProviderSummary }`.
+  `ProviderSettingsPatch` is `CustomGateway { provider_id, name, base_url,
+  env_key }` | `Bedrock { provider_id: BedrockProviderId, profile, region }` |
+  `Gcp { provider_id: GcpProviderId, project_id, location, credential_file }`.
+  Nullable patch fields are `Option<Option<String>>`: `None` omits the field
+  (preserve), `Some(None)` sends `null` (clear). `name` can be omitted but not
+  nulled.
+
 ## [0.166.2] - 2026-11-02
 
 Model the `openai/codex@main` (`3026a8e5`) app-server schema drift. The

@@ -1179,6 +1179,62 @@ mod tests {
     }
 
     #[test]
+    fn test_model_provider_config_write_patch_round_trips() {
+        use crate::protocol_generated::types::{
+            BedrockProviderId, GcpProviderId, ModelProviderConfigWriteParams, ProviderSettingsPatch,
+        };
+
+        // Omitted preserves, explicit null clears, a value sets.
+        let wire = serde_json::json!({
+            "settings": {"type": "bedrock", "providerId": "amazon-bedrock-runtime",
+                         "region": null}
+        });
+        let params: ModelProviderConfigWriteParams = serde_json::from_value(wire.clone()).unwrap();
+        assert_eq!(
+            params.settings,
+            ProviderSettingsPatch::Bedrock {
+                provider_id: BedrockProviderId::AmazonBedrockRuntime,
+                profile: None,
+                region: Some(None),
+            }
+        );
+        assert_eq!(serde_json::to_value(&params).unwrap(), wire);
+
+        let gcp = ProviderSettingsPatch::Gcp {
+            provider_id: GcpProviderId::Gcp,
+            project_id: Some(Some("p".to_string())),
+            location: None,
+            credential_file: Some(None),
+        };
+        assert_eq!(
+            serde_json::to_value(&gcp).unwrap(),
+            serde_json::json!({"type": "gcp", "providerId": "gcp",
+                               "projectId": "p", "credentialFile": null})
+        );
+
+        let gateway: ProviderSettingsPatch = serde_json::from_value(serde_json::json!({
+            "type": "customGateway", "name": "GW", "baseUrl": "https://gw.example",
+            "envKey": null
+        }))
+        .unwrap();
+        assert_eq!(
+            gateway,
+            ProviderSettingsPatch::CustomGateway {
+                provider_id: None,
+                name: Some("GW".to_string()),
+                base_url: Some(Some("https://gw.example".to_string())),
+                env_key: Some(None),
+            }
+        );
+
+        // The name can be omitted but not cleared.
+        assert!(serde_json::from_value::<ProviderSettingsPatch>(
+            serde_json::json!({"type": "customGateway", "name": null})
+        )
+        .is_err());
+    }
+
+    #[test]
     fn test_human_command_approval_request_decodes() {
         use crate::protocol_generated::types::CommandExecutionApprovalKind;
 

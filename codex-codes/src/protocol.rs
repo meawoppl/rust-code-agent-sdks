@@ -89,6 +89,7 @@ pub mod methods {
     pub const ACCOUNT_GATEWAYOAUTH_LOGIN: &str = "account/gatewayOAuth/login";
     pub const ACCOUNT_GATEWAYOAUTH_CANCEL: &str = "account/gatewayOAuth/cancel";
     pub const MODELPROVIDER_LIST: &str = "modelProvider/list";
+    pub const MODELPROVIDER_CONFIG_WRITE: &str = "modelProvider/config/write";
     pub const MODELPROVIDER_CAPABILITIES_READ: &str = "modelProvider/capabilities/read";
     pub const EXPERIMENTALFEATURE_LIST: &str = "experimentalFeature/list";
     pub const EXPERIMENTALFEATURE_ENABLEMENT_SET: &str = "experimentalFeature/enablement/set";
