@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.166.4] - 2026-11-02
+
+Model the `openai/codex@main` (`9da07658`) app-server schema drift. The
+tested pin stays at Codex CLI **0.166.0**.
+
+### Added
+
+- `ThreadListParams.current_account_only: Option<bool>` (`currentAccountOnly`):
+  restrict `thread/list` to local history visible to the current ChatGPT
+  account. Server default is `false`. Upstream also added the same field to
+  the experimental `ThreadSearchParams`, which is not in the published schema
+  and is not modelled.
+
 ## [0.166.3] - 2026-11-02
 
 Model the `openai/codex@main` (`18c6dbe5`) app-server schema drift. The

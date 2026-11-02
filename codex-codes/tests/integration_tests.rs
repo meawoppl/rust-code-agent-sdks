@@ -189,6 +189,15 @@ fn thread_originator_fields_round_trip() {
         serde_json::to_value(params).unwrap(),
         serde_json::json!({"excludedThreadIds": ["thr_1"]})
     );
+
+    let params = ThreadListParams {
+        current_account_only: Some(true),
+        ..ThreadListParams::default()
+    };
+    assert_eq!(
+        serde_json::to_value(params).unwrap(),
+        serde_json::json!({"currentAccountOnly": true})
+    );
 }
 
 /// McpServerStatus.toolsError decodes the discovery failure message and is omitted when a catalog was returned.
