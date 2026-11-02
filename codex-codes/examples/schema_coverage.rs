@@ -553,6 +553,7 @@ mod samples {
             methods::ACCOUNT_GATEWAYOAUTH_READ,
             methods::ACCOUNT_GATEWAYOAUTH_LOGIN,
             methods::ACCOUNT_GATEWAYOAUTH_CANCEL,
+            methods::MODELPROVIDER_LIST,
             methods::MODELPROVIDER_CAPABILITIES_READ,
             methods::EXPERIMENTALFEATURE_LIST,
             methods::EXPERIMENTALFEATURE_ENABLEMENT_SET,

@@ -4987,6 +4987,86 @@ pub struct ModelProviderCapabilitiesReadResponse {
     pub web_search: bool,
 }
 
+/// Params for `modelProvider/list`. Takes no fields.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelProviderListParams {
+    #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extra: serde_json::Map<String, Value>,
+}
+
+/// Response to `modelProvider/list`: every configured model provider.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelProviderListResponse {
+    pub data: Vec<ModelProviderSummary>,
+    #[serde(rename = "defaultProviderId")]
+    pub default_provider_id: String,
+    #[serde(rename = "canChangeDefault")]
+    pub can_change_default: bool,
+}
+
+/// One entry in [`ModelProviderListResponse::data`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelProviderSummary {
+    pub id: String,
+    pub name: String,
+    /// Whether a supported configuration field can be edited in the active user layer.
+    #[serde(rename = "canEdit")]
+    pub can_edit: bool,
+    /// Null when the endpoint is absent or cannot be safely displayed.
+    #[serde(rename = "baseUrl", default)]
+    pub base_url: Option<String>,
+    pub settings: ProviderSettings,
+}
+
+/// Provider-specific configuration fields visible to clients.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ProviderSettings {
+    #[serde(rename = "openai")]
+    OpenAi,
+    #[serde(rename = "customGateway")]
+    CustomGateway { auth: GatewayAuth },
+    #[serde(rename = "bedrock")]
+    Bedrock {
+        #[serde(default)]
+        profile: Option<String>,
+        #[serde(default)]
+        region: Option<String>,
+    },
+    #[serde(rename = "gcp")]
+    Gcp {
+        #[serde(rename = "projectId", default)]
+        project_id: Option<String>,
+        #[serde(default)]
+        location: Option<String>,
+        /// Path on the app-server host, without credential-file contents.
+        #[serde(rename = "credentialFile", default)]
+        credential_file: Option<String>,
+    },
+}
+
+/// How a custom gateway provider authenticates.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "mode", rename_all = "camelCase")]
+pub enum GatewayAuth {
+    #[serde(rename = "none")]
+    None,
+    #[serde(rename = "environmentVariable")]
+    EnvironmentVariable {
+        #[serde(rename = "envKey")]
+        env_key: String,
+    },
+    /// Authentication is configured outside the gateway form. Preserve it on edits.
+    #[serde(rename = "externallyConfigured")]
+    ExternallyConfigured {
+        #[serde(rename = "envKey", default)]
+        env_key: Option<String>,
+    },
+}
+
 /// Structured JSON-RPC error data. Unknown errors must retain the client's normal fallback.
 ///
 /// Carried in [`crate::JsonRpcErrorData::data`] when a thread's stored model
