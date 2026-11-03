@@ -45,8 +45,19 @@ pub struct UsageCost {
     pub cache_read: f64,
     #[serde(rename = "cacheWrite", default)]
     pub cache_write: f64,
+    /// Best available total: the provider-billed cost when the provider
+    /// reports one, otherwise the catalog estimate.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub total: Option<f64>,
+    /// `true` when [`total`](Self::total) is the cost billed by the
+    /// provider rather than a catalog estimate (pi ≥ 1.5.0). Absent means
+    /// `false`. The per-component fields are always catalog estimates.
+    #[serde(
+        rename = "totalFromProvider",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub total_from_provider: Option<bool>,
 }
 
 /// A model catalog entry (`get_state`/`set_model`/`get_available_models`).
@@ -440,6 +451,28 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn usage_cost_total_from_provider_round_trips() {
+        let raw = serde_json::json!({
+            "input": 0.0003, "output": 0.00075, "cacheRead": 0.0, "cacheWrite": 0.0,
+            "total": 0.0011, "totalFromProvider": true
+        });
+        let cost: UsageCost = serde_json::from_value(raw.clone()).unwrap();
+        assert_eq!(cost.total_from_provider, Some(true));
+        assert_eq!(serde_json::to_value(&cost).unwrap(), raw);
+
+        let estimate: UsageCost = serde_json::from_value(serde_json::json!({
+            "input": 0.0, "output": 0.0, "cacheRead": 0.0, "cacheWrite": 0.0, "total": 0.0
+        }))
+        .unwrap();
+        assert_eq!(estimate.total_from_provider, None);
+        assert!(!serde_json::to_value(&estimate)
+            .unwrap()
+            .as_object()
+            .unwrap()
+            .contains_key("totalFromProvider"));
     }
 
     #[test]

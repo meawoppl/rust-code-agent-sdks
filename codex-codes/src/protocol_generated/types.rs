@@ -1372,6 +1372,10 @@ pub struct Config {
     pub approval_policy: Option<AskForApproval>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub approvals_reviewer: Option<ApprovalsReviewer>,
+    /// Effective `tools.client_search_provider` hint. Model-selected
+    /// providers take precedence.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_search_provider: Option<WebSearchProvider>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compact_prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3728,6 +3732,15 @@ pub struct InstalledApp {
 pub struct ItemCompletedNotification {
     #[serde(rename = "completedAtMs", default)]
     pub completed_at_ms: i64,
+    /// Native content tokens for the completed assistant message, including
+    /// a sampled footer. `None` when unavailable. Completion telemetry, not
+    /// part of the stored thread item.
+    #[serde(
+        rename = "contentTokenCount",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub content_token_count: Option<i64>,
     #[serde()]
     pub item: ThreadItem,
     #[serde(rename = "threadId", default)]
@@ -10494,6 +10507,16 @@ pub enum WebSearchMode {
     Indexed,
     #[serde(rename = "live")]
     Live,
+}
+
+/// Web search provider preference selected by the resolved model catalog
+/// entry.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum WebSearchProvider {
+    #[serde(rename = "standalone")]
+    Standalone,
+    #[serde(rename = "search_mcp")]
+    SearchMcp,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
