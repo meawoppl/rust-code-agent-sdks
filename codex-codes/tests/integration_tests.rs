@@ -200,6 +200,44 @@ fn thread_originator_fields_round_trip() {
     );
 }
 
+/// `item/completed` carries an optional `contentTokenCount`, and `Config`
+/// an optional `client_search_provider` (openai/codex@main 16ddd538b, b26f68267).
+#[test]
+fn item_completed_token_count_and_config_search_provider_round_trip() {
+    use codex_codes::protocol::{Config, ItemCompletedNotification, WebSearchProvider};
+
+    let raw = serde_json::json!({
+        "completedAtMs": 1, "contentTokenCount": 42,
+        "item": {"content": [], "id": "x", "type": "userMessage"},
+        "threadId": "t", "turnId": "u"
+    });
+    let n: ItemCompletedNotification = serde_json::from_value(raw.clone()).unwrap();
+    assert_eq!(n.content_token_count, Some(42));
+    assert_eq!(serde_json::to_value(&n).unwrap()["contentTokenCount"], 42);
+
+    let mut bare = raw;
+    bare["contentTokenCount"] = serde_json::Value::Null;
+    let n: ItemCompletedNotification = serde_json::from_value(bare).unwrap();
+    assert_eq!(n.content_token_count, None);
+    assert!(serde_json::to_value(&n)
+        .unwrap()
+        .get("contentTokenCount")
+        .is_none());
+
+    let config: Config =
+        serde_json::from_value(serde_json::json!({"client_search_provider": "search_mcp"}))
+            .unwrap();
+    assert_eq!(
+        config.client_search_provider,
+        Some(WebSearchProvider::SearchMcp)
+    );
+    assert!(config.additional.is_empty());
+    assert_eq!(
+        serde_json::to_value(&config).unwrap(),
+        serde_json::json!({"client_search_provider": "search_mcp"})
+    );
+}
+
 /// McpServerStatus.toolsError decodes the discovery failure message and is omitted when a catalog was returned.
 #[test]
 fn mcp_server_status_decodes_tools_error() {

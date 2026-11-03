@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.166.5] - 2026-11-02
+
+Model the `openai/codex@main` (`16ddd538b`) app-server schema drift. The
+tested pin stays at Codex CLI **0.166.0**.
+
+### Added
+
+- `ItemCompletedNotification.content_token_count: Option<i64>`
+  (`contentTokenCount`, openai/codex#59041): native content tokens for the
+  completed assistant message, including a sampled footer. `None` when
+  unavailable. This is completion telemetry and is not stored on the thread
+  item.
+- `Config.client_search_provider: Option<WebSearchProvider>` and the new
+  `WebSearchProvider` enum (`standalone` | `search_mcp`, openai/codex#59033):
+  the effective `tools.client_search_provider` hint. Model-selected
+  providers take precedence. Previously this key landed in
+  `Config.additional`.
+
 ## [0.166.4] - 2026-11-02
 
 Model the `openai/codex@main` (`9da07658`) app-server schema drift. The
