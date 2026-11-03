@@ -52,6 +52,7 @@ pub enum SystemSubtype {
     PeerMessageHold,
     PerTurnEffortChanged,
     SessionTitleChanged,
+    SessionWritesLost,
     InstructionSizeWarning,
     FileAttachmentsMissing,
     PermissionCheckStatus,
@@ -109,6 +110,7 @@ impl SystemSubtype {
             Self::PeerMessageHold => "peer_message_hold",
             Self::PerTurnEffortChanged => "per_turn_effort_changed",
             Self::SessionTitleChanged => "session_title_changed",
+            Self::SessionWritesLost => "session_writes_lost",
             Self::InstructionSizeWarning => "instruction_size_warning",
             Self::FileAttachmentsMissing => "file_attachments_missing",
             Self::PermissionCheckStatus => "permission_check_status",
@@ -173,6 +175,7 @@ impl From<&str> for SystemSubtype {
             "peer_message_hold" => Self::PeerMessageHold,
             "per_turn_effort_changed" => Self::PerTurnEffortChanged,
             "session_title_changed" => Self::SessionTitleChanged,
+            "session_writes_lost" => Self::SessionWritesLost,
             "instruction_size_warning" => Self::InstructionSizeWarning,
             "file_attachments_missing" => Self::FileAttachmentsMissing,
             "permission_check_status" => Self::PermissionCheckStatus,
@@ -687,6 +690,14 @@ pub struct ToolResultMeta {
     /// hook's rewrite of a denied result, a queued call a stop cancelled).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub permission_decision: Option<ToolPermissionDecision>,
+    /// The name of the Claude Code built-in tool whose own completed run, in
+    /// the process that wrote this message, made the result. Stamped for
+    /// the few built-ins a host acts on; absent once a hook rewrote the
+    /// result, on a message read from a session file or taken from another
+    /// frame (a resumed session), on a result a client wrote (a handed-over
+    /// turn), and on a subagent's messages (CLI 2.1.317+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub built_in_tool: Option<String>,
 }
 
 /// [`ToolResultMeta::permission_decision`] — how a tool call's permission
@@ -1307,9 +1318,11 @@ pub struct UserMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_not_typed: Option<bool>,
     /// The host's own label for what started this turn (e.g. the desktop
-    /// app's `scheduled-task`, `sleep-auto-resume`); `user` or absent means a
-    /// person sent it. Usage attribution only; it does not change how the
-    /// turn runs (CLI 2.1.278+).
+    /// app's `scheduled-task`, `sleep-auto-resume`); `user`, an empty string
+    /// or absent means a person sent it. For usage attribution; on CLI
+    /// 2.1.317+ any other label also keeps a message with no origin, sent
+    /// while a turn is running, from going out as the user's words
+    /// (CLI 2.1.278+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub initiator: Option<String>,
     /// Content the user pasted into the prompt rather than typed: each entry
@@ -1344,6 +1357,43 @@ pub struct UserMessage {
     /// (CLI 2.1.307+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub requeue_if_interrupted_within_ms: Option<u64>,
+    /// Input only: the sender's statement that the person typed `ultrathink`
+    /// in this prompt and was shown the word colored before sending, and
+    /// that nothing in the prompt arrived whole (no paste, no share, no
+    /// prompt the sender suggested). Send it only as `Some(true)`, and only
+    /// while the session's newest `system/init` carried
+    /// [`ultrathink_typed_raises`](crate::io::InitMessage::ultrathink_typed_raises)
+    /// `true`. The turn then runs at `xhigh` effort if the CLI's own checks
+    /// agree; it is the sender's claim, not proof (CLI 2.1.317+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ultrathink_typed: Option<bool>,
+    /// Input only: the MCP App views' states a remote client sent with this
+    /// prompt, replacing the set the worker holds (`[]` clears it). Entries
+    /// are opaque (CLI 2.1.317+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_states: Option<Vec<Value>>,
+    /// Output only, and to be read only on a message the CLI wrote (on a
+    /// session event, only where its `source` is `worker`). On a message a
+    /// plugin sent, what a host can show under the plugin's name in place
+    /// of `message`. Absent on any other message, and on a prompt sent as
+    /// the person's own words; there, show `message` (CLI 2.1.317+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugin_prompt: Option<PluginPrompt>,
+}
+
+/// [`UserMessage::plugin_prompt`]: what a host can show for a message a
+/// plugin sent (CLI 2.1.317+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PluginPrompt {
+    /// The plugin's name as the wrapper the model reads prints it, on one
+    /// line and scrubbed; `origin.name` holds it raw.
+    pub name: String,
+    /// The prompt as hooks left it (prompts merged into one turn joined by
+    /// newlines) when `message` is exactly the wrapper the model reads
+    /// around that prompt; or the command the plugin ran as a person would
+    /// type it, such as `/review 12`, when `message` is only that command's
+    /// tags. Can be more than one line; show all of it.
+    pub text: String,
 }
 
 impl UserMessage {
@@ -1785,6 +1835,19 @@ impl SystemMessage {
         serde_json::from_value(self.data.clone()).ok()
     }
 
+    /// Check if this is a session_writes_lost message.
+    pub fn is_session_writes_lost(&self) -> bool {
+        self.subtype == SystemSubtype::SessionWritesLost
+    }
+
+    /// Try to parse as a session_writes_lost message.
+    pub fn as_session_writes_lost(&self) -> Option<SessionWritesLostMessage> {
+        if self.subtype != SystemSubtype::SessionWritesLost {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
     /// Check if this is an instruction_size_warning message.
     pub fn is_instruction_size_warning(&self) -> bool {
         self.subtype == SystemSubtype::InstructionSizeWarning
@@ -2018,6 +2081,9 @@ impl SystemMessage {
             SystemSubtype::SessionTitleChanged => {
                 parse!(SessionTitleChanged, SessionTitleChangedMessage)
             }
+            SystemSubtype::SessionWritesLost => {
+                parse!(SessionWritesLost, SessionWritesLostMessage)
+            }
             SystemSubtype::InstructionSizeWarning => {
                 parse!(InstructionSizeWarning, InstructionSizeWarningMessage)
             }
@@ -2131,6 +2197,9 @@ impl SystemMessage {
             SystemSubtype::SessionTitleChanged => {
                 reserialize(parse_system::<SessionTitleChangedMessage>(self))
             }
+            SystemSubtype::SessionWritesLost => {
+                reserialize(parse_system::<SessionWritesLostMessage>(self))
+            }
             SystemSubtype::InstructionSizeWarning => {
                 reserialize(parse_system::<InstructionSizeWarningMessage>(self))
             }
@@ -2206,6 +2275,7 @@ pub enum KnownSystemEvent {
     PeerMessageHold(PeerMessageHoldMessage),
     PerTurnEffortChanged(PerTurnEffortChangedMessage),
     SessionTitleChanged(SessionTitleChangedMessage),
+    SessionWritesLost(SessionWritesLostMessage),
     InstructionSizeWarning(InstructionSizeWarningMessage),
     FileAttachmentsMissing(FileAttachmentsMissingMessage),
     PermissionCheckStatus(PermissionCheckStatusMessage),
@@ -2293,6 +2363,15 @@ pub struct ModelRefusalFallbackMessage {
     pub saw_cyber_refusal: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_refusal_explanation: Option<String>,
+    /// Cyber Verification Program status of the account that made the
+    /// request, as the API gave it for `original_model` (`stop_details.
+    /// cyber_verification`). Only on session-scope notices whose
+    /// `api_refusal_category` is `cyber`; it may not belong to `request_id`
+    /// when the switch went through several hops. Absent, or `{type:
+    /// "inactive"}` with no reason, means unknown, not "no access". Map
+    /// known values to your own text; never display them (CLI 2.1.317+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_refusal_cyber_verification: Option<CyberVerificationStatus>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub retracted_message_uuids: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2302,6 +2381,19 @@ pub struct ModelRefusalFallbackMessage {
     pub uuid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_id: Option<String>,
+}
+
+/// [`ModelRefusalFallbackMessage::api_refusal_cyber_verification`]: the
+/// account's Cyber Verification Program status as the API reported it
+/// (CLI 2.1.317+). All three values are opaque API strings.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CyberVerificationStatus {
+    #[serde(rename = "type")]
+    pub verification_type: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tier: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
 
 /// Scope of a refusal-fallback model swap, carried by
@@ -2705,10 +2797,36 @@ pub struct InformationalMessage {
     /// the next result has `num_turns` 0 (CLI 2.1.300+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prompt_submit_outcome: Option<PromptSubmitOutcome>,
+    /// Present on the warning that says a requested model was refused and
+    /// the session uses another, so a host can word the notice itself
+    /// instead of reading `content` (CLI 2.1.317+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_restriction: Option<ModelRestriction>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_id: Option<String>,
+}
+
+/// [`InformationalMessage::model_restriction`]: a requested model was
+/// refused and the session uses another. Both names are cleaned as they
+/// are in `content` (model-id characters only, cut to 128 with a trailing
+/// `…`, or `(unrecognized model name)` when none are left) but are still
+/// untrusted text: render them as plain text (CLI 2.1.317+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ModelRestriction {
+    /// The refused model as it was asked for, or the id that a refused
+    /// Default pick stood for.
+    pub requested_model: String,
+    /// The model in use when the line was built; a later switch can
+    /// outdate it.
+    pub effective_model: String,
+    /// `start` for the model the process chose when it started (from
+    /// `--model`, the environment, settings or `--agent`'s frontmatter);
+    /// `switch` for anything later. The CLI reads an unknown value as
+    /// absent, so treat one that way too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub at: Option<String>,
 }
 
 /// How a submitted prompt ended before a model call, carried as
@@ -3010,6 +3128,42 @@ pub struct InitMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ultrathink_available: Option<bool>,
 
+    /// `true` when a user message carrying
+    /// [`UserMessage::ultrathink_typed`] that passes that field's checks runs
+    /// its turn at `xhigh` effort on this frame's `model` (and, when the
+    /// session is already at `xhigh` or `max`, leaves the turn as it is). A
+    /// client colors the word and sends the statement only while this is
+    /// `true`. After `system/per_turn_effort_changed`, treat it as `false`
+    /// until the next init. Absent means unknown: color nothing and send no
+    /// statement. Sent by the stream-json (Agent SDK) host and on Remote
+    /// Control bridge init frames (CLI 2.1.317+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ultrathink_typed_raises: Option<bool>,
+
+    /// Only on a Cowork cloud worker's init: the thinking this turn runs
+    /// with. Absent when a request changed the session's thinking after the
+    /// turn's start, or the session has no thinking setting of its own
+    /// (CLI 2.1.317+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_thinking: Option<ClientThinking>,
+
+    /// Only on a Cowork cloud worker's init: `Some(true)` when an
+    /// `apply_flag_settings` of exactly `{switchModelsOnFlag: true}` would add
+    /// nothing now (the session holds the value, and no fast mode resync or
+    /// auto mode check is due). Absent: send the request (CLI 2.1.317+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flag_restate_noop: Option<bool>,
+
+    /// Absolute path of the one folder of synced skills whose files
+    /// `read_file` serves in this session; a client may admit paths below it
+    /// as it admits paths below [`scratchpad_path`](Self::scratchpad_path).
+    /// Read only; a symbolic link, a dot-named part or a file at its top is
+    /// refused. Sent by a self-hosted runner's session alone; omitted where
+    /// the session serves no such folder, and wherever `original_cwd` is
+    /// withheld (CLI 2.1.317+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub synced_skills_path: Option<String>,
+
     /// Whether the session's transcript is in focus view. Toggled by
     /// `/focus`, including over Remote Control. Present on Remote Control
     /// bridge init frames and on the per-turn init of headless stream-json
@@ -3038,6 +3192,21 @@ pub struct InitMessage {
     /// and on CLIs before 2.1.301.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub additional_directories: Option<Vec<String>>,
+}
+
+/// [`InitMessage::client_thinking`]: the thinking a Cowork cloud worker's
+/// turn runs with (CLI 2.1.317+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ClientThinking {
+    /// `0` with thinking off, the fixed budget, or `None` (wire `null`) with
+    /// no fixed budget.
+    #[serde(default)]
+    pub max_thinking_tokens: Option<u64>,
+    /// `summarized`, `omitted` or `highlights`; `None` (wire `null`) with
+    /// none, with thinking off, and for a `highlights` this session cannot
+    /// send.
+    #[serde(default)]
+    pub thinking_display: Option<String>,
 }
 
 /// The server-configured session indicator that the terminal renders as a
@@ -4686,6 +4855,135 @@ pub struct SessionTitleChangedMessage {
     pub session_id: String,
 }
 
+/// `system/session_writes_lost` — the CLI could not save lines of a session
+/// transcript, changes to `~/.claude.json`, or both, because the disk was
+/// full or its quota was used up. Sent at most once, as the CLI exits, after
+/// the last result if there was one. The results already received stand,
+/// and this message does not change the exit status. Sent only with
+/// stream-json output on stdout, never under `--sdk-url` or a Claude Desktop
+/// entrypoint. Safe to ignore (CLI 2.1.317+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionWritesLostMessage {
+    /// Why the writes failed. When both kinds of write were lost for
+    /// different reasons, the transcript's.
+    pub error_code: SessionWriteErrorCode,
+    /// What was not saved. Never empty.
+    pub lost: Vec<LostSessionWrite>,
+    /// The sessions whose transcripts lost lines, in the order each first
+    /// lost one. Present only when [`LostSessionWrite::Transcript`] is
+    /// listed; never empty. Usually `session_id` alone; a CLI that started a
+    /// new session after the loss (as `/clear` does) lists the earlier
+    /// session, and lists `session_id` only if that session lost lines too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transcript_session_ids: Option<Vec<String>>,
+    pub uuid: String,
+    /// The session the CLI is in, as on every message; see
+    /// [`transcript_session_ids`](Self::transcript_session_ids) for whose
+    /// transcript lost lines.
+    pub session_id: String,
+}
+
+/// [`SessionWritesLostMessage::error_code`]: why the writes failed.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum SessionWriteErrorCode {
+    /// `ENOSPC` — the disk was full.
+    Enospc,
+    /// `EDQUOT` — the disk quota was used up.
+    Edquot,
+    /// A code not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl SessionWriteErrorCode {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Enospc => "ENOSPC",
+            Self::Edquot => "EDQUOT",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for SessionWriteErrorCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for SessionWriteErrorCode {
+    fn from(s: &str) -> Self {
+        match s {
+            "ENOSPC" => Self::Enospc,
+            "EDQUOT" => Self::Edquot,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for SessionWriteErrorCode {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for SessionWriteErrorCode {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// One entry of [`SessionWritesLostMessage::lost`]: what was not saved.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LostSessionWrite {
+    /// Lines of a session transcript, so resuming a session in
+    /// `transcript_session_ids` may miss part of its conversation.
+    Transcript,
+    /// Changes this run made to `~/.claude.json`.
+    GlobalConfig,
+    /// A value not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl LostSessionWrite {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Transcript => "transcript",
+            Self::GlobalConfig => "global_config",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for LostSessionWrite {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for LostSessionWrite {
+    fn from(s: &str) -> Self {
+        match s {
+            "transcript" => Self::Transcript,
+            "global_config" => Self::GlobalConfig,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for LostSessionWrite {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for LostSessionWrite {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
 /// `system/ui_log` — one `$.ui.log(text)` line from a plugin in a headless
 /// session: what the REPL appends to its transcript as a dim notice under
 /// the plugin's name. Not sent to the model (CLI 2.1.285+).
@@ -5502,7 +5800,15 @@ pub struct AssistantMessage {
     /// `stream_idle_timeout` — Claude Code's own idle timer gave up waiting
     /// on an open stream, which does not by itself mean the server stalled —
     /// and `computer_slept` — the machine slept through the wait for the
-    /// response (never sent by a claude-code-server session).
+    /// response (never sent by a claude-code-server session) — and
+    /// (CLI 2.1.317+) `malformed_tool_use_exhausted` — the model's reply
+    /// stopped for a tool call and held none, and the loop's retries ran
+    /// out; terminal for the turn, so a consumer replaying history must not
+    /// re-send the prompt by itself — and `network_edge_blocked` — the
+    /// firewall in front of Anthropic's API refused the request for its
+    /// network location (an unsupported region, or a VPN, proxy or network
+    /// routing through one) before it reached the API; no sign-in or
+    /// credential change fixes it.
     /// Kinds with parameters carry them in [`Self::api_error_params`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_error: Option<String>,
