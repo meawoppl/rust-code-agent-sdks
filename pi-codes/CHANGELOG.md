@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-11-02
+
+### Added
+
+- `UsageCost::total_from_provider` — pi 1.5.0's new optional
+  `usage.cost.totalFromProvider`. It is `true` when `total` is the cost
+  billed by the provider and not the catalog estimate. Absent means
+  `false`. Previously the field was silently dropped.
+
+### Changed
+
+- Re-baseline the tested pin to pi **1.5.0** (from 1.4.0). `dist/modes/rpc/`,
+  `json-event.d.ts`, `cli/args.d.ts`, `docs/rpc.md` and `docs/json.md` are
+  identical. `pi --help` changes are wording only, plus an optional
+  `[output]` argument on `--export`. `docs/message-types.md` now says the
+  assistant `responseModel` (kept in `PiMessage::Assistant::extra`) may
+  equal the requested model. The tool-parameter move from TypeBox to
+  `pi-schema` only changes the extension API, not the wire.
+
 ## [1.4.0] - 2026-10-21
 
 ### Changed
