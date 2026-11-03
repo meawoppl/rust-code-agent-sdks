@@ -101,7 +101,12 @@ def _shared_patterns(lazy: bytes) -> tuple[re.Pattern[bytes], re.Pattern[bytes]]
     return (
         # A schema definition starts at `NAME=<lazy>(` and ends where the next begins.
         re.compile(rb"[^\w$](" + _IDENT + rb")=" + lz + rb"\("),
-        re.compile(rb"[,;({\[]\s*" + _IDENT + rb"=" + lz + rb"\("),
+        # The bundler can open a new statement between two schemas
+        # (`…));var YF=p(` on CLI 2.1.317), so a `var`/`let`/`const`
+        # keyword may sit between the separator and the name.
+        re.compile(
+            rb"[,;({\[]\s*(?:(?:var|let|const)\s+)?" + _IDENT + rb"=" + lz + rb"\("
+        ),
     )
 
 

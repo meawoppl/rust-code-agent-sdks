@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.317] - 2026-11-02
+
+Re-baseline against Claude CLI **2.1.317**. One new `system` subtype, new
+optional fields on `result`, `system/init`, `system/informational`,
+`system/model_refusal_fallback` and `user`, and a new startup failure
+reason. No removals. `--help` and the embedded model-id set are unchanged
+(the only new id-like string, `claude-opus-4.8`, appears in release notes
+as an example of a gateway's dot spelling).
+
+### Added
+
+- `system/session_writes_lost` → `SessionWritesLostMessage`
+  (`SystemSubtype::SessionWritesLost`, `KnownSystemEvent::SessionWritesLost`,
+  `is_`/`as_session_writes_lost`), with the open enums
+  `SessionWriteErrorCode` (`ENOSPC`, `EDQUOT`) and `LostSessionWrite`
+  (`transcript`, `global_config`). The CLI sends it once, on exit, when a
+  full disk or quota cost transcript lines or `~/.claude.json` changes.
+- `ResultMessage` request-phase breakdowns `tool_schema_build_detail`
+  (`ToolSchemaBuildDetail`), `message_normalization_detail`
+  (`MessageNormalizationDetail`) and `request_build_detail`
+  (`RequestBuildDetail`), plus `process_turn_states` (`ProcessTurnStates`
+  of `ProcessStateTime`), which splits the turn's CPU and wall time among
+  mutually exclusive states.
+- `StartupFailureReason::InitializeNotFirst` (`initialize_not_first`).
+- `InitMessage::ultrathink_typed_raises`, `client_thinking`
+  (`ClientThinking`), `flag_restate_noop` and `synced_skills_path`.
+- `InformationalMessage::model_restriction` (`ModelRestriction`).
+- `ModelRefusalFallbackMessage::api_refusal_cyber_verification`
+  (`CyberVerificationStatus`).
+- `UserMessage::plugin_prompt` (`PluginPrompt`, output only), and the
+  input-only `ultrathink_typed` and `tool_states`.
+- `ToolResultMeta::built_in_tool`.
+
+### Changed
+
+- `AssistantMessage::api_error` docs list two new kinds:
+  `malformed_tool_use_exhausted` and `network_edge_blocked`. The field
+  stays a `String`.
+- `UserMessage::initiator` docs: an empty string also means a person sent
+  the message, and any other label now keeps an origin-less mid-turn
+  message from going out as the user's words.
+- `scripts/extract_claude_sdk_schemas.py` now also ends a schema block at
+  a `var`/`let`/`const` statement boundary. 2.1.317's bundle opens a new
+  `var` between `stream_event` and `system/compact_boundary`. Without the
+  fix the extractor glued the two together and mislabeled `stream_event`
+  as `stream_event/compact_boundary`.
+- Schema snapshot refreshed to 2.1.317.
+
 ## [2.1.316] - 2026-10-30
 
 Re-baseline against Claude CLI **2.1.316** (2.1.315 was published but is

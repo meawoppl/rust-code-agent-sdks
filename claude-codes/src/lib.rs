@@ -78,7 +78,7 @@
 //! ⚠️ **Important**: The Claude CLI protocol is unstable and evolving. This crate
 //! automatically checks your Claude CLI version and warns if it's newer than tested.
 //!
-//! Current tested version: **2.1.316**
+//! Current tested version: **2.1.317**
 //!
 //! Report compatibility issues at: <https://github.com/meawoppl/rust-claude-codes/pulls>
 //!
@@ -165,35 +165,37 @@ pub use io::{
 pub use io::{
     ApiErrorMedia, ApiErrorMediaReason, ApiErrorParams, ApiErrorProvider, ApiErrorRemedy,
     ApiKeySource, ApiRetryMessage, ApiRetryNoResponse, ArtifactReadVersion, AssistantErrorKind,
-    BackgroundTaskInfo, BackgroundTasksChangedMessage, BatchToolUse, CloudSessionDeltaMessage,
-    CodeChangePublishedMessage, CommandInfo, CommandsChangedMessage, CompactBoundaryMessage,
-    CompactMetadata, CompactionTrigger, ContextAgent, ContextCategory, ContextMcpTool,
-    ContextMemoryFile, ContextOverLimit, ContextSkill, ContextUsage, ControlRequestProgressMessage,
-    DevIntentKind, DevIntentMessage, DevIntentTrigger, ElicitationCompleteMessage,
-    FailedPersistedFile, FeedbackDraftQueuedMessage, FileAttachmentsMissingMessage,
-    FilesPersistedMessage, HandbackReport, HookProgressMessage, HookResponseMessage,
-    HookStartedMessage, InformationalMessage, InheritedAsksSettledMessage, InitMessage,
-    InitPermissionMode, InstructionSizeWarningMessage, KnownSystemEvent, LocalCommandOutcome,
-    LocalCommandOutcomeKind, LocalCommandOutputMessage, LocalCommandRun, McpMeta, McpServerError,
-    MemoryPaths, MemoryRecallItem, MemoryRecallMessage, MessageOrigin, MessageRole, MirrorErrorKey,
-    MirrorErrorMessage, MissingFileAttachment, ModelRefusalFallbackMessage,
-    ModelRefusalNoFallbackMessage, NotificationMessage, OutputStyle, PeerMessageHoldCause,
-    PeerMessageHoldMessage, PeerMessageHoldOutcome, PeerMessageHoldState, PeerMessageLane,
-    PerTurnEffortChangedMessage, PermissionCheckStatus, PermissionCheckStatusMessage,
-    PermissionDecisionOutcome, PermissionDecisionReasonType, PermissionDeniedMessage,
-    PermissionDeniedReasonCode, PersistedFile, PluginDiagnostic, PluginInfo, PluginInstallMessage,
+    BackgroundTaskInfo, BackgroundTasksChangedMessage, BatchToolUse, ClientThinking,
+    CloudSessionDeltaMessage, CodeChangePublishedMessage, CommandInfo, CommandsChangedMessage,
+    CompactBoundaryMessage, CompactMetadata, CompactionTrigger, ContextAgent, ContextCategory,
+    ContextMcpTool, ContextMemoryFile, ContextOverLimit, ContextSkill, ContextUsage,
+    ControlRequestProgressMessage, CyberVerificationStatus, DevIntentKind, DevIntentMessage,
+    DevIntentTrigger, ElicitationCompleteMessage, FailedPersistedFile, FeedbackDraftQueuedMessage,
+    FileAttachmentsMissingMessage, FilesPersistedMessage, HandbackReport, HookProgressMessage,
+    HookResponseMessage, HookStartedMessage, InformationalMessage, InheritedAsksSettledMessage,
+    InitMessage, InitPermissionMode, InstructionSizeWarningMessage, KnownSystemEvent,
+    LocalCommandOutcome, LocalCommandOutcomeKind, LocalCommandOutputMessage, LocalCommandRun,
+    LostSessionWrite, McpMeta, McpServerError, MemoryPaths, MemoryRecallItem, MemoryRecallMessage,
+    MessageOrigin, MessageRole, MirrorErrorKey, MirrorErrorMessage, MissingFileAttachment,
+    ModelRefusalFallbackMessage, ModelRefusalNoFallbackMessage, ModelRestriction,
+    NotificationMessage, OutputStyle, PeerMessageHoldCause, PeerMessageHoldMessage,
+    PeerMessageHoldOutcome, PeerMessageHoldState, PeerMessageLane, PerTurnEffortChangedMessage,
+    PermissionCheckStatus, PermissionCheckStatusMessage, PermissionDecisionOutcome,
+    PermissionDecisionReasonType, PermissionDeniedMessage, PermissionDeniedReasonCode,
+    PersistedFile, PluginDiagnostic, PluginInfo, PluginInstallMessage, PluginPrompt,
     PreservedMessages, PreservedSegment, PromptSubmitOutcome, PromptSubmitOutcomeKind,
     RefusalFallbackScope, RemedyFeature, RemedyFeatureCause, RemedyLoginProvider, RemedyPolicyKind,
-    SessionTitleChangedMessage, StatusMessage, StatusMessageStatus, StopReason, SummarizeMetadata,
-    SystemMessage, SystemSubtype, TaskEndReason, TaskHandback, TaskNotificationMessage, TaskPatch,
-    TaskProgressMessage, TaskStartedMessage, TaskStatus, TaskType, TaskUpdatedMessage, TaskUsage,
-    ThinkingTokensMessage, ToolPermissionDecision, ToolResultMeta, ToolResultRemedy,
-    ToolResultRemedyKind, ToolUseMeta, TurnHandoffAvailableMessage, TurnPreemptedMessage,
-    UiFocusMessage, UiInvalidateMessage, UiInvalidatedInstance, UiLogMessage, UiPane,
-    UiPanesMessage, UiPlacedMessage, UiPlacedRow, UiScrollMessage, UiSiteComponent,
-    UiStatusMessage, UiToastMessage, UsageReport, UsageReportExtraUsage, UsageReportLimit,
-    UsageReportRateLimits, UsageReportScope, UsageReportScopeLabel, VcsMutationKind,
-    VcsStateChangedMessage, ViewMode, WorkerShuttingDownMessage,
+    SessionTitleChangedMessage, SessionWriteErrorCode, SessionWritesLostMessage, StatusMessage,
+    StatusMessageStatus, StopReason, SummarizeMetadata, SystemMessage, SystemSubtype,
+    TaskEndReason, TaskHandback, TaskNotificationMessage, TaskPatch, TaskProgressMessage,
+    TaskStartedMessage, TaskStatus, TaskType, TaskUpdatedMessage, TaskUsage, ThinkingTokensMessage,
+    ToolPermissionDecision, ToolResultMeta, ToolResultRemedy, ToolResultRemedyKind, ToolUseMeta,
+    TurnHandoffAvailableMessage, TurnPreemptedMessage, UiFocusMessage, UiInvalidateMessage,
+    UiInvalidatedInstance, UiLogMessage, UiPane, UiPanesMessage, UiPlacedMessage, UiPlacedRow,
+    UiScrollMessage, UiSiteComponent, UiStatusMessage, UiToastMessage, UsageReport,
+    UsageReportExtraUsage, UsageReportLimit, UsageReportRateLimits, UsageReportScope,
+    UsageReportScopeLabel, VcsMutationKind, VcsStateChangedMessage, ViewMode,
+    WorkerShuttingDownMessage,
 };
 
 // Additional top-level output message wrappers
@@ -218,10 +220,11 @@ pub use io::{
 pub use io::{
     AssistantUsage, CacheCreationDetails, DeferredToolUse, DiffersFilesCounts,
     FastModeDisabledReason, GarbageCollectionCounts, InputAttachmentsDetail,
-    ProcessGarbageCollections, ResumeStoreConfirmDetail, RunnerExit, RunnerExitPhase,
-    ServerToolUse, StartupFailureReason, StreamPostQueuedBehind, SubagentKillCounts,
-    SubagentRefusalCounts, SubagentResult, SubagentSpawnRequests, SubagentStats, SubagentToolStats,
-    SubagentUsageRollup, TouchCompareCounts, TurnStartResumeKind, UsageInfo,
+    MessageNormalizationDetail, ProcessGarbageCollections, ProcessStateTime, ProcessTurnStates,
+    RequestBuildDetail, ResumeStoreConfirmDetail, RunnerExit, RunnerExitPhase, ServerToolUse,
+    StartupFailureReason, StreamPostQueuedBehind, SubagentKillCounts, SubagentRefusalCounts,
+    SubagentResult, SubagentSpawnRequests, SubagentStats, SubagentToolStats, SubagentUsageRollup,
+    ToolSchemaBuildDetail, TouchCompareCounts, TurnStartResumeKind, UsageInfo,
 };
 
 // Typed tool input types

@@ -292,6 +292,32 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resume_store_confirm_detail: Option<ResumeStoreConfirmDetail>,
 
+    /// How the `tool_schema_build` phase of `time_to_request_phases_ms` was
+    /// spent, over the main-conversation requests built before the turn's
+    /// first dispatch (normally one). Present where that phase is
+    /// (CLI 2.1.317+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_schema_build_detail: Option<ToolSchemaBuildDetail>,
+
+    /// How the `message_normalization` phase of `time_to_request_phases_ms`
+    /// was spent: building, from the conversation, the messages the API
+    /// takes. Present where that phase is (CLI 2.1.317+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message_normalization_detail: Option<MessageNormalizationDetail>,
+
+    /// How the `request_build` phase of `time_to_request_phases_ms` was
+    /// spent: assembling the request from the normalized messages up to its
+    /// dispatch. Present where that phase is (CLI 2.1.317+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub request_build_detail: Option<RequestBuildDetail>,
+
+    /// `process_cpu_ms_turn` and `process_wall_ms_turn` split among states
+    /// that exclude each other: the states' `cpu_ms` add up to the first
+    /// exactly and their `wall_ms` to the second, and the field is sent only
+    /// where they do (CLI 2.1.317+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_turn_states: Option<ProcessTurnStates>,
+
     /// Time from spawning a worker/spare until the first request was issued, in milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time_to_request_from_spawn_ms: Option<u64>,
@@ -881,6 +907,157 @@ pub struct ResumeStoreConfirmDetail {
     pub rows: u64,
 }
 
+/// [`ResultMessage::tool_schema_build_detail`] — how the `tool_schema_build`
+/// phase was spent, in whole ms, in the order the code runs (CLI 2.1.317+).
+/// The six `_ms` values add up to the phase exactly; each is rounded so a
+/// fraction of a ms carries into the next.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct ToolSchemaBuildDetail {
+    /// Choosing the beta headers, reading what the model supports and the
+    /// thinking configuration.
+    pub betas_ms: u64,
+    /// Waiting for the account's Artifact capabilities, early schema builds
+    /// for plugin-movable tools, and deciding whether tool search is on.
+    pub waits_ms: u64,
+    /// Deciding which tools the request declares in full, deferred or by
+    /// reference, with the waits that takes.
+    pub placement_ms: u64,
+    /// Making the API schema of every declared tool.
+    pub render_ms: u64,
+    /// The rest of the phase, such as in-message tool schemas and applying
+    /// the plan for deferred tools.
+    pub after_ms: u64,
+    /// Time no part covers plus what rounding leaves: 0 or 1 unless some
+    /// stretch of the phase has no mark.
+    pub other_ms: u64,
+    /// How many tools the render made schemas for (the last build's).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tools: Option<u64>,
+    /// How much the process's tool-schema cache grew over the phase: about
+    /// how many schemas were built from scratch (the last build's).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub new_schemas: Option<u64>,
+}
+
+/// [`ResultMessage::message_normalization_detail`] — how the
+/// `message_normalization` phase was spent (CLI 2.1.317+). Read it as
+/// [`ToolSchemaBuildDetail`]: six `_ms` values in the order the code runs,
+/// which add up to the phase exactly.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct MessageNormalizationDetail {
+    /// The passes ahead of the main one and the main pass's options.
+    pub before_ms: u64,
+    /// The main pass alone (`normalizeMessagesForAPI`).
+    pub normalize_ms: u64,
+    /// Checking every image against the model's size limit.
+    pub images_ms: u64,
+    /// The passes over the normalized list.
+    pub post_process_ms: u64,
+    /// The rest: per-turn notes, retry message lists, account-memory notes.
+    pub after_ms: u64,
+    /// As in [`ToolSchemaBuildDetail::other_ms`].
+    pub other_ms: u64,
+    /// How many messages the request was built from (the conversation since
+    /// its last compaction, after any trimming); the last build's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub messages: Option<u64>,
+    /// How many API messages this build made of them; the last build's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wire_messages: Option<u64>,
+}
+
+/// [`ResultMessage::request_build_detail`] — how the `request_build` phase
+/// was spent (CLI 2.1.317+). The nine values from `records_ms` to
+/// `other_ms` add up to the phase exactly; the three `sent_build_*` members
+/// lie within [`sent_build_ms`](Self::sent_build_ms) and are not part of
+/// the sum.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct RequestBuildDetail {
+    /// Recording what this request sends and setting up the shared retry
+    /// handlers.
+    pub records_ms: u64,
+    /// The fallback-block check, attribution header, cache lifetime and the
+    /// system prompt's blocks.
+    pub system_ms: u64,
+    /// Tool/system-prompt change detection, effort, fast mode, permission
+    /// context waits and beta headers.
+    pub headers_ms: u64,
+    /// Recording the prompt's state so a later prompt-cache break can be
+    /// explained.
+    pub cache_break_record_ms: u64,
+    /// Defining the first retry handlers, planning tool-result clearing and
+    /// opening the request's tracing span.
+    pub plans_ms: u64,
+    /// Defining the rest of the retry and fallback handlers.
+    pub retry_setup_ms: u64,
+    /// Building the parameters that are sent, for every attempt before the
+    /// first dispatch.
+    pub sent_build_ms: u64,
+    /// From there to the moment the request is recorded as sent.
+    pub record_attempt_ms: u64,
+    /// As in [`ToolSchemaBuildDetail::other_ms`].
+    pub other_ms: u64,
+    /// Assembling the context for the server-side safety check.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sent_build_safety_context_ms: Option<u64>,
+    /// The last clean-up of the messages before sending, placing the
+    /// prompt-cache breakpoints.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sent_build_cache_breakpoints_ms: Option<u64>,
+    /// Scanning the body for lone UTF-16 surrogates, and the scrub where one
+    /// is found.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sent_build_surrogate_scan_ms: Option<u64>,
+}
+
+/// [`ResultMessage::process_turn_states`] — the turn's process CPU and wall
+/// time split among mutually exclusive states (CLI 2.1.317+). A state says
+/// what was open, not what the time was spent on. Where several were open,
+/// the first of `main_stream`, `side_stream`, `tool`, `agent_tool`,
+/// `first_event_wait` names the state; with nothing open, the state is
+/// named after the turn's main-conversation model calls.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct ProcessTurnStates {
+    /// A response stream of a main-conversation request was open.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub main_stream: Option<ProcessStateTime>,
+    /// Any other model request's stream was open (a subagent's, a
+    /// compaction's).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub side_stream: Option<ProcessStateTime>,
+    /// A call of any tool but Agent was open, permission prompt included.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool: Option<ProcessStateTime>,
+    /// A call of the Agent tool was open.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_tool: Option<ProcessStateTime>,
+    /// A main-conversation request was sent and no stream of it was open
+    /// yet.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_event_wait: Option<ProcessStateTime>,
+    /// Nothing open, and no main-conversation model call sent yet.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub before_first_request: Option<ProcessStateTime>,
+    /// Nothing open, between two main-conversation model calls.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub between_requests: Option<ProcessStateTime>,
+    /// Nothing open, after the last main-conversation model call.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub after_last_request: Option<ProcessStateTime>,
+}
+
+/// Time in one [`ProcessTurnStates`] state (CLI 2.1.317+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct ProcessStateTime {
+    /// Process CPU time, counted as in `process_cpu_ms_between_turns`
+    /// (child processes left out).
+    pub cpu_ms: u64,
+    /// Wall-clock time.
+    pub wall_ms: u64,
+    /// How many times the state was entered.
+    pub entries: u64,
+}
+
 /// [`ResultMessage::process_garbage_collections`] — garbage collections on
 /// the CLI process's main thread (CLI 2.1.311+). A worker claimed from a
 /// warm spare counts from the spare's own start.
@@ -977,6 +1154,12 @@ pub enum StartupFailureReason {
     /// supported; make the sandbox available or have the requirement
     /// changed (CLI 2.1.314+).
     SandboxRequiredUnavailable,
+    /// `initialize_not_first` — Claude Code was started with
+    /// `--await-initialize`, and its first stdin line was not the
+    /// `initialize` control request (another message, or not valid JSON).
+    /// The fix is in the host or a wrapper script between the host and
+    /// Claude Code, not a retry (CLI 2.1.317+).
+    InitializeNotFirst,
     /// A cause not yet known to this version of the crate.
     Unknown(String),
 }
@@ -1004,6 +1187,7 @@ impl StartupFailureReason {
             Self::OrgConfigRequiredUnavailable => "org_config_required_unavailable",
             Self::OrgConfigRefused => "org_config_refused",
             Self::SandboxRequiredUnavailable => "sandbox_required_unavailable",
+            Self::InitializeNotFirst => "initialize_not_first",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -1038,6 +1222,7 @@ impl From<&str> for StartupFailureReason {
             "org_config_required_unavailable" => Self::OrgConfigRequiredUnavailable,
             "org_config_refused" => Self::OrgConfigRefused,
             "sandbox_required_unavailable" => Self::SandboxRequiredUnavailable,
+            "initialize_not_first" => Self::InitializeNotFirst,
             other => Self::Unknown(other.to_string()),
         }
     }
