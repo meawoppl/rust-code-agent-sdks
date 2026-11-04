@@ -5035,8 +5035,9 @@ pub struct UiStatusMessage {
 }
 
 /// `system/ui_invalidate` — a plugin called `$.ui.invalidate("ui.render")`,
-/// or a plugin loaded or reloaded: every tree a remote surface drew through
-/// `ui_render` may be stale, and the surface re-asks each mounted instance.
+/// a plugin loaded or reloaded, or (CLI 2.1.318+) a mobile client already
+/// known to the session named a field in `draws` it had not named before:
+/// every tree a remote surface drew through `ui_render` may be stale, and the surface re-asks each mounted instance.
 /// Bumps from one plugin fold to at most one per 100 ms (CLI 2.1.285+).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UiInvalidateMessage {
@@ -5046,7 +5047,10 @@ pub struct UiInvalidateMessage {
     /// Present when a plugin state write, or (CLI 2.1.289+) a `Client`
     /// drawn in them that failed and whose plugin heard it (`ui.fault`),
     /// made only these instances stale, so the surface may re-ask them
-    /// alone. Absent, every mounted instance may be stale.
+    /// alone. The backdrop of the session being set or cleared, or a client
+    /// of a surface that draws it joining where one ever stood, names the
+    /// one `Backdrop` instance (`instance_id` `backdrop`) on each such
+    /// surface. Absent, every mounted instance may be stale.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instances: Option<Vec<UiInvalidatedInstance>>,
     /// Present, and true, while a mod may change what is recorded of a typed

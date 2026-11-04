@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.318] - 2026-11-03
+
+Re-baseline against Claude CLI **2.1.318**. One new optional field on
+`result` and a new startup failure reason. No new wire labels and no
+removals. `--help`, the model registry, the alias table and the accepted
+`--model` list are unchanged. The only new id-like string in the binary,
+`claude-haiku-3-55`, sits in the string table and is not a registry
+model, so `ClaudeModel` is unchanged.
+
+### Added
+
+- `ResultMessage::credential_expires_at`: the ISO 8601 instant at which
+  the claude.ai credential this process sends ends for good. It is absent
+  for API keys, environment tokens and other providers.
+- `StartupFailureReason::ConfigFileInvalid` (`config_file_invalid`): a
+  configuration file read at start-up is not valid JSON.
+
+### Changed
+
+- `ResultMessage::startup_failure_reason` docs: `org_config_required_unavailable`,
+  `org_config_refused` and `config_file_invalid` results are written by
+  every stream-json run, without `CLAUDE_CODE_STARTUP_FAILURE_RESULTS`.
+- `RequestBuildDetail::cache_break_record_ms` docs: in a cloud runner's
+  session the prompt-state write is queued after the response, outside
+  the phase.
+- `UiInvalidateMessage` docs: a mobile client naming a new `draws` field
+  also triggers it, and the backdrop instance is named on every surface
+  that draws it, not only on desktop.
+- Schema snapshot refreshed to 2.1.318.
+
 ## [2.1.317] - 2026-11-02
 
 Re-baseline against Claude CLI **2.1.317**. One new `system` subtype, new
