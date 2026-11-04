@@ -636,6 +636,20 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub result_index: Option<u64>,
 
+    /// When the claude.ai credential this process's requests send ends for
+    /// good, as an ISO 8601 instant, read when the result is written. For a
+    /// stored claude.ai login this is the end of the login's refresh chain
+    /// as stored at sign-in; renewing the access token does not move it. The
+    /// date is the server's when it sent one and otherwise a 30-day
+    /// estimate, and the real end can be up to 3 days earlier. The server is
+    /// not asked, so a login revoked early still shows its date, and a past
+    /// date means the login has probably ended, not that it certainly has.
+    /// Absent when no date is known, for every other credential (an API
+    /// key, a token from the environment, another provider), on results this
+    /// process did not number, and from CLIs before 2.1.318.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_expires_at: Option<String>,
+
     /// Fast mode toggle state (e.g., "off")
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fast_mode_state: Option<String>,
@@ -708,8 +722,10 @@ pub struct ResultMessage {
     /// `error_during_execution` result a stream-json run writes before
     /// exiting on a known startup failure; `errors` carries the same text as
     /// stderr. Failures that used to end with stderr alone write that result
-    /// only when the host sets `CLAUDE_CODE_STARTUP_FAILURE_RESULTS`. Absent
-    /// on every other result, on startup failures without a known cause, and
+    /// only when the host sets `CLAUDE_CODE_STARTUP_FAILURE_RESULTS`, except
+    /// `org_config_required_unavailable`, `org_config_refused` and
+    /// `config_file_invalid`, which every stream-json run writes. Absent on
+    /// every other result, on startup failures without a known cause, and
     /// from CLIs before 2.1.274.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub startup_failure_reason: Option<StartupFailureReason>,
@@ -983,7 +999,9 @@ pub struct RequestBuildDetail {
     /// context waits and beta headers.
     pub headers_ms: u64,
     /// Recording the prompt's state so a later prompt-cache break can be
-    /// explained.
+    /// explained. In a cloud runner's session the on-disk write is queued
+    /// after the response instead, outside this phase, unless the model is
+    /// one that cache-break detection skips (CLI 2.1.318+).
     pub cache_break_record_ms: u64,
     /// Defining the first retry handlers, planning tool-result clearing and
     /// opening the request's tracing span.
@@ -1160,6 +1178,12 @@ pub enum StartupFailureReason {
     /// The fix is in the host or a wrapper script between the host and
     /// Claude Code, not a retry (CLI 2.1.317+).
     InitializeNotFirst,
+    /// `config_file_invalid` — a configuration file read at start-up is not
+    /// valid JSON; `errors` names the file and, for the global configuration
+    /// file, how to restore or repair it. The file is left unchanged, and
+    /// every start without a terminal is refused until it is repaired, so a
+    /// retry alone does not help (CLI 2.1.318+).
+    ConfigFileInvalid,
     /// A cause not yet known to this version of the crate.
     Unknown(String),
 }
@@ -1188,6 +1212,7 @@ impl StartupFailureReason {
             Self::OrgConfigRefused => "org_config_refused",
             Self::SandboxRequiredUnavailable => "sandbox_required_unavailable",
             Self::InitializeNotFirst => "initialize_not_first",
+            Self::ConfigFileInvalid => "config_file_invalid",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -1223,6 +1248,7 @@ impl From<&str> for StartupFailureReason {
             "org_config_refused" => Self::OrgConfigRefused,
             "sandbox_required_unavailable" => Self::SandboxRequiredUnavailable,
             "initialize_not_first" => Self::InitializeNotFirst,
+            "config_file_invalid" => Self::ConfigFileInvalid,
             other => Self::Unknown(other.to_string()),
         }
     }
