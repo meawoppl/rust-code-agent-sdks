@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.166.7] - 2026-11-05
+
+Model the `openai/codex@main` (`e7f32cf19`) app-server schema drift. The
+tested pin stays at Codex CLI **0.166.0**.
+
+### Added
+
+- `ThreadItemsListParams.defer_output: Option<ThreadItemOutputDeferral>`
+  (`deferOutput`, openai/codex#59601): for a single turn, choose which saved
+  outputs `thread/items/list` should omit so they can be fetched separately
+  by item ID.
+- `ThreadItemOutputDeferral` (new type). The stable schema shows it as an
+  empty object. Its `command_execution: bool` field (defer nonempty output
+  from successful commands) is experimental upstream and requires
+  `experimentalApi`.
+- `ThreadItemEntry.output_deferred: bool` (`outputDeferred`, experimental
+  upstream): set when the page omitted saved command output. Fetch the full
+  item with `thread/items/read`. Defaults to `false` and is not serialized
+  when false.
+
+### Breaking
+
+- `ThreadItemEntry` gains a public field, so struct literals that build one
+  without `..` no longer compile. No such initializers exist in the
+  workspace.
+
 ## [0.166.6] - 2026-11-04
 
 Model the `openai/codex@main` (`5c0b1ac71`) app-server schema drift. The

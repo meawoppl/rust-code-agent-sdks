@@ -1466,3 +1466,45 @@ fn mcp_resource_read_params_meta_round_trips() {
     };
     assert!(serde_json::to_value(bare).unwrap().get("_meta").is_none());
 }
+
+/// `thread/items/list` output deferral (openai/codex#59601).
+#[test]
+fn thread_items_list_defer_output_round_trips() {
+    use codex_codes::protocol::{ThreadItemEntry, ThreadItemOutputDeferral, ThreadItemsListParams};
+
+    let raw = serde_json::json!({
+        "deferOutput": {"commandExecution": true},
+        "threadId": "thr_1",
+        "turnId": "turn_1"
+    });
+    let p: ThreadItemsListParams = serde_json::from_value(raw.clone()).unwrap();
+    assert_eq!(
+        p.defer_output,
+        Some(ThreadItemOutputDeferral {
+            command_execution: true
+        })
+    );
+    assert_eq!(serde_json::to_value(&p).unwrap(), raw);
+
+    let stable = serde_json::to_value(ThreadItemOutputDeferral::default()).unwrap();
+    assert_eq!(stable, serde_json::json!({}));
+
+    let entry = serde_json::json!({
+        "turnId": "turn_1",
+        "outputDeferred": true,
+        "item": {"type": "contextCompaction", "id": "item_1"}
+    });
+    let e: ThreadItemEntry = serde_json::from_value(entry).unwrap();
+    assert!(e.output_deferred);
+
+    let legacy = serde_json::json!({
+        "turnId": "turn_1",
+        "item": {"type": "contextCompaction", "id": "item_1"}
+    });
+    let e: ThreadItemEntry = serde_json::from_value(legacy).unwrap();
+    assert!(!e.output_deferred);
+    assert!(serde_json::to_value(&e)
+        .unwrap()
+        .get("outputDeferred")
+        .is_none());
+}
