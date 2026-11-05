@@ -9158,6 +9158,16 @@ pub struct ThreadItemEntry {
     pub completed_at_ms: Option<i64>,
     #[serde()]
     pub item: ThreadItem,
+    /// EXPERIMENTAL upstream — the saved command output was omitted because
+    /// the request set [`ThreadItemOutputDeferral::command_execution`]; fetch
+    /// the complete item with `thread/items/read` (openai/codex#59601).
+    /// Requires `experimentalApi`; absent (false) otherwise.
+    #[serde(
+        rename = "outputDeferred",
+        default,
+        skip_serializing_if = "std::ops::Not::not"
+    )]
+    pub output_deferred: bool,
     /// Unix timestamp (milliseconds) when the item started, if recorded by
     /// the producer.
     #[serde(
@@ -9181,6 +9191,14 @@ pub struct ThreadItemsListParams {
     /// returned string cursor.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cursor: Option<ThreadItemsListCursor>,
+    /// For a single turn, choose which saved outputs to fetch separately by
+    /// item ID (openai/codex#59601).
+    #[serde(
+        rename = "deferOutput",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub defer_output: Option<ThreadItemOutputDeferral>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<u32>,
     #[serde(
@@ -9194,6 +9212,19 @@ pub struct ThreadItemsListParams {
     /// Optional turn id filter; omitted returns items across the thread.
     #[serde(rename = "turnId", default, skip_serializing_if = "Option::is_none")]
     pub turn_id: Option<String>,
+}
+
+/// `thread/items/list` `deferOutput` selector — which saved outputs the
+/// server should omit from the page so the client can fetch them separately
+/// by item ID (openai/codex#59601). The stable schema exposes this as an
+/// empty object; its fields are experimental upstream.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadItemOutputDeferral {
+    /// EXPERIMENTAL upstream — defer nonempty output from successful
+    /// commands. Requires `experimentalApi`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub command_execution: bool,
 }
 
 /// Starting position for a `thread/items/list` page: either the opaque
