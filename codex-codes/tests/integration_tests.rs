@@ -1446,3 +1446,23 @@ fn main_drift_2026_10_05_fields_round_trip() {
     let phase: MessagePhase = serde_json::from_value(serde_json::json!("partial_answer")).unwrap();
     assert_eq!(phase, MessagePhase::PartialAnswer);
 }
+
+/// `mcpServer/resource/read` forwards optional caller `_meta` (openai/codex#59509).
+#[test]
+fn mcp_resource_read_params_meta_round_trips() {
+    use codex_codes::protocol::McpResourceReadParams;
+
+    let raw = serde_json::json!({
+        "_meta": {"traceId": "abc"}, "server": "docs", "uri": "file:///a"
+    });
+    let p: McpResourceReadParams = serde_json::from_value(raw.clone()).unwrap();
+    assert_eq!(p.meta.as_ref().unwrap()["traceId"], "abc");
+    assert_eq!(serde_json::to_value(&p).unwrap(), raw);
+
+    let bare = McpResourceReadParams {
+        server: "docs".into(),
+        uri: "file:///a".into(),
+        ..Default::default()
+    };
+    assert!(serde_json::to_value(bare).unwrap().get("_meta").is_none());
+}

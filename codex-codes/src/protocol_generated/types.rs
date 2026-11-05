@@ -4322,6 +4322,9 @@ pub struct McpElicitationUntitledSingleSelectEnumSchema {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct McpResourceReadParams {
+    /// Additional MCP request metadata. Account and turn routing keys are reserved.
+    #[serde(rename = "_meta", default, skip_serializing_if = "Option::is_none")]
+    pub meta: Option<serde_json::Map<String, Value>>,
     #[serde(
         rename = "connectorId",
         default,

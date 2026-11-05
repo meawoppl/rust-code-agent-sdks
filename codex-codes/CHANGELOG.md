@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.166.6] - 2026-11-04
+
+Model the `openai/codex@main` (`5c0b1ac71`) app-server schema drift. The
+tested pin stays at Codex CLI **0.166.0**.
+
+### Added
+
+- `McpResourceReadParams.meta: Option<serde_json::Map<String, Value>>`
+  (`_meta`, openai/codex#59509): additional MCP request metadata that
+  `mcpServer/resource/read` forwards to the server. Account and turn routing
+  keys are reserved.
+
 ## [0.166.5] - 2026-11-02
 
 Model the `openai/codex@main` (`16ddd538b`) app-server schema drift. The
