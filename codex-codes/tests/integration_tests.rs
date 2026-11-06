@@ -3,8 +3,9 @@ use codex_codes::io::items::{
 };
 use codex_codes::protocol::{
     ConfigReadResponse, FeedbackSaveParams, FeedbackSaveResponse, FeedbackUploadResponse,
-    GetAccountRateLimitsParams, GetAccountRateLimitsResponse, McpServerStatus, Thread,
-    ThreadListParams, TurnToolOutput,
+    GatewayOAuthLoginParams, GatewayOAuthReadParams, GetAccountRateLimitsParams,
+    GetAccountRateLimitsResponse, McpServerStatus, ModelListParams, Thread, ThreadListParams,
+    TurnToolOutput,
 };
 use codex_codes::{
     JsonRpcMessage, JsonRpcNotification, McpServerElicitationRequestParams, Notification,
@@ -110,6 +111,35 @@ fn account_rate_limits_params_omit_false_capabilities() {
     );
     let back: GetAccountRateLimitsParams = serde_json::from_value(wire).unwrap();
     assert_eq!(back, params);
+}
+
+/// Provider-scoped gatewayOAuth read/login and model/list params write `modelProvider` only when set.
+#[test]
+fn provider_scoped_params_write_model_provider() {
+    let provider = || Some("gateway".to_string());
+    let expected = serde_json::json!({ "modelProvider": "gateway" });
+
+    assert_eq!(
+        serde_json::to_value(GatewayOAuthReadParams::default()).unwrap(),
+        serde_json::json!({})
+    );
+    let read = GatewayOAuthReadParams {
+        model_provider: provider(),
+    };
+    assert_eq!(serde_json::to_value(&read).unwrap(), expected);
+
+    let login = GatewayOAuthLoginParams {
+        model_provider: provider(),
+    };
+    assert_eq!(serde_json::to_value(&login).unwrap(), expected);
+    let back: GatewayOAuthLoginParams = serde_json::from_value(expected.clone()).unwrap();
+    assert_eq!(back, login);
+
+    let list = ModelListParams {
+        model_provider: provider(),
+        ..Default::default()
+    };
+    assert_eq!(serde_json::to_value(&list).unwrap(), expected);
 }
 
 /// TurnToolOutput omits `retain` when false, defaults it when absent, and round-trips `retain: true`.

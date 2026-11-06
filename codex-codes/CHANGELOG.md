@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.166.8] - 2026-11-05
+
+Model the `openai/codex@main` (`aece55965`) app-server schema drift. The
+tested pin stays at Codex CLI **0.166.0**.
+
+### Added
+
+- `ModelListParams.model_provider: Option<String>` (`modelProvider`,
+  openai/codex#59776): list models for a configured provider instead of the
+  app-server default.
+- `GatewayOAuthReadParams` and `GatewayOAuthLoginParams` (new types, each
+  with `model_provider: Option<String>`, openai/codex#59819). These are the
+  optional params for `account/gatewayOAuth/read` and
+  `account/gatewayOAuth/login`, which used to take no params. They let a
+  caller read readiness for, or authorize, a configured provider without
+  changing the default or any thread's provider. When omitted, the current
+  provider is used.
+
+### Breaking
+
+- `ModelListParams` gains a public field, so struct literals that build one
+  without `..` no longer compile. No such initializers exist in the
+  workspace.
+
 ## [0.166.7] - 2026-11-05
 
 Model the `openai/codex@main` (`e7f32cf19`) app-server schema drift. The

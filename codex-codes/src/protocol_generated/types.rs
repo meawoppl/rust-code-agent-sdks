@@ -2865,9 +2865,37 @@ pub struct GatewayOAuthChangedNotification {
     pub status: GatewayOAuthStatus,
 }
 
+/// Authorize a configured provider without changing the default or any
+/// thread's provider.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct GatewayOAuthLoginParams {
+    /// Defaults to the current provider when omitted.
+    #[serde(
+        rename = "modelProvider",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub model_provider: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct GatewayOAuthLoginResponse {}
+
+/// Read credential readiness for a configured provider without starting
+/// browser login.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct GatewayOAuthReadParams {
+    /// Defaults to the current provider when omitted.
+    #[serde(
+        rename = "modelProvider",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub model_provider: Option<String>,
+}
 
 /// Current effective gateway policy and credential readiness; never
 /// contains credentials.
@@ -4972,6 +5000,14 @@ pub struct ModelListParams {
     pub include_hidden: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
+    /// List models for this configured provider instead of the app-server
+    /// default.
+    #[serde(
+        rename = "modelProvider",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub model_provider: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
