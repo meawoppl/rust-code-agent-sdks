@@ -328,7 +328,7 @@ dependencies = [
 
 [[package]]
 name = "claude-codes"
-version = "2.1.318"
+version = "2.1.319"
 dependencies = [
  "anyhow",
  "base64",

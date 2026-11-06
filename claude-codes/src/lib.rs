@@ -78,7 +78,7 @@
 //! ⚠️ **Important**: The Claude CLI protocol is unstable and evolving. This crate
 //! automatically checks your Claude CLI version and warns if it's newer than tested.
 //!
-//! Current tested version: **2.1.318**
+//! Current tested version: **2.1.319**
 //!
 //! Report compatibility issues at: <https://github.com/meawoppl/rust-claude-codes/pulls>
 //!
@@ -165,12 +165,13 @@ pub use io::{
 pub use io::{
     ApiErrorMedia, ApiErrorMediaReason, ApiErrorParams, ApiErrorProvider, ApiErrorRemedy,
     ApiKeySource, ApiRetryMessage, ApiRetryNoResponse, ArtifactReadVersion, AssistantErrorKind,
-    BackgroundTaskInfo, BackgroundTasksChangedMessage, BatchToolUse, ClientThinking,
-    CloudSessionDeltaMessage, CodeChangePublishedMessage, CommandInfo, CommandsChangedMessage,
-    CompactBoundaryMessage, CompactMetadata, CompactionTrigger, ContextAgent, ContextCategory,
-    ContextMcpTool, ContextMemoryFile, ContextOverLimit, ContextSkill, ContextUsage,
-    ControlRequestProgressMessage, CyberVerificationStatus, DevIntentKind, DevIntentMessage,
-    DevIntentTrigger, ElicitationCompleteMessage, FailedPersistedFile, FeedbackDraftQueuedMessage,
+    AutoModeRule, AutoModeRuleList, BackgroundTaskInfo, BackgroundTasksChangedMessage,
+    BatchToolUse, ClientThinking, CloudSessionDeltaMessage, CodeChangePublishedMessage,
+    CommandInfo, CommandsChangedMessage, CompactBoundaryMessage, CompactMetadata,
+    CompactionTrigger, ContextAgent, ContextCategory, ContextMcpTool, ContextMemoryFile,
+    ContextOverLimit, ContextSkill, ContextUsage, ControlRequestProgressMessage,
+    CyberVerificationStatus, DevIntentKind, DevIntentMessage, DevIntentTrigger,
+    ElicitationCompleteMessage, FailedPersistedFile, FeedbackDraftQueuedMessage,
     FileAttachmentsMissingMessage, FilesPersistedMessage, HandbackReport, HookProgressMessage,
     HookResponseMessage, HookStartedMessage, InformationalMessage, InheritedAsksSettledMessage,
     InitMessage, InitPermissionMode, InstructionSizeWarningMessage, KnownSystemEvent,

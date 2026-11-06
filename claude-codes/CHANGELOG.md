@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.319] - 2026-11-06
+
+Re-baseline against Claude CLI **2.1.319**. Six new optional fields, four
+new auto-mode permission-denial codes and one new message origin kind. No
+new wire labels and no removals. `--help`, the model registry, the alias
+table and the accepted `--model` list are unchanged, so `ClaudeModel` is
+unchanged.
+
+### Added
+
+- `ResultMessage::stopped_by_permission_check` (both `result` variants):
+  true when a permission check ended the turn by itself — today only auto
+  mode, after a run of responses with no usable safety verdict. Tells such
+  a stop apart from a client's Stop, which has the same `terminal_reason`.
+- `ResultMessage::process_turn_threads` (success result): the turn's CPU
+  time by thread group (`main`, `gc`, `jit`, `warm_up`, `allocator`,
+  `http`, `pool`, `other`) per `process_turn_states` state, plus
+  `between_turns`. Sampled from about one process in 4,096.
+- `StatusMessage::resume_held_for_plan`: sent once at start-up when an
+  interrupted plan-mode turn was not re-run because the process came back
+  in another permission mode.
+- `ToolPermissionDecision::auto_mode_rule` with the new `AutoModeRule` /
+  `AutoModeRuleList` (`allow`, `soft_deny`) types: the auto-mode settings
+  entry the server-side classifier named for a `classifier` decision.
+- `RateLimitInfo::daily_cap_paused` (`dailyCapPaused`): true while usage
+  is paused for the organization, telling that apart from the
+  organization's monthly cap.
+- `PermissionDeniedReasonCode::{AutoModeNoCheckInSession,
+  AutoModeStopNoCheckInSession, AutoModeStopNoResultForCalls,
+  AutoModeStopNoVerdict}`. All come with `decision_reason_type`
+  `classifier` and do not mean the call was judged unsafe.
+
+### Changed
+
+- Docs: `system/session_writes_lost` is now sent only when the CLI exits
+  with status 0; `ui_invalidate` names the `$.theme.set` / `$.theme.clear`
+  calls that invalidate the backdrop instance. A `voice-call`
+  `MessageOrigin` kind (host-supplied voice-call transcript, background
+  only) passes through the open `MessageOrigin` type.
+
 ## [2.1.318] - 2026-11-03
 
 Re-baseline against Claude CLI **2.1.318**. One new optional field on

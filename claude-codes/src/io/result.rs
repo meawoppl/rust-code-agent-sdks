@@ -318,6 +318,21 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub process_turn_states: Option<ProcessTurnStates>,
 
+    /// The turn's CPU time by thread group, in whole ms, keyed by a
+    /// `process_turn_states` state (or `between_turns` for the
+    /// `process_cpu_ms_between_turns` stretch). Each inner map holds
+    /// `one_in` (the N of the one-in-N sampling draw that picked this
+    /// process), `<group>_cpu_ms` and `<group>_system_ms` for the groups
+    /// `main`, `gc`, `jit`, `warm_up`, `allocator`, `http`, `pool` and
+    /// `other` (each left out where it rounds to 0), `process_cpu_ms`,
+    /// `process_system_ms`, `run_wait_ms` and `guest_steal_ms`. Sent by
+    /// about one worker process in 4,096 (`CLAUDE_CODE_THREAD_CPU_ONE_IN`
+    /// changes the rate), and left out where a reading failed or looked
+    /// unreliable. Marked `@internal` upstream (CLI 2.1.319+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_turn_threads:
+        Option<std::collections::BTreeMap<String, std::collections::BTreeMap<String, u64>>>,
+
     /// Time from spawning a worker/spare until the first request was issued, in milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time_to_request_from_spawn_ms: Option<u64>,
@@ -625,6 +640,16 @@ pub struct ResultMessage {
     /// still be a shutdown's (CLI 2.1.300+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub interrupted_by_shutdown: Option<bool>,
+
+    /// Present, and true, when a permission check ended this turn by
+    /// itself and nobody asked for the stop. Today only auto mode does so,
+    /// after a run of responses with no usable safety verdict. The turn ends
+    /// by an abort, so `terminal_reason` usually matches a client's Stop;
+    /// this tells the two apart. A result reporting a budget or turn limit
+    /// can carry it too, and so can a success result. Marked `@internal`
+    /// upstream (CLI 2.1.319+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stopped_by_permission_check: Option<bool>,
 
     /// Delivery sequence of this result within the run: how many results the
     /// run numbered before this one, starting at 0, in the order the process

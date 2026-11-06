@@ -413,6 +413,16 @@ pub struct RateLimitInfo {
     /// Utilization warning threshold that was crossed (0.0 to 1.0)
     #[serde(rename = "surpassedThreshold", skip_serializing_if = "Option::is_none")]
     pub surpassed_threshold: Option<f64>,
+    /// True while usage is paused for the organization, absent otherwise.
+    /// `overageDisabledReason` then reads as it does at the organization's
+    /// monthly cap, so this is what tells the two apart. Marked `@internal`
+    /// upstream (CLI 2.1.319+).
+    #[serde(
+        rename = "dailyCapPaused",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub daily_cap_paused: Option<bool>,
     /// Latched usage-limit grace signal, observed on responses to requests
     /// that sent `anthropic-usage-limit: extended`. While set, an
     /// `overageStatus` of allowed/allowed_warning means paid extra usage

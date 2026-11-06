@@ -722,6 +722,73 @@ pub struct ToolPermissionDecision {
     /// `user_abort` and the last three sources above.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason_type: Option<PermissionDecisionReasonType>,
+    /// Beside a `classifier` [`reason_type`](Self::reason_type): the
+    /// server-side auto-mode classifier named an entry in the session's
+    /// auto-mode settings — an `allow` exception for an accept, a
+    /// `soft_deny` entry for a reject — and this is that entry
+    /// (CLI 2.1.319+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_mode_rule: Option<AutoModeRule>,
+}
+
+/// [`ToolPermissionDecision::auto_mode_rule`] — the auto-mode settings entry
+/// the classifier named (CLI 2.1.319+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AutoModeRule {
+    /// Which list the entry is on.
+    pub list: AutoModeRuleList,
+    /// The entry's name.
+    pub name: String,
+}
+
+/// [`AutoModeRule::list`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AutoModeRuleList {
+    /// An `allow` exception.
+    Allow,
+    /// A `soft_deny` entry.
+    SoftDeny,
+    /// A list not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl AutoModeRuleList {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Allow => "allow",
+            Self::SoftDeny => "soft_deny",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for AutoModeRuleList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for AutoModeRuleList {
+    fn from(s: &str) -> Self {
+        match s {
+            "allow" => Self::Allow,
+            "soft_deny" => Self::SoftDeny,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for AutoModeRuleList {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for AutoModeRuleList {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// [`ToolPermissionDecision::decision`].
@@ -2713,6 +2780,22 @@ pub enum PermissionDeniedReasonCode {
     OutsideReadsBlocked,
     /// `/pause-memory` has memory paused.
     MemoryPaused,
+    /// Auto mode's safety check does not run for this session, so calls
+    /// that need it are refused. Another permission mode can run such a
+    /// call unless only the check may allow the tool; the check can come
+    /// back (CLI 2.1.319+).
+    AutoModeNoCheckInSession,
+    /// The denial that ended a turn or subagent run after ten responses in
+    /// a row with no verdict: the check does not run for this session
+    /// (CLI 2.1.319+).
+    AutoModeStopNoCheckInSession,
+    /// As [`AutoModeStopNoCheckInSession`](Self::AutoModeStopNoCheckInSession),
+    /// but the call got no result from the check (CLI 2.1.319+).
+    AutoModeStopNoResultForCalls,
+    /// As [`AutoModeStopNoCheckInSession`](Self::AutoModeStopNoCheckInSession),
+    /// but the server returned no usable verdict, as in an outage
+    /// (CLI 2.1.319+).
+    AutoModeStopNoVerdict,
     /// A code not yet known to this version of the crate.
     Unknown(String),
 }
@@ -2723,6 +2806,10 @@ impl PermissionDeniedReasonCode {
             Self::ClassifierTranscriptTooLong => "classifier_transcript_too_long",
             Self::OutsideReadsBlocked => "outside_reads_blocked",
             Self::MemoryPaused => "memory_paused",
+            Self::AutoModeNoCheckInSession => "auto_mode_no_check_in_session",
+            Self::AutoModeStopNoCheckInSession => "auto_mode_stop_no_check_in_session",
+            Self::AutoModeStopNoResultForCalls => "auto_mode_stop_no_result_for_calls",
+            Self::AutoModeStopNoVerdict => "auto_mode_stop_no_verdict",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -2740,6 +2827,10 @@ impl From<&str> for PermissionDeniedReasonCode {
             "classifier_transcript_too_long" => Self::ClassifierTranscriptTooLong,
             "outside_reads_blocked" => Self::OutsideReadsBlocked,
             "memory_paused" => Self::MemoryPaused,
+            "auto_mode_no_check_in_session" => Self::AutoModeNoCheckInSession,
+            "auto_mode_stop_no_check_in_session" => Self::AutoModeStopNoCheckInSession,
+            "auto_mode_stop_no_result_for_calls" => Self::AutoModeStopNoResultForCalls,
+            "auto_mode_stop_no_verdict" => Self::AutoModeStopNoVerdict,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -3296,6 +3387,14 @@ pub struct StatusMessage {
     /// CLIs before 2.1.295. Marked `@internal` upstream.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compact_output_chars: Option<u64>,
+    /// Present, and true, once at start-up when
+    /// `CLAUDE_CODE_RESUME_INTERRUPTED_TURN` asked for the interrupted turn
+    /// to be re-run and this process did not re-run it: the turn ran in plan
+    /// mode and the process came back in another mode, where the re-run
+    /// could carry out a plan nobody approved. Marked `@internal` upstream
+    /// (CLI 2.1.319+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resume_held_for_plan: Option<bool>,
 }
 
 /// Compact boundary message - marks where context compaction occurred
@@ -4857,8 +4956,10 @@ pub struct SessionTitleChangedMessage {
 
 /// `system/session_writes_lost` — the CLI could not save lines of a session
 /// transcript, changes to `~/.claude.json`, or both, because the disk was
-/// full or its quota was used up. Sent at most once, as the CLI exits, after
-/// the last result if there was one. The results already received stand,
+/// full or its quota was used up. Sent at most once, as the CLI exits with
+/// status 0, after the last result if there was one. A run that exits 1, as
+/// after an error result, gets only the line on stderr (CLI 2.1.317 and some
+/// later releases sent this message there too). The results already received stand,
 /// and this message does not change the exit status. Sent only with
 /// stream-json output on stdout, never under `--sdk-url` or a Claude Desktop
 /// entrypoint. Safe to ignore (CLI 2.1.317+).
@@ -5047,10 +5148,10 @@ pub struct UiInvalidateMessage {
     /// Present when a plugin state write, or (CLI 2.1.289+) a `Client`
     /// drawn in them that failed and whose plugin heard it (`ui.fault`),
     /// made only these instances stale, so the surface may re-ask them
-    /// alone. The backdrop of the session being set or cleared, or a client
-    /// of a surface that draws it joining where one ever stood, names the
-    /// one `Backdrop` instance (`instance_id` `backdrop`) on each such
-    /// surface. Absent, every mounted instance may be stale.
+    /// alone. The backdrop of the session being set or cleared
+    /// (`$.theme.set` / `$.theme.clear` on CLI 2.1.319+), or a client of a
+    /// surface that draws it joining where one ever stood, names the one
+    /// `Backdrop` instance (`instance_id` `backdrop`) on each such surface. Absent, every mounted instance may be stale.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instances: Option<Vec<UiInvalidatedInstance>>,
     /// Present, and true, while a mod may change what is recorded of a typed
@@ -5897,6 +5998,9 @@ pub struct ApiErrorParams {
     /// `hasChargeableSavedPaymentMethod` as the response gave them; the
     /// person's own cap arrives as `org_level_disabled_until`. No other
     /// member is sent.
+    ///
+    /// On CLI 2.1.319+ the `usage_limit_reached` record also carries
+    /// `dailyCapPaused` when usage is paused for the organization.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rate_limit_info: Option<RateLimitInfo>,
 }
