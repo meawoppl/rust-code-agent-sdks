@@ -142,6 +142,62 @@ fn provider_scoped_params_write_model_provider() {
     assert_eq!(serde_json::to_value(&list).unwrap(), expected);
 }
 
+/// Agent message items carry optional `moderation`; queued submissions carry optional `responsesapiClientMetadata`.
+#[test]
+fn agent_message_moderation_and_queued_metadata_round_trip() {
+    use codex_codes::protocol::{AgentMessageModeration, QueuedSubmission, ThreadItemPayload};
+
+    let json = serde_json::json!({
+        "type": "agentMessage",
+        "id": "msg-1",
+        "text": "hi",
+        "moderation": { "moderated": true }
+    });
+    let item: ThreadItemPayload = serde_json::from_value(json.clone()).unwrap();
+    match &item {
+        ThreadItemPayload::AgentMessage { moderation, .. } => {
+            assert_eq!(
+                *moderation,
+                Some(AgentMessageModeration { moderated: true })
+            );
+        }
+        other => panic!("expected agentMessage, got {other:?}"),
+    }
+    assert_eq!(serde_json::to_value(&item).unwrap(), json);
+
+    let bare: ThreadItemPayload = serde_json::from_value(serde_json::json!({
+        "type": "agentMessage", "id": "msg-2", "text": ""
+    }))
+    .unwrap();
+    assert!(!serde_json::to_value(&bare)
+        .unwrap()
+        .as_object()
+        .unwrap()
+        .contains_key("moderation"));
+
+    let queued = serde_json::json!({
+        "id": "q-1",
+        "clientUserMessageId": "c-1",
+        "input": [],
+        "responsesapiClientMetadata": { "origin": "ide" }
+    });
+    let sub: QueuedSubmission = serde_json::from_value(queued.clone()).unwrap();
+    assert_eq!(
+        sub.responsesapi_client_metadata
+            .as_ref()
+            .and_then(|m| m.get("origin"))
+            .map(String::as_str),
+        Some("ide")
+    );
+    assert_eq!(serde_json::to_value(&sub).unwrap(), queued);
+
+    let legacy: QueuedSubmission = serde_json::from_value(serde_json::json!({
+        "id": "q-2", "clientUserMessageId": "c-2", "input": []
+    }))
+    .unwrap();
+    assert_eq!(legacy.responsesapi_client_metadata, None);
+}
+
 /// TurnToolOutput omits `retain` when false, defaults it when absent, and round-trips `retain: true`.
 #[test]
 fn turn_tool_output_retain_round_trips() {

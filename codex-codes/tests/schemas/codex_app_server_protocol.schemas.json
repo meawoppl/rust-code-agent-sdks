@@ -7387,6 +7387,17 @@
           }
         ]
       },
+      "AgentMessageModeration": {
+        "properties": {
+          "moderated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "moderated"
+        ],
+        "type": "object"
+      },
       "AgentPath": {
         "type": "string"
       },
@@ -19244,6 +19255,16 @@
               "$ref": "#/definitions/v2/UserInput"
             },
             "type": "array"
+          },
+          "responsesapiClientMetadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Metadata retained with this input, including across reconnect and restoration.",
+            "type": [
+              "object",
+              "null"
+            ]
           }
         },
         "required": [
@@ -23421,6 +23442,17 @@
                 "anyOf": [
                   {
                     "$ref": "#/definitions/v2/MemoryCitation"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "moderation": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/v2/AgentMessageModeration"
                   },
                   {
                     "type": "null"
