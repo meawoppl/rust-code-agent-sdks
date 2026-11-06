@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.166.9] - 2026-11-06
+
+Model the `openai/codex@main` (`6abffd442`) app-server schema drift. The
+tested pin stays at Codex CLI **0.166.0**.
+
+### Added
+
+- `AgentMessageModeration { moderated: bool }` (new type) and
+  `ThreadItemPayload::AgentMessage.moderation: Option<AgentMessageModeration>`
+  (openai/codex#59842): targeted moderation decisions carried on
+  final-answer messages. Absent when the message was not moderated.
+- `QueuedSubmission.responsesapi_client_metadata: Option<HashMap<String, String>>`
+  (`responsesapiClientMetadata`, openai/codex#59826): ResponsesAPI client
+  metadata retained with a queued input across reconnect and restoration.
+
+### Breaking
+
+- `QueuedSubmission` gains a public field and the `AgentMessage` variant
+  gains a field, so struct literals / exhaustive variant patterns without
+  `..` no longer compile. No such initializers exist in the workspace.
+
 ## [0.166.8] - 2026-11-05
 
 Model the `openai/codex@main` (`aece55965`) app-server schema drift. The

@@ -6968,6 +6968,12 @@ pub enum AgentMessageDelivery {
     Async,
 }
 
+/// Moderation state attached to an agent message item.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AgentMessageModeration {
+    pub moderated: bool,
+}
+
 /// Where the CLI stores auth credentials.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum CliAuthCredentialsStoreMode {
@@ -7046,6 +7052,13 @@ pub struct QueuedSubmission {
     pub id: String,
     #[serde(default)]
     pub input: Vec<UserInput>,
+    /// Metadata retained with this input, including across reconnect and restoration.
+    #[serde(
+        rename = "responsesapiClientMetadata",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub responsesapi_client_metadata: Option<std::collections::HashMap<String, String>>,
 }
 
 /// `autoApprovalReview/strictReviewRequired` — a strict review gate opened.
@@ -8484,6 +8497,8 @@ pub enum ThreadItemPayload {
             skip_serializing_if = "Option::is_none"
         )]
         memory_citation: Option<MemoryCitation>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        moderation: Option<AgentMessageModeration>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         phase: Option<MessagePhase>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
