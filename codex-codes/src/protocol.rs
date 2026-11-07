@@ -134,6 +134,7 @@ pub mod methods {
     pub const THREAD_SECTION_MOVE: &str = "thread/section/move";
     pub const ACCOUNT_RATELIMITRESETCREDIT_CONSUME: &str = "account/rateLimitResetCredit/consume";
     pub const ACCOUNT_WORKSPACEMESSAGES_READ: &str = "account/workspaceMessages/read";
+    pub const ACCOUNT_SECURITYSETUP_READ: &str = "account/securitySetup/read";
     pub const EXTERNALAGENTCONFIG_IMPORT_READHISTORIES: &str =
         "externalAgentConfig/import/readHistories";
     pub const EXTERNALAGENTCONFIG_IMPORT_RECORDHISTORY: &str =
@@ -481,5 +482,49 @@ mod tests {
         let response: GetAccountResponse = serde_json::from_value(wire.clone()).unwrap();
         assert_eq!(response.user_id.as_deref(), Some("user-abc123"));
         assert_eq!(serde_json::to_value(&response).unwrap(), wire);
+    }
+
+    #[test]
+    fn account_security_setup_response_round_trips() {
+        use crate::protocol_generated::types::{
+            AccountSecuritySetupAction, AccountSecuritySetupNotice, GetAccountSecuritySetupResponse,
+        };
+
+        let wire = serde_json::json!({
+            "notice": {
+                "accountId": "acct-1",
+                "userId": "user-1",
+                "title": "Secure your account",
+                "description": "Turn on multi-factor authentication.",
+                "action": {"label": "Set up MFA", "url": "https://chatgpt.com/security"}
+            }
+        });
+        let response: GetAccountSecuritySetupResponse =
+            serde_json::from_value(wire.clone()).unwrap();
+        assert_eq!(
+            response.notice,
+            Some(AccountSecuritySetupNotice {
+                account_id: "acct-1".to_string(),
+                user_id: "user-1".to_string(),
+                title: "Secure your account".to_string(),
+                description: "Turn on multi-factor authentication.".to_string(),
+                action: AccountSecuritySetupAction {
+                    label: "Set up MFA".to_string(),
+                    url: "https://chatgpt.com/security".to_string(),
+                },
+            })
+        );
+        assert_eq!(serde_json::to_value(&response).unwrap(), wire);
+
+        let empty = serde_json::json!({"notice": null});
+        let response: GetAccountSecuritySetupResponse =
+            serde_json::from_value(empty.clone()).unwrap();
+        assert_eq!(response.notice, None);
+        assert_eq!(serde_json::to_value(&response).unwrap(), empty);
+        assert_eq!(
+            serde_json::from_value::<GetAccountSecuritySetupResponse>(serde_json::json!({}))
+                .unwrap(),
+            GetAccountSecuritySetupResponse::default()
+        );
     }
 }

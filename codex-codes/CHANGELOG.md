@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.167.1] - 2026-11-07
+
+Model the `openai/codex@main` (`33b3f80a09`) app-server schema drift. The
+tested pin stays at Codex CLI **0.167.0**.
+
+### Added
+
+- `account/securitySetup/read` client request (openai/codex#60082):
+  `methods::ACCOUNT_SECURITYSETUP_READ` plus `GetAccountSecuritySetupResponse`
+  (`notice: Option<AccountSecuritySetupNotice>`), `AccountSecuritySetupNotice`
+  (`account_id`, `user_id`, `title`, `description`, `action`) and
+  `AccountSecuritySetupAction` (`label`, `url`). The request takes no params.
+  Unavailable or ineligible accounts get `notice: null`.
+
 ## [0.167.0] - 2026-11-06
 
 Re-pin to Codex CLI **0.167.0** and model the `openai/codex@main`
