@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.167.0] - 2026-11-06
+
+Re-pin to Codex CLI **0.167.0** and model the `openai/codex@main`
+(`358e464528`) app-server schema drift.
+
+The 0.167.0 release schema is a strict subset of the tracked main snapshot.
+Its additions over 0.166.0 (`thread/section/changed`, audio `UserInput` /
+`ContentItem`, `InitializeCapabilities`, `OtelRequirements`) were already
+modeled in 0.166.x, so the re-pin needs no further type work.
+
+### Added
+
+- `GetAccountResponse.user_id: Option<String>` (`userId`,
+  openai/codex#60004): ChatGPT user ID returned by `account/read`, when
+  available.
+
+### Changed
+
+- Snapshot refresh for openai/codex#60048: plugin starter prompts
+  (`PluginInterface.defaultPrompt`) may now be up to 512 characters each
+  (was 128). Description-only; no type change.
+
+### Breaking
+
+- `GetAccountResponse` gains a public field, so struct literals without
+  `..` no longer compile. No such initializers exist in the workspace.
+
 ## [0.166.9] - 2026-11-06
 
 Model the `openai/codex@main` (`6abffd442`) app-server schema drift. The

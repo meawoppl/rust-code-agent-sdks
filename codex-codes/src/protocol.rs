@@ -468,5 +468,18 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(response.account, Some(Account::Gcp));
+        assert_eq!(response.user_id, None);
+    }
+
+    #[test]
+    fn get_account_response_carries_user_id() {
+        let wire = serde_json::json!({
+            "account": {"type": "gcp"},
+            "requiresOpenaiAuth": false,
+            "userId": "user-abc123"
+        });
+        let response: GetAccountResponse = serde_json::from_value(wire.clone()).unwrap();
+        assert_eq!(response.user_id.as_deref(), Some("user-abc123"));
+        assert_eq!(serde_json::to_value(&response).unwrap(), wire);
     }
 }
