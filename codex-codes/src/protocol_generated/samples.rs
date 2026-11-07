@@ -304,6 +304,7 @@ pub fn client_request_samples() -> Vec<(&'static str, Value)> {
         ),
         ("account/rateLimits/read", json!({})),
         ("account/read", json!({})),
+        ("account/securitySetup/read", json!({})),
         (
             "account/sendAddCreditsNudgeEmail",
             json!({"creditType": "credits"}),

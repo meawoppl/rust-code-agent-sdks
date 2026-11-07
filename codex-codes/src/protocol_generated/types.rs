@@ -2940,6 +2940,35 @@ pub struct GetAccountParams {
     pub refresh_token: Option<bool>,
 }
 
+/// Response to `account/securitySetup/read`: an optional security reminder
+/// bound to the account that fetched it. Unavailable or ineligible accounts
+/// return no notice; this read never changes account security.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct GetAccountSecuritySetupResponse {
+    #[serde(default)]
+    pub notice: Option<AccountSecuritySetupNotice>,
+}
+
+/// One entry in [`GetAccountSecuritySetupResponse::notice`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountSecuritySetupNotice {
+    pub account_id: String,
+    pub user_id: String,
+    pub title: String,
+    pub description: String,
+    pub action: AccountSecuritySetupAction,
+}
+
+/// Call-to-action link on an [`AccountSecuritySetupNotice`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountSecuritySetupAction {
+    pub label: String,
+    pub url: String,
+}
+
 /// Usage-read capabilities of the requesting client, never inferred from its
 /// experiment arm. Both flags are omitted from the wire when `false`, so the
 /// default value serializes as `{}`.
