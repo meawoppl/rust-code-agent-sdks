@@ -3009,6 +3009,9 @@ pub struct GetAccountResponse {
     pub account: Option<Account>,
     #[serde(rename = "requiresOpenaiAuth", default)]
     pub requires_openai_auth: bool,
+    /// ChatGPT user ID belonging to this account response, when available.
+    #[serde(rename = "userId", default, skip_serializing_if = "Option::is_none")]
+    pub user_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
