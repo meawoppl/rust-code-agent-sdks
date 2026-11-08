@@ -158,7 +158,10 @@ fn agent_message_moderation_and_queued_metadata_round_trip() {
         ThreadItemPayload::AgentMessage { moderation, .. } => {
             assert_eq!(
                 *moderation,
-                Some(AgentMessageModeration { moderated: true })
+                Some(AgentMessageModeration {
+                    moderated: true,
+                    display: None,
+                })
             );
         }
         other => panic!("expected agentMessage, got {other:?}"),
@@ -196,6 +199,37 @@ fn agent_message_moderation_and_queued_metadata_round_trip() {
     }))
     .unwrap();
     assert_eq!(legacy.responsesapi_client_metadata, None);
+}
+
+/// Agent message moderation carries an optional `display` instruction with camelCase fields.
+#[test]
+fn agent_message_moderation_display_round_trip() {
+    use codex_codes::protocol::{AgentMessageDisplay, AgentMessageModeration};
+
+    let json = serde_json::json!({
+        "moderated": true,
+        "display": {
+            "action": "block",
+            "blockType": "cyber",
+            "cyberTrustedAccess": false,
+            "checkTrustedContacts": true
+        }
+    });
+    let moderation: AgentMessageModeration = serde_json::from_value(json.clone()).unwrap();
+    assert_eq!(
+        moderation.display,
+        Some(AgentMessageDisplay {
+            action: "block".into(),
+            block_type: Some("cyber".into()),
+            cyber_trusted_access: Some(false),
+            check_trusted_contacts: Some(true),
+        })
+    );
+    assert_eq!(serde_json::to_value(&moderation).unwrap(), json);
+
+    let minimal = serde_json::json!({ "moderated": false, "display": { "action": "future" } });
+    let parsed: AgentMessageModeration = serde_json::from_value(minimal.clone()).unwrap();
+    assert_eq!(serde_json::to_value(&parsed).unwrap(), minimal);
 }
 
 /// TurnToolOutput omits `retain` when false, defaults it when absent, and round-trips `retain: true`.
