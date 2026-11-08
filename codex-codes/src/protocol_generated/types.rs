@@ -7001,9 +7001,25 @@ pub enum AgentMessageDelivery {
 }
 
 /// Moderation state attached to an agent message item.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AgentMessageModeration {
     pub moderated: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display: Option<AgentMessageDisplay>,
+}
+
+/// A presentation instruction for Chat to apply to this answer when recovering history.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentMessageDisplay {
+    /// Unknown actions must be left for the producing client to handle.
+    pub action: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub block_type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cyber_trusted_access: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub check_trusted_contacts: Option<bool>,
 }
 
 /// Where the CLI stores auth credentials.
