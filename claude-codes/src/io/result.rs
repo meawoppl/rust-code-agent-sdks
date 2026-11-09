@@ -174,6 +174,15 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub process_cpu_ms_turn: Option<u64>,
 
+    /// How many times the session built its main tool list, first build
+    /// included, since the last result that carried this count (or since the
+    /// session started). A read that reused the stored list counts as none;
+    /// builds between turns and in turns whose result carried no count are
+    /// included, a subagent's list is not. Sent with
+    /// [`process_cpu_ms_turn`](Self::process_cpu_ms_turn) (CLI 2.1.321+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_pool_build_count: Option<u64>,
+
     /// Monotonic wall time of the
     /// [`process_cpu_ms_turn`](Self::process_cpu_ms_turn) stretch, in ms
     /// (CLI 2.1.300+).
@@ -369,6 +378,14 @@ pub struct ResultMessage {
     /// when the sum is above zero.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub first_request_input_tokens: Option<u64>,
+
+    /// The `cache_read_input_tokens` part of
+    /// [`first_request_input_tokens`](Self::first_request_input_tokens),
+    /// `0` included, so a consumer can tell a cold prompt cache from a large
+    /// prompt. Present exactly when `first_request_input_tokens` is
+    /// (CLI 2.1.321+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_request_cache_read_input_tokens: Option<u64>,
 
     /// Time until the first content frame of the stream arrived, in
     /// milliseconds (CLI 2.1.260+ timing instrumentation).

@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.321] - 2026-11-09
+
+Re-baseline against Claude CLI **2.1.321**. Two new system subtypes, four
+new optional fields, one new `api_error` kind and two new models. No
+removals. `--help` and the accepted `--model` list are unchanged.
+
+### Added
+
+- `system/ui_notify` (`UiNotifyMessage`, `SystemMessage::is_ui_notify` /
+  `as_ui_notify`, `KnownSystemEvent::UiNotify`): one `$.ui.notify(text)`
+  from a plugin in a headless session — a notification for the client to
+  raise under the plugin's name, now (`delay_ms` / `at` absent) or up to
+  7 days later. Same-`source` + `key` notifications replace each other;
+  `rewritten` flags a frame another plugin's hook changed.
+- `system/ui_notify_cancel` (`UiNotifyCancelMessage`, `is_ui_notify_cancel`
+  / `as_ui_notify_cancel`, `KnownSystemEvent::UiNotifyCancel`): take back a
+  notification by `source` + `key`; no `key` means the engine removed the
+  plugin, so drop everything that source has waiting.
+- `ResultMessage::tool_pool_build_count` (success result): how many times
+  the session built its main tool list since the last result that carried
+  the count.
+- `ResultMessage::first_request_cache_read_input_tokens`: the
+  `cache_read_input_tokens` part of `first_request_input_tokens`, to tell a
+  cold prompt cache from a large prompt.
+- `ToolUseMeta::artifact_publish`: true on a call to a publishing tool of
+  an Artifacts MCP entry that reaches only Anthropic's server.
+- `ApiErrorParams::cut` with the new open-set `ApiErrorCut`
+  (`output_limit`, `context_window`): which API stop reason cut a
+  `max_output_tokens` reply short.
+- `ClaudeModel::Fable52` (`claude-fable-5-2`) and `ClaudeModel::Mythos52`
+  (`claude-mythos-5-2`, first-party only). **Breaking** for exhaustive
+  matches on `ClaudeModel`.
+
+### Changed
+
+- The `fable` alias now floats to `claude-fable-5-2` first-party, and the
+  `best` alias now points at `opus` instead of `fable`.
+- Docs: `api_error` gains `hook_denied` (a mod's `http.fetch` hook stopped
+  the request); `ui_invalidate` names the `Theme` instance beside the
+  `Backdrop` one; `thinking_duration_ms` may end at the interrupt that cut
+  the block; a plain interrupt in a remote session can now produce
+  `cancelled` `command_lifecycle` frames. The `voice-call` `MessageOrigin`
+  gained optional `requestUuid` / `inReplyToUuid` / `saidAt` members, which
+  pass through the open `MessageOrigin::extra` map.
+
 ## [2.1.319] - 2026-11-06
 
 Re-baseline against Claude CLI **2.1.319**. Six new optional fields, four

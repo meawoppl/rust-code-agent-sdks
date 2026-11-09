@@ -326,8 +326,11 @@ pub enum CommandLifecycleState {
     Started,
     /// The turn that consumed the command ended cleanly.
     Completed,
-    /// Removed by cancel, caught before dispatch, or consumed into a turn
-    /// that was aborted or died on a hard failure.
+    /// Removed by cancel, swept by an interrupt with `cancel_queued: true`
+    /// (or, on CLI 2.1.321+ in a remote session behind a flag, by a plain
+    /// interrupt, which cancels only messages the server had re-sent; see
+    /// `cancelled` on the interrupt's response), caught before dispatch, or
+    /// consumed into a turn that was aborted or died on a hard failure.
     Cancelled,
     /// The session ended with the command still queued.
     Discarded,

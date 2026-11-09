@@ -60,6 +60,8 @@ pub enum SystemSubtype {
     UiFocus,
     UiInvalidate,
     UiLog,
+    UiNotify,
+    UiNotifyCancel,
     UiPanes,
     UiPlaced,
     UiScroll,
@@ -118,6 +120,8 @@ impl SystemSubtype {
             Self::UiFocus => "ui_focus",
             Self::UiInvalidate => "ui_invalidate",
             Self::UiLog => "ui_log",
+            Self::UiNotify => "ui_notify",
+            Self::UiNotifyCancel => "ui_notify_cancel",
             Self::UiPanes => "ui_panes",
             Self::UiPlaced => "ui_placed",
             Self::UiScroll => "ui_scroll",
@@ -183,6 +187,8 @@ impl From<&str> for SystemSubtype {
             "ui_focus" => Self::UiFocus,
             "ui_invalidate" => Self::UiInvalidate,
             "ui_log" => Self::UiLog,
+            "ui_notify" => Self::UiNotify,
+            "ui_notify_cancel" => Self::UiNotifyCancel,
             "ui_panes" => Self::UiPanes,
             "ui_placed" => Self::UiPlaced,
             "ui_scroll" => Self::UiScroll,
@@ -2006,6 +2012,32 @@ impl SystemMessage {
         serde_json::from_value(self.data.clone()).ok()
     }
 
+    /// Check if this is a ui_notify message.
+    pub fn is_ui_notify(&self) -> bool {
+        self.subtype == SystemSubtype::UiNotify
+    }
+
+    /// Try to parse as a ui_notify message.
+    pub fn as_ui_notify(&self) -> Option<UiNotifyMessage> {
+        if self.subtype != SystemSubtype::UiNotify {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
+    /// Check if this is a ui_notify_cancel message.
+    pub fn is_ui_notify_cancel(&self) -> bool {
+        self.subtype == SystemSubtype::UiNotifyCancel
+    }
+
+    /// Try to parse as a ui_notify_cancel message.
+    pub fn as_ui_notify_cancel(&self) -> Option<UiNotifyCancelMessage> {
+        if self.subtype != SystemSubtype::UiNotifyCancel {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
     /// Check if this is a ui_panes message.
     pub fn is_ui_panes(&self) -> bool {
         self.subtype == SystemSubtype::UiPanes
@@ -2166,6 +2198,8 @@ impl SystemMessage {
             SystemSubtype::UiFocus => parse!(UiFocus, UiFocusMessage),
             SystemSubtype::UiInvalidate => parse!(UiInvalidate, UiInvalidateMessage),
             SystemSubtype::UiLog => parse!(UiLog, UiLogMessage),
+            SystemSubtype::UiNotify => parse!(UiNotify, UiNotifyMessage),
+            SystemSubtype::UiNotifyCancel => parse!(UiNotifyCancel, UiNotifyCancelMessage),
             SystemSubtype::UiPanes => parse!(UiPanes, UiPanesMessage),
             SystemSubtype::UiPlaced => parse!(UiPlaced, UiPlacedMessage),
             SystemSubtype::UiScroll => parse!(UiScroll, UiScrollMessage),
@@ -2282,6 +2316,10 @@ impl SystemMessage {
             SystemSubtype::UiFocus => reserialize(parse_system::<UiFocusMessage>(self)),
             SystemSubtype::UiInvalidate => reserialize(parse_system::<UiInvalidateMessage>(self)),
             SystemSubtype::UiLog => reserialize(parse_system::<UiLogMessage>(self)),
+            SystemSubtype::UiNotify => reserialize(parse_system::<UiNotifyMessage>(self)),
+            SystemSubtype::UiNotifyCancel => {
+                reserialize(parse_system::<UiNotifyCancelMessage>(self))
+            }
             SystemSubtype::UiPanes => reserialize(parse_system::<UiPanesMessage>(self)),
             SystemSubtype::UiPlaced => reserialize(parse_system::<UiPlacedMessage>(self)),
             SystemSubtype::UiScroll => reserialize(parse_system::<UiScrollMessage>(self)),
@@ -2350,6 +2388,8 @@ pub enum KnownSystemEvent {
     UiFocus(UiFocusMessage),
     UiInvalidate(UiInvalidateMessage),
     UiLog(UiLogMessage),
+    UiNotify(UiNotifyMessage),
+    UiNotifyCancel(UiNotifyCancelMessage),
     UiPanes(UiPanesMessage),
     UiPlaced(UiPlacedMessage),
     UiScroll(UiScrollMessage),
@@ -5100,6 +5140,79 @@ pub struct UiLogMessage {
     pub session_id: String,
 }
 
+/// `system/ui_notify` — one `$.ui.notify(text)` from a plugin in a headless
+/// session: a notification for the client to raise under the plugin's name,
+/// now or later. Nothing limits how often a plugin sends one
+/// (CLI 2.1.321+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UiNotifyMessage {
+    /// The calling plugin's registry name, as the hooks engine knows it
+    /// (never plugin-settable). Not cleaned as `title` is, so scrub it, and
+    /// show it after the host's own word that a mod sent it, so neither it
+    /// nor the title can pass for the app's own.
+    pub plugin: String,
+    /// The plugin's full id, `name@marketplace` (`name@inline` when
+    /// side-loaded), as the hooks engine loaded it (never plugin-settable).
+    /// Two plugins sharing a name differ here.
+    pub source: String,
+    /// The notification's heading: the plugin's words, cleaned of control
+    /// characters and cut to 120 characters, or the plugin's name. Plain
+    /// text, and never the only sign of who sent it.
+    pub title: String,
+    /// The body: the plugin's words, cleaned of control characters and cut
+    /// to 1000 characters. Plain text: draw it as a text node, never as
+    /// markup.
+    pub text: String,
+    /// The plugin's name for this notification: one with the same `source`
+    /// and key replaces the last. Scope it by `source`, so one mod cannot
+    /// touch another's. Absent: each frame is its own notification.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key: Option<String>,
+    /// How long after this frame arrives to raise it; the client holds it,
+    /// so it fires with the session out of reach. At most 7 days. Absent
+    /// (with no [`at`](Self::at)): raise it now.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delay_ms: Option<u64>,
+    /// The epoch-millisecond time to raise it, at most 7 days ahead. Never
+    /// sent beside [`delay_ms`](Self::delay_ms).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub at: Option<u64>,
+    /// With `delay_ms` or `at`: throw it away if the person returns to the
+    /// session before it fires.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub until_back: Option<bool>,
+    /// True when what this frame carries differs from what the sender sent
+    /// and another plugin's hook was in the chain: its words, timing or key
+    /// may not be the sender's, so say so beside the sender. Always sent;
+    /// missing (from an older engine) reads as false. Never plugin-settable.
+    #[serde(default)]
+    pub rewritten: bool,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// `system/ui_notify_cancel` — one `$.ui.cancelNotify(key)` from a plugin in
+/// a headless session, or the engine removing a plugin: remove the
+/// notification with this `source` and `key`, shown or still waiting. None
+/// held under that key: do nothing (CLI 2.1.321+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UiNotifyCancelMessage {
+    /// The plugin's registry name, as the hooks engine knows it (never
+    /// plugin-settable).
+    pub plugin: String,
+    /// The plugin's full id, as on [`UiNotifyMessage::source`] (never
+    /// plugin-settable). Only notifications of this source are touched.
+    pub source: String,
+    /// The [`UiNotifyMessage::key`] of the notification to take back.
+    /// Absent: the engine removed the plugin from this session, so drop
+    /// everything this source has waiting for this session. Only the engine
+    /// sends that.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key: Option<String>,
+    pub uuid: String,
+    pub session_id: String,
+}
+
 /// `system/ui_toast` — one `$.ui.toast(text)` from a plugin in a headless
 /// session: what the REPL shows on the notification bar under the prompt
 /// for a few seconds, under the plugin's name. Toasts arrive at no fixed
@@ -5148,10 +5261,12 @@ pub struct UiInvalidateMessage {
     /// Present when a plugin state write, or (CLI 2.1.289+) a `Client`
     /// drawn in them that failed and whose plugin heard it (`ui.fault`),
     /// made only these instances stale, so the surface may re-ask them
-    /// alone. The backdrop of the session being set or cleared
+    /// alone. The theme of the session being set or cleared
     /// (`$.theme.set` / `$.theme.clear` on CLI 2.1.319+), or a client of a
-    /// surface that draws it joining where one ever stood, names the one
-    /// `Backdrop` instance (`instance_id` `backdrop`) on each such surface. Absent, every mounted instance may be stale.
+    /// surface that draws it joining where one ever stood, names the
+    /// `Backdrop` instance (`instance_id` `backdrop`) and, on CLI 2.1.321+,
+    /// the `Theme` instance (`instance_id` `theme`) on each such surface.
+    /// Absent, every mounted instance may be stale.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instances: Option<Vec<UiInvalidatedInstance>>,
     /// Present, and true, while a mod may change what is recorded of a typed
@@ -5684,6 +5799,16 @@ pub struct ToolUseMeta {
     /// `mcp__<server>__` prefix (CLI 2.1.300+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_name: Option<String>,
+    /// `Some(true)` on a call to a publishing tool of an Artifacts MCP entry
+    /// that reaches only Anthropic's server, which the CLI tells from the
+    /// entry itself, never its name. The finished call's `tool_use_result`
+    /// usually carries the artifact's url at its top level (and its title
+    /// where the server's answer has one), but the mark promises neither,
+    /// and the url can come on an unmarked call; all are the worker's word,
+    /// not proof. Sent only on the main loop's own frames: never for a
+    /// subagent's call or over Remote Control (CLI 2.1.321+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub artifact_publish: Option<bool>,
 }
 
 /// Assistant message
@@ -5811,8 +5936,8 @@ pub struct AssistantMessage {
     pub narration_hint: Option<String>,
     /// How long the thinking block in this frame took to stream, in whole
     /// milliseconds (at least 1): from its `content_block_start` to its
-    /// `content_block_stop`, so the wait for the response's first token is
-    /// not counted. For display only. Sent only on a frame whose one content
+    /// `content_block_stop` (or, on CLI 2.1.321+, to the interrupt that cut
+    /// it), so the wait for the response's first token is not counted. For display only. Sent only on a frame whose one content
     /// block is a thinking block that was streamed; absent from CLIs before
     /// 2.1.287 and from a CLI replaying history it rebuilt from SDK frames,
     /// so be ready to show the block without a duration. Wrapper-level
@@ -5913,7 +6038,8 @@ pub struct AssistantMessage {
     /// firewall in front of Anthropic's API refused the request for its
     /// network location (an unsupported region, or a VPN, proxy or network
     /// routing through one) before it reached the API; no sign-in or
-    /// credential change fixes it.
+    /// credential change fixes it — and (CLI 2.1.321+) `hook_denied` — a
+    /// mod's `http.fetch` hook stopped the request.
     /// Kinds with parameters carry them in [`Self::api_error_params`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_error: Option<String>,
@@ -6003,6 +6129,62 @@ pub struct ApiErrorParams {
     /// `dailyCapPaused` when usage is paused for the organization.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rate_limit_info: Option<RateLimitInfo>,
+    /// Which API stop reason cut the reply short (`max_output_tokens`),
+    /// which the kind alone does not say. Absent on the one other error
+    /// that carries `max_output_tokens`, the API's `tool_use_block_cut_off`,
+    /// which [`AssistantMessage::api_error_code`] names (CLI 2.1.321+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cut: Option<ApiErrorCut>,
+}
+
+/// Which API stop reason cut a reply short ([`ApiErrorParams::cut`]).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ApiErrorCut {
+    /// `max_tokens`: the request's output-token maximum.
+    OutputLimit,
+    /// `model_context_window_exceeded`: the model's context window.
+    ContextWindow,
+    /// A value not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl ApiErrorCut {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::OutputLimit => "output_limit",
+            Self::ContextWindow => "context_window",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for ApiErrorCut {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for ApiErrorCut {
+    fn from(s: &str) -> Self {
+        match s {
+            "output_limit" => Self::OutputLimit,
+            "context_window" => Self::ContextWindow,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for ApiErrorCut {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ApiErrorCut {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// The kind of block the API refused ([`ApiErrorParams::media`]).
