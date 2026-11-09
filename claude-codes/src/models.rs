@@ -26,9 +26,12 @@ pub enum ClaudeModel {
     /// `claude-haiku-5-5` first-party as of CLI 2.1.293; Bedrock, Vertex,
     /// Foundry and the gateway still resolve it to `claude-haiku-4-5`.
     Haiku,
-    /// Newest Fable-family model (floating alias `fable`).
+    /// Newest Fable-family model (floating alias `fable`). Resolves to
+    /// `claude-fable-5-2` first-party as of CLI 2.1.321; the gateway still
+    /// resolves it to `claude-fable-5`.
     Fable,
     /// The most capable model available to the account (alias `best`).
+    /// Points at the `opus` alias as of CLI 2.1.321 (it was `fable` before).
     Best,
     /// Opus for plan mode, Sonnet otherwise (alias `opusplan`).
     OpusPlan,
@@ -38,10 +41,16 @@ pub enum ClaudeModel {
     Opus1m,
     /// Newest Fable with the 1M-token context beta (alias `fable[1m]`).
     Fable1m,
+    /// Fable 5.2 (`claude-fable-5-2`), added in CLI 2.1.321 — the new
+    /// first-party float target of the `fable` alias.
+    Fable52,
     /// Fable 5.1 (`claude-fable-5-1`).
     Fable51,
     /// Fable 5 (`claude-fable-5`).
     Fable5,
+    /// Mythos 5.2 (`claude-mythos-5-2`), added in CLI 2.1.321; first-party
+    /// only.
+    Mythos52,
     /// Mythos 5.1 (`claude-mythos-5-1`).
     Mythos51,
     /// Mythos 5 (`claude-mythos-5`).
@@ -103,8 +112,10 @@ impl ClaudeModel {
             Self::Sonnet1m => "sonnet[1m]",
             Self::Opus1m => "opus[1m]",
             Self::Fable1m => "fable[1m]",
+            Self::Fable52 => "claude-fable-5-2",
             Self::Fable51 => "claude-fable-5-1",
             Self::Fable5 => "claude-fable-5",
+            Self::Mythos52 => "claude-mythos-5-2",
             Self::Mythos51 => "claude-mythos-5-1",
             Self::Mythos5 => "claude-mythos-5",
             Self::Opus55 => "claude-opus-5-5",
@@ -147,8 +158,10 @@ impl ClaudeModel {
             Self::Sonnet1m => "Sonnet (latest, 1M context)",
             Self::Opus1m => "Opus (latest, 1M context)",
             Self::Fable1m => "Fable (latest, 1M context)",
+            Self::Fable52 => "Fable 5.2",
             Self::Fable51 => "Fable 5.1",
             Self::Fable5 => "Fable 5",
+            Self::Mythos52 => "Mythos 5.2",
             Self::Mythos51 => "Mythos 5.1",
             Self::Mythos5 => "Mythos 5",
             Self::Opus55 => "Opus 5.5",
@@ -202,8 +215,10 @@ impl ClaudeModel {
             Self::Sonnet1m,
             Self::Opus1m,
             Self::Fable1m,
+            Self::Fable52,
             Self::Fable51,
             Self::Fable5,
+            Self::Mythos52,
             Self::Mythos51,
             Self::Mythos5,
             Self::Opus55,
@@ -246,8 +261,10 @@ impl From<&str> for ClaudeModel {
             "sonnet[1m]" => Self::Sonnet1m,
             "opus[1m]" => Self::Opus1m,
             "fable[1m]" => Self::Fable1m,
+            "claude-fable-5-2" => Self::Fable52,
             "claude-fable-5-1" => Self::Fable51,
             "claude-fable-5" => Self::Fable5,
+            "claude-mythos-5-2" => Self::Mythos52,
             "claude-mythos-5-1" => Self::Mythos51,
             "claude-mythos-5" => Self::Mythos5,
             "claude-opus-5-5" => Self::Opus55,

@@ -78,7 +78,7 @@
 //! ⚠️ **Important**: The Claude CLI protocol is unstable and evolving. This crate
 //! automatically checks your Claude CLI version and warns if it's newer than tested.
 //!
-//! Current tested version: **2.1.319**
+//! Current tested version: **2.1.321**
 //!
 //! Report compatibility issues at: <https://github.com/meawoppl/rust-claude-codes/pulls>
 //!
@@ -163,13 +163,13 @@ pub use io::{
 
 // System message and assistant message types
 pub use io::{
-    ApiErrorMedia, ApiErrorMediaReason, ApiErrorParams, ApiErrorProvider, ApiErrorRemedy,
-    ApiKeySource, ApiRetryMessage, ApiRetryNoResponse, ArtifactReadVersion, AssistantErrorKind,
-    AutoModeRule, AutoModeRuleList, BackgroundTaskInfo, BackgroundTasksChangedMessage,
-    BatchToolUse, ClientThinking, CloudSessionDeltaMessage, CodeChangePublishedMessage,
-    CommandInfo, CommandsChangedMessage, CompactBoundaryMessage, CompactMetadata,
-    CompactionTrigger, ContextAgent, ContextCategory, ContextMcpTool, ContextMemoryFile,
-    ContextOverLimit, ContextSkill, ContextUsage, ControlRequestProgressMessage,
+    ApiErrorCut, ApiErrorMedia, ApiErrorMediaReason, ApiErrorParams, ApiErrorProvider,
+    ApiErrorRemedy, ApiKeySource, ApiRetryMessage, ApiRetryNoResponse, ArtifactReadVersion,
+    AssistantErrorKind, AutoModeRule, AutoModeRuleList, BackgroundTaskInfo,
+    BackgroundTasksChangedMessage, BatchToolUse, ClientThinking, CloudSessionDeltaMessage,
+    CodeChangePublishedMessage, CommandInfo, CommandsChangedMessage, CompactBoundaryMessage,
+    CompactMetadata, CompactionTrigger, ContextAgent, ContextCategory, ContextMcpTool,
+    ContextMemoryFile, ContextOverLimit, ContextSkill, ContextUsage, ControlRequestProgressMessage,
     CyberVerificationStatus, DevIntentKind, DevIntentMessage, DevIntentTrigger,
     ElicitationCompleteMessage, FailedPersistedFile, FeedbackDraftQueuedMessage,
     FileAttachmentsMissingMessage, FilesPersistedMessage, HandbackReport, HookProgressMessage,
@@ -192,11 +192,11 @@ pub use io::{
     TaskStartedMessage, TaskStatus, TaskType, TaskUpdatedMessage, TaskUsage, ThinkingTokensMessage,
     ToolPermissionDecision, ToolResultMeta, ToolResultRemedy, ToolResultRemedyKind, ToolUseMeta,
     TurnHandoffAvailableMessage, TurnPreemptedMessage, UiFocusMessage, UiInvalidateMessage,
-    UiInvalidatedInstance, UiLogMessage, UiPane, UiPanesMessage, UiPlacedMessage, UiPlacedRow,
-    UiScrollMessage, UiSiteComponent, UiStatusMessage, UiToastMessage, UsageReport,
-    UsageReportExtraUsage, UsageReportLimit, UsageReportRateLimits, UsageReportScope,
-    UsageReportScopeLabel, VcsMutationKind, VcsStateChangedMessage, ViewMode,
-    WorkerShuttingDownMessage,
+    UiInvalidatedInstance, UiLogMessage, UiNotifyCancelMessage, UiNotifyMessage, UiPane,
+    UiPanesMessage, UiPlacedMessage, UiPlacedRow, UiScrollMessage, UiSiteComponent,
+    UiStatusMessage, UiToastMessage, UsageReport, UsageReportExtraUsage, UsageReportLimit,
+    UsageReportRateLimits, UsageReportScope, UsageReportScopeLabel, VcsMutationKind,
+    VcsStateChangedMessage, ViewMode, WorkerShuttingDownMessage,
 };
 
 // Additional top-level output message wrappers
