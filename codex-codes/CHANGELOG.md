@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.167.4] - 2026-11-09
+
+Tracks `openai/codex@main` schema drift (snapshot pinned at
+`0811df3976`). The tested pin stays at Codex CLI **0.167.0**.
+
+### Added
+
+- `CodexErrorInfo::InferenceHookDenied` (`inferenceHookDenied`): the
+  workspace's inference hook explicitly denied the request, so the turn fails
+  terminally (openai/codex#60511). It previously decoded as `Other`.
+- Gateway OAuth device authorization (openai/codex#60486):
+  - `GatewayOAuthReadResponse.supports_device_auth` (defaults to `false`).
+  - `GatewayOAuthLoginParams.device_auth` (written only when `true`).
+  - `GatewayOAuthLoginResponse.prompt: Option<GatewayOAuthPrompt>`, where the
+    new `GatewayOAuthPrompt { login_id, user_code, verification_url }`
+    redacts the code and URL from its `Debug` output, as upstream does.
+  - `GatewayOAuthChangedNotification.login_id`, which identifies the completed
+    device login.
+
+### Breaking
+
+- `GatewayOAuthLoginParams` gains a field, and `GatewayOAuthLoginResponse` is no
+  longer an empty struct. Struct literals need `..Default::default()`. Exhaustive
+  matches on `CodexErrorInfo` need the new arm.
+
 ## [0.167.3] - 2026-11-09
 
 Client-side fixes; no schema change. The tested pin stays at Codex CLI

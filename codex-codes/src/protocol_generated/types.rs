@@ -837,6 +837,10 @@ pub enum CodexErrorInfo {
     /// `ServerOverloaded`, but retried the same way (honouring `Retry-After`).
     #[serde(rename = "policyCapacityUnavailable")]
     PolicyCapacityUnavailable,
+    /// The workspace's inference hook explicitly denied this request. The
+    /// turn fails terminally instead of retrying.
+    #[serde(rename = "inferenceHookDenied")]
+    InferenceHookDenied,
     #[serde(rename = "cyberPolicy")]
     CyberPolicy,
     #[serde(rename = "misalignmentPolicyViolation")]
@@ -2860,6 +2864,9 @@ pub struct GatewayOAuthChangedNotification {
     pub auth_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// Identifies the completed device login attempt.
+    #[serde(rename = "loginId", default, skip_serializing_if = "Option::is_none")]
+    pub login_id: Option<String>,
     #[serde(rename = "providerId", default)]
     pub provider_id: String,
     pub status: GatewayOAuthStatus,
@@ -2870,6 +2877,14 @@ pub struct GatewayOAuthChangedNotification {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct GatewayOAuthLoginParams {
+    /// Select device authorization when the server advertises support for
+    /// it (see [`GatewayOAuthReadResponse::supports_device_auth`]).
+    #[serde(
+        rename = "deviceAuth",
+        default,
+        skip_serializing_if = "std::ops::Not::not"
+    )]
+    pub device_auth: bool,
     /// Defaults to the current provider when omitted.
     #[serde(
         rename = "modelProvider",
@@ -2881,7 +2896,35 @@ pub struct GatewayOAuthLoginParams {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct GatewayOAuthLoginResponse {}
+pub struct GatewayOAuthLoginResponse {
+    /// Device-authorization prompt, present when the login was started with
+    /// [`GatewayOAuthLoginParams::device_auth`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<GatewayOAuthPrompt>,
+}
+
+/// Device-authorization code the user enters at `verification_url`. The
+/// matching `account/gatewayOAuth/changed` notification carries the same
+/// `login_id`.
+#[derive(Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct GatewayOAuthPrompt {
+    #[serde(rename = "loginId", default)]
+    pub login_id: String,
+    #[serde(rename = "userCode", default)]
+    pub user_code: String,
+    #[serde(rename = "verificationUrl", default)]
+    pub verification_url: String,
+}
+
+/// Redacts `user_code` and `verification_url`, matching upstream.
+impl std::fmt::Debug for GatewayOAuthPrompt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GatewayOAuthPrompt")
+            .field("login_id", &self.login_id)
+            .finish_non_exhaustive()
+    }
+}
 
 /// Read credential readiness for a configured provider without starting
 /// browser login.
@@ -2915,6 +2958,10 @@ pub struct GatewayOAuthReadResponse {
     /// `None` when the effective provider does not use gateway OAuth.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<GatewayOAuthStatus>,
+    /// Whether the administrator configured a device authorization
+    /// endpoint.
+    #[serde(rename = "supportsDeviceAuth", default)]
+    pub supports_device_auth: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]

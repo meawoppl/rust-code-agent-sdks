@@ -3,7 +3,8 @@ use codex_codes::io::items::{
 };
 use codex_codes::protocol::{
     ConfigReadResponse, FeedbackSaveParams, FeedbackSaveResponse, FeedbackUploadResponse,
-    GatewayOAuthLoginParams, GatewayOAuthReadParams, GetAccountRateLimitsParams,
+    GatewayOAuthChangedNotification, GatewayOAuthLoginParams, GatewayOAuthLoginResponse,
+    GatewayOAuthReadParams, GatewayOAuthReadResponse, GetAccountRateLimitsParams,
     GetAccountRateLimitsResponse, McpServerStatus, ModelListParams, Thread, ThreadListParams,
     TurnToolOutput,
 };
@@ -130,16 +131,62 @@ fn provider_scoped_params_write_model_provider() {
 
     let login = GatewayOAuthLoginParams {
         model_provider: provider(),
+        ..Default::default()
     };
     assert_eq!(serde_json::to_value(&login).unwrap(), expected);
     let back: GatewayOAuthLoginParams = serde_json::from_value(expected.clone()).unwrap();
     assert_eq!(back, login);
+
+    let device = GatewayOAuthLoginParams {
+        device_auth: true,
+        ..login
+    };
+    assert_eq!(
+        serde_json::to_value(&device).unwrap(),
+        serde_json::json!({ "modelProvider": "gateway", "deviceAuth": true })
+    );
 
     let list = ModelListParams {
         model_provider: provider(),
         ..Default::default()
     };
     assert_eq!(serde_json::to_value(&list).unwrap(), expected);
+}
+
+/// Gateway OAuth device authorization: read advertises support, login returns a prompt,
+/// and the changed notification echoes the prompt's `loginId`.
+#[test]
+fn gateway_oauth_device_auth_round_trips() {
+    let read: GatewayOAuthReadResponse = serde_json::from_value(serde_json::json!({
+        "providerId": "gw", "providerName": "Gateway", "required": true,
+        "status": "notReady", "supportsDeviceAuth": true
+    }))
+    .unwrap();
+    assert!(read.supports_device_auth);
+    let legacy: GatewayOAuthReadResponse = serde_json::from_value(serde_json::json!({
+        "providerId": "gw", "providerName": "Gateway", "required": false
+    }))
+    .unwrap();
+    assert!(!legacy.supports_device_auth);
+
+    let wire = serde_json::json!({
+        "prompt": {"loginId": "l-1", "userCode": "ABCD-EFGH", "verificationUrl": "https://example.test/device"}
+    });
+    let login: GatewayOAuthLoginResponse = serde_json::from_value(wire.clone()).unwrap();
+    let prompt = login.prompt.as_ref().unwrap();
+    assert_eq!(prompt.user_code, "ABCD-EFGH");
+    assert!(!format!("{prompt:?}").contains("ABCD-EFGH"));
+    assert_eq!(serde_json::to_value(&login).unwrap(), wire);
+    assert_eq!(
+        serde_json::from_value::<GatewayOAuthLoginResponse>(serde_json::json!({})).unwrap(),
+        GatewayOAuthLoginResponse::default()
+    );
+
+    let changed: GatewayOAuthChangedNotification = serde_json::from_value(serde_json::json!({
+        "providerId": "gw", "status": "succeeded", "loginId": "l-1"
+    }))
+    .unwrap();
+    assert_eq!(changed.login_id.as_deref(), Some("l-1"));
 }
 
 /// Agent message items carry optional `moderation`; queued submissions carry optional `responsesapiClientMetadata`.
