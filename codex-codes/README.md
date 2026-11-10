@@ -265,7 +265,7 @@ scraping:
   user code + verification URL); browser/device completion arrives as the
   `account/login/completed` notification on the same connection
 - `account_login_cancel`, `account_logout`, `account_rate_limits_read`,
-  `account_usage_read`
+  `account_usage_read` (`account_usage_read_with` takes a `threadId`)
 
 For cheap status probes without an app-server connection,
 `auth_local::auth_status_local()` reads `$CODEX_HOME/auth.json` and decodes

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.167.3] - 2026-11-09
+
+Client-side fixes; no schema change. The tested pin stays at Codex CLI
+**0.167.0**.
+
+### Added
+
+- `Error::JsonRpc` now carries the server's structured `data` payload
+  (`data: Option<Value>`) instead of dropping it, on both the sync and async
+  clients. New helpers: `Error::jsonrpc_data()` for the raw value, and
+  `Error::model_provider_error()`, which decodes a `ModelProviderError`
+  (`modelProviderMismatch` / `modelProviderNotConfigured` /
+  `modelProviderPolicyConflict`). The app-server attaches one when a thread's
+  stored model provider can't be used, e.g. on `thread/resume`. Also adds
+  `From<JsonRpcErrorData> for Error`.
+- `AsyncClient::account_usage_read_with(&GetAccountTokenUsageParams)`: set
+  `thread_id` to read one thread's estimated usage (`thread_usage`, including
+  `native_usage_usd_micros`). `account_usage_read()` is unchanged and still
+  sends `{}`.
+
+### Breaking
+
+- `Error::JsonRpc` gains a `data` field. Patterns that name its fields
+  without `..`, and code that constructs it, need updating.
+
 ## [0.167.2] - 2026-11-07
 
 Model the `openai/codex@main` (`202b590e84`) app-server schema drift. The

@@ -144,10 +144,17 @@ pub enum Error {
 
     /// The server returned a JSON-RPC error response.
     ///
-    /// Contains the error code and message from the server.
-    /// See the Codex CLI docs for error code meanings.
+    /// Contains the error code and message from the server, plus the
+    /// optional structured `data` payload verbatim. Some errors carry a typed
+    /// payload there; decode the known ones with helpers such as
+    /// [`Error::model_provider_error`]. See the Codex CLI docs for error code
+    /// meanings.
     #[error("JSON-RPC error ({code}): {message}")]
-    JsonRpc { code: i64, message: String },
+    JsonRpc {
+        code: i64,
+        message: String,
+        data: Option<Value>,
+    },
 
     /// The server closed the connection (EOF on stdout).
     ///
@@ -162,6 +169,39 @@ pub enum Error {
     /// An unclassified error.
     #[error("Unknown error: {0}")]
     Unknown(String),
+}
+
+impl From<crate::JsonRpcErrorData> for Error {
+    fn from(err: crate::JsonRpcErrorData) -> Self {
+        Error::JsonRpc {
+            code: err.code,
+            message: err.message,
+            data: err.data,
+        }
+    }
+}
+
+impl Error {
+    /// The structured `data` of a [`Error::JsonRpc`] error, if the server sent
+    /// one. `None` for every other variant.
+    pub fn jsonrpc_data(&self) -> Option<&Value> {
+        match self {
+            Error::JsonRpc { data, .. } => data.as_ref(),
+            _ => None,
+        }
+    }
+
+    /// Decode a [`Error::JsonRpc`] error's `data` as a
+    /// [`ModelProviderError`](crate::protocol::ModelProviderError).
+    ///
+    /// The app-server attaches one when a thread's stored model provider
+    /// can't be used, e.g. `thread/resume` of a thread created under a
+    /// provider this machine doesn't configure or policy forbids. `None`
+    /// when there is no `data` or it has a different shape; callers should
+    /// then fall back to `code`/`message`.
+    pub fn model_provider_error(&self) -> Option<crate::protocol::ModelProviderError> {
+        serde_json::from_value(self.jsonrpc_data()?.clone()).ok()
+    }
 }
 
 /// A `Result` type alias using [`enum@Error`].
@@ -240,5 +280,48 @@ mod tests {
         let rendered = format!("{}", e);
         assert!(rendered.contains("item/bogus"), "got: {}", rendered);
         assert!(rendered.contains("foo"), "got: {}", rendered);
+    }
+
+    fn jsonrpc(data: Option<Value>) -> Error {
+        crate::JsonRpcErrorData {
+            code: -32600,
+            message: "bad".to_string(),
+            data,
+        }
+        .into()
+    }
+
+    #[test]
+    fn model_provider_error_decodes_policy_conflict() {
+        let err = jsonrpc(Some(json!({
+            "type": "modelProviderPolicyConflict",
+            "modelProvider": "old",
+            "requiredModelProvider": "corp"
+        })));
+        assert_eq!(
+            err.model_provider_error(),
+            Some(
+                crate::protocol::ModelProviderError::ModelProviderPolicyConflict {
+                    model_provider: "old".to_string(),
+                    required_model_provider: "corp".to_string(),
+                }
+            )
+        );
+    }
+
+    #[test]
+    fn model_provider_error_none_for_other_data_and_variants() {
+        let other = json!({"reason": "cloudConfigBundle", "detail": "x"});
+        let err = jsonrpc(Some(other.clone()));
+        assert_eq!(err.jsonrpc_data(), Some(&other));
+        assert!(err.model_provider_error().is_none());
+
+        let bare = jsonrpc(None);
+        assert!(bare.jsonrpc_data().is_none());
+        assert!(bare.model_provider_error().is_none());
+
+        let not_rpc = Error::Protocol("x".to_string());
+        assert!(not_rpc.jsonrpc_data().is_none());
+        assert!(not_rpc.model_provider_error().is_none());
     }
 }

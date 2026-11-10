@@ -59,7 +59,8 @@ use crate::protocol::{
 use crate::protocol_generated::types::{
     CancelLoginAccountParams, CancelLoginAccountResponse, GetAccountParams,
     GetAccountRateLimitsParams, GetAccountRateLimitsResponse, GetAccountResponse,
-    GetAccountTokenUsageResponse, LoginAccountParams, LoginAccountResponse, LogoutAccountResponse,
+    GetAccountTokenUsageParams, GetAccountTokenUsageResponse, LoginAccountParams,
+    LoginAccountResponse, LogoutAccountResponse,
 };
 use log::{debug, error, warn};
 use serde::de::DeserializeOwned;
@@ -225,10 +226,7 @@ impl AsyncClient {
                     return Ok(result);
                 }
                 JsonRpcMessage::Error(err) if err.id == id => {
-                    return Err(Error::JsonRpc {
-                        code: err.error.code,
-                        message: err.error.message,
-                    });
+                    return Err(err.error.into());
                 }
                 // Buffer notifications and server requests
                 JsonRpcMessage::Notification(notif) => {
@@ -539,13 +537,24 @@ impl AsyncClient {
             .await
     }
 
-    /// `account/usage/read` — token-usage summary for the account.
+    /// `account/usage/read` — account-wide token-usage summary. Same as
+    /// [`account_usage_read_with`](Self::account_usage_read_with) with default
+    /// params.
     pub async fn account_usage_read(&mut self) -> Result<GetAccountTokenUsageResponse> {
-        self.request(
-            crate::protocol::methods::ACCOUNT_USAGE_READ,
-            &serde_json::json!({}),
-        )
-        .await
+        self.account_usage_read_with(&GetAccountTokenUsageParams::default())
+            .await
+    }
+
+    /// `account/usage/read` with explicit params. Set `thread_id` to read the
+    /// estimated usage of one thread (returned in `thread_usage`, including
+    /// `native_usage_usd_micros` when known) instead of account-wide token
+    /// activity. Default params serialize as `{}`.
+    pub async fn account_usage_read_with(
+        &mut self,
+        params: &GetAccountTokenUsageParams,
+    ) -> Result<GetAccountTokenUsageResponse> {
+        self.request(crate::protocol::methods::ACCOUNT_USAGE_READ, params)
+            .await
     }
 
     /// Check if the child process is still running.
@@ -687,6 +696,7 @@ impl EventStream<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::protocol::ModelProviderError;
     use std::process::Stdio;
     use tokio::process::Command;
 
@@ -713,6 +723,59 @@ mod tests {
     #[test]
     fn test_buffer_size() {
         assert_eq!(STDOUT_BUFFER_SIZE, 10 * 1024 * 1024);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn request_error_keeps_model_provider_data() {
+        let mut client = scripted_client(
+            r#"IFS= read -r req; printf '%s\n' '{"id":1,"error":{"code":-32600,"message":"provider mismatch","data":{"type":"modelProviderMismatch","modelProvider":"old","currentModelProvider":"new"}}}'"#,
+        );
+        let params = ThreadResumeParams {
+            thread_id: "thr_1".to_string(),
+            ..Default::default()
+        };
+        let err = client.thread_resume(&params).await.unwrap_err();
+
+        assert!(matches!(
+            &err,
+            Error::JsonRpc { code: -32600, message, data: Some(_) } if message == "provider mismatch"
+        ));
+        assert_eq!(
+            err.model_provider_error(),
+            Some(ModelProviderError::ModelProviderMismatch {
+                model_provider: "old".to_string(),
+                current_model_provider: "new".to_string(),
+            })
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn account_usage_read_with_sends_thread_id() {
+        // Answers with thread usage only if the request carried the thread id.
+        let mut client = scripted_client(
+            r#"IFS= read -r req; case "$req" in *'"params":{"threadId":"thr_1"}'*) printf '%s\n' '{"id":1,"result":{"summary":{},"threadUsage":{"threadId":"thr_1","estimatedUsageCreditsMicros":5,"nativeUsageUsdMicros":1200,"groups":[]}}}' ;; *) printf '%s\n' '{"id":1,"error":{"code":-1,"message":"unexpected params"}}' ;; esac"#,
+        );
+        let usage = client
+            .account_usage_read_with(&GetAccountTokenUsageParams {
+                thread_id: Some("thr_1".to_string()),
+            })
+            .await
+            .expect("thread usage");
+        let thread = usage.thread_usage.expect("thread_usage");
+        assert_eq!(thread.thread_id, "thr_1");
+        assert_eq!(thread.native_usage_usd_micros, Some(1200));
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn account_usage_read_sends_empty_params() {
+        let mut client = scripted_client(
+            r#"IFS= read -r req; case "$req" in *'"params":{}'*) printf '%s\n' '{"id":1,"result":{"summary":{}}}' ;; *) printf '%s\n' '{"id":1,"error":{"code":-1,"message":"unexpected params"}}' ;; esac"#,
+        );
+        let usage = client.account_usage_read().await.expect("account usage");
+        assert!(usage.thread_usage.is_none());
     }
 
     #[cfg(unix)]
