@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `MuseModel::Ember10` (`muse-ember-1.0`, released 2026-10-01), which
+  first appeared in the provider catalog with Muse Code 1.4.15 (build
+  `1.4.15-R8339.1`). Catalog limits are 1,007,997 context / 128,000
+  output tokens. Verified live: a `--model muse-ember-1.0` turn reaches
+  terminal with no new payload types. The other catalog change is a
+  new `supports_3d_generation: false` flag on every row (not modeled).
+
+### Changed
+
+- Re-snapshotted the stream fingerprint. With Muse Code 1.4.15, the
+  echo-provider `--preset native-basic` capture no longer emits
+  `task.lifecycle.failed`: reminder tasks that used to fail with
+  "provider does not support base instructions" now complete. The
+  `failed` event shape is unchanged and remains modeled and covered by
+  the committed corpus. `exec --help` is byte-identical to 1.4.14.
+  Top-level `--help` adds `mxp`, `attach` and `sessions`, and describes
+  `mcp` as "Manage MCP servers and OAuth login". None of these are
+  modeled.
+- MSP schema (not modeled) changed additively: 32 new definitions
+  (`model/complete`, `model/completed`, `model/cancel`,
+  `session/declareExternalWait`, `session/clearExternalWait`,
+  `subagent/list`, `turn/modelAttemptStarted`, notice and peer-message
+  item fields, `prunedSubagents`, `deliveredInputs`, `monitorInbox`).
+  No definitions were removed.
+
 ## [1.4.14] - 2026-10-28
 
 ### Changed
