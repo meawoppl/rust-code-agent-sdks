@@ -1285,6 +1285,11 @@ mod tests {
             CodexErrorInfo::PolicyCapacityUnavailable
         );
         assert_eq!(
+            serde_json::from_value::<CodexErrorInfo>(serde_json::json!("inferenceHookDenied"))
+                .unwrap(),
+            CodexErrorInfo::InferenceHookDenied
+        );
+        assert_eq!(
             serde_json::from_value::<CodexErrorInfo>(
                 serde_json::json!({"httpConnectionFailed": {"httpStatusCode": 502}})
             )
