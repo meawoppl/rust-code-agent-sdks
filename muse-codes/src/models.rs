@@ -6,7 +6,7 @@
 //!
 //! The table mirrors Muse Code's on-disk model catalog
 //! (`~/.local/share/muse/model-catalog/`, `provider_catalog` source) as of
-//! Muse Code 1.4.14 (catalog refreshed 2026-10-28). Unknown or future model ids round-trip through
+//! Muse Code 1.4.15 (catalog refreshed 2026-11-10). Unknown or future model ids round-trip through
 //! [`MuseModel::Custom`], including the hidden image-generation row
 //! `muse-image-1.0`, which is not an `exec --model` chat model. Context/output limits from the same catalog are
 //! exposed via [`MuseModel::context_limit`] / [`MuseModel::output_limit`].
@@ -19,6 +19,9 @@ use std::fmt;
 pub enum MuseModel {
     /// muse-wonder-1.0 (`muse-wonder-1.0`), released 2026-10-12.
     Wonder10,
+    /// muse-ember-1.0 (`muse-ember-1.0`), released 2026-10-01; first
+    /// seen in the catalog with Muse Code 1.4.15.
+    Ember10,
     /// muse-spark-1.3 (`muse-spark-1.3`), released 2026-09-02.
     Spark13,
     /// muse-spark-1.3 contributor build (`muse-spark-1.3-contributor`),
@@ -39,6 +42,7 @@ impl MuseModel {
     pub fn cli_arg(&self) -> &str {
         match self {
             Self::Wonder10 => "muse-wonder-1.0",
+            Self::Ember10 => "muse-ember-1.0",
             Self::Spark13 => "muse-spark-1.3",
             Self::Spark13Contributor => "muse-spark-1.3-contributor",
             Self::Spark12 => "muse-spark-1.2",
@@ -64,6 +68,7 @@ impl MuseModel {
     pub fn context_limit(&self) -> Option<u64> {
         match self {
             Self::Wonder10
+            | Self::Ember10
             | Self::Spark13
             | Self::Spark13Contributor
             | Self::Spark12
@@ -77,6 +82,7 @@ impl MuseModel {
     pub fn output_limit(&self) -> Option<u64> {
         match self {
             Self::Wonder10
+            | Self::Ember10
             | Self::Spark13
             | Self::Spark13Contributor
             | Self::Spark12
@@ -96,6 +102,7 @@ impl MuseModel {
     pub fn known() -> &'static [MuseModel] {
         &[
             Self::Wonder10,
+            Self::Ember10,
             Self::Spark13,
             Self::Spark13Contributor,
             Self::Spark12,
@@ -114,6 +121,7 @@ impl From<&str> for MuseModel {
     fn from(s: &str) -> Self {
         match s {
             "muse-wonder-1.0" => Self::Wonder10,
+            "muse-ember-1.0" => Self::Ember10,
             "muse-spark-1.3" => Self::Spark13,
             "muse-spark-1.3-contributor" => Self::Spark13Contributor,
             "muse-spark-1.2" => Self::Spark12,

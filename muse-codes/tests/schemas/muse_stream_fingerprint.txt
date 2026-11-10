@@ -9,8 +9,6 @@ task.lifecycle.accepted: command_id, event, kind, run_stream, task_id, task_stre
 task.lifecycle.accepted::event[accepted]: kind, task_id
 task.lifecycle.completed: command_id, event, kind, run_stream, task_id, task_stream
 task.lifecycle.completed::event[completed]: kind, task_id
-task.lifecycle.failed: command_id, event, kind, run_stream, task_id, task_stream
-task.lifecycle.failed::event[failed]: kind, reason, task_id
 task.lifecycle.proposed: command_id, event, kind, run_stream, task_id, task_stream
 task.lifecycle.proposed::event[proposed]: kind, task_id, task_kind
 task.lifecycle.scheduled: command_id, event, kind, run_stream, task_id, task_stream
