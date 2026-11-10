@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.4.15] - 2026-11-10
 
 ### Added
 
@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Re-pinned to Muse Code 1.4.15 (`1.4.15-R8339.1`). The live suite and
+  the muse wirecheck pass unmodified.
 - Re-snapshotted the stream fingerprint. With Muse Code 1.4.15, the
   echo-provider `--preset native-basic` capture no longer emits
   `task.lifecycle.failed`: reminder tasks that used to fail with
