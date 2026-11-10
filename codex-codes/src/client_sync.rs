@@ -206,10 +206,7 @@ impl SyncClient {
                     return Ok(result);
                 }
                 JsonRpcMessage::Error(err) if err.id == id => {
-                    return Err(Error::JsonRpc {
-                        code: err.error.code,
-                        message: err.error.message,
-                    });
+                    return Err(err.error.into());
                 }
                 JsonRpcMessage::Notification(notif) => {
                     let typed = Notification::from_envelope(&notif.method, notif.params)
