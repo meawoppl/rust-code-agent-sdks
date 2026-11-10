@@ -260,6 +260,87 @@ pub enum ControlRequestPayload {
     Initialize(InitializeRequest),
     /// Interrupt request (sent by SDK to CLI to stop the in-flight turn)
     Interrupt,
+    /// Merge settings into the live session's flag-settings layer (sent by
+    /// SDK to CLI), e.g. to change effort mid-session.
+    ApplyFlagSettings(ApplyFlagSettingsRequest),
+}
+
+/// Body of an `apply_flag_settings` control request.
+///
+/// The CLI merges `settings` into its flag-settings layer (the layer
+/// `--settings` writes) and updates the active configuration; a key set to
+/// `null` is removed from that layer. The CLI acknowledges with a
+/// `control_response` for the same `request_id`, or an error response if a
+/// value is rejected.
+///
+/// `settings` is an open map, so keys this crate has no setter for (and keys
+/// added by newer CLIs) can still be sent with [`set`](Self::set) and survive
+/// a round trip. Typed setters cover the per-session effort controls:
+///
+/// ```
+/// use claude_codes::{ApplyFlagSettingsRequest, EffortLevel};
+///
+/// let req = ApplyFlagSettingsRequest::new()
+///     .effort_level(EffortLevel::Xhigh)
+///     .ultracode(false);
+/// assert_eq!(req.get_effort_level(), Some(EffortLevel::Xhigh));
+/// assert_eq!(
+///     serde_json::to_value(&req).unwrap(),
+///     serde_json::json!({"settings": {"effortLevel": "xhigh", "ultracode": false}})
+/// );
+/// ```
+///
+/// A remote-control bridge applies only `effortLevel` and `ultracode` and
+/// errors when neither is present; a local CLI accepts other settings keys
+/// too.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct ApplyFlagSettingsRequest {
+    /// Settings keys (camelCase, as in `settings.json`) to merge.
+    #[serde(default)]
+    pub settings: serde_json::Map<String, Value>,
+}
+
+impl ApplyFlagSettingsRequest {
+    /// An empty request; add keys with the setters.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set `effortLevel`, the session's effort level.
+    pub fn effort_level(self, level: crate::EffortLevel) -> Self {
+        self.set("effortLevel", Value::String(level.as_str().to_string()))
+    }
+
+    /// Clear `effortLevel` from the flag layer (sends `null`), so the
+    /// effort falls back to the lower settings layers / model default.
+    pub fn clear_effort_level(self) -> Self {
+        self.set("effortLevel", Value::Null)
+    }
+
+    /// Set `ultracode`: standing dynamic-workflow orchestration for the
+    /// session, independent of the effort level.
+    pub fn ultracode(self, on: bool) -> Self {
+        self.set("ultracode", Value::Bool(on))
+    }
+
+    /// Set any settings key to a raw JSON value (`Value::Null` clears it).
+    pub fn set(mut self, key: impl Into<String>, value: Value) -> Self {
+        self.settings.insert(key.into(), value);
+        self
+    }
+
+    /// The `effortLevel` being set, if any (`None` when absent or cleared).
+    pub fn get_effort_level(&self) -> Option<crate::EffortLevel> {
+        self.settings
+            .get("effortLevel")?
+            .as_str()
+            .map(crate::EffortLevel::from)
+    }
+
+    /// The `ultracode` value being set, if any.
+    pub fn get_ultracode(&self) -> Option<bool> {
+        self.settings.get("ultracode")?.as_bool()
+    }
 }
 
 /// A permission to grant for "remember this decision" functionality.
@@ -1340,6 +1421,58 @@ mod tests {
         let payload: ControlRequestPayload = serde_json::from_str(json).unwrap();
         assert!(matches!(payload, ControlRequestPayload::Interrupt));
         assert_eq!(serde_json::to_string(&payload).unwrap(), json);
+    }
+
+    #[test]
+    fn test_apply_flag_settings_wire_shape() {
+        let input = crate::io::ClaudeInput::apply_flag_settings(
+            "apply-flag-settings-1",
+            ApplyFlagSettingsRequest::new()
+                .effort_level(crate::EffortLevel::Max)
+                .ultracode(true),
+        );
+        assert_eq!(
+            serde_json::to_value(&input).unwrap(),
+            serde_json::json!({
+                "type": "control_request",
+                "request_id": "apply-flag-settings-1",
+                "request": {
+                    "subtype": "apply_flag_settings",
+                    "settings": {"effortLevel": "max", "ultracode": true}
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn test_apply_flag_settings_clear_and_unknown_keys_roundtrip() {
+        // A null clears the key in the CLI's flag layer; keys this crate has
+        // no setter for (and future ones) must survive a round trip.
+        let json = r#"{"subtype":"apply_flag_settings","settings":{"effortLevel":null,"fastMode":true,"someFutureKey":{"a":1}}}"#;
+        let payload: ControlRequestPayload = serde_json::from_str(json).unwrap();
+        let ControlRequestPayload::ApplyFlagSettings(req) = &payload else {
+            panic!("expected ApplyFlagSettings, got {payload:?}");
+        };
+        assert_eq!(req.get_effort_level(), None);
+        assert_eq!(req.settings.get("effortLevel"), Some(&Value::Null));
+        assert_eq!(req.settings["someFutureKey"], serde_json::json!({"a": 1}));
+        assert_eq!(
+            serde_json::to_value(&payload).unwrap(),
+            serde_json::from_str::<Value>(json).unwrap()
+        );
+
+        let cleared = ApplyFlagSettingsRequest::new().clear_effort_level();
+        assert_eq!(
+            serde_json::to_value(&cleared).unwrap(),
+            serde_json::json!({"settings": {"effortLevel": null}})
+        );
+
+        let future = ApplyFlagSettingsRequest::new().set("effortLevel", Value::from("ultra"));
+        assert_eq!(
+            future.get_effort_level(),
+            Some(crate::EffortLevel::Unknown("ultra".to_string()))
+        );
+        assert_eq!(future.get_ultracode(), None);
     }
 
     #[test]

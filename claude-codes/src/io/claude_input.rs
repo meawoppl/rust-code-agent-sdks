@@ -154,6 +154,23 @@ impl ClaudeInput {
         })
     }
 
+    /// Create an `apply_flag_settings` control request, e.g. to change the
+    /// session's effort level or toggle ultracode mid-session.
+    ///
+    /// Serializes to
+    /// `{"type":"control_request","request_id":...,"request":{"subtype":"apply_flag_settings","settings":{...}}}`.
+    /// The CLI answers with a `control_response` carrying the same
+    /// `request_id`. The clients generate `apply-flag-settings-<uuid>` ids.
+    pub fn apply_flag_settings(
+        request_id: impl Into<String>,
+        settings: super::ApplyFlagSettingsRequest,
+    ) -> Self {
+        ClaudeInput::ControlRequest(ControlRequest {
+            request_id: request_id.into(),
+            request: super::ControlRequestPayload::ApplyFlagSettings(settings),
+        })
+    }
+
     /// Create a user message with an image and optional text
     /// Only supports JPEG, PNG, GIF, and WebP media types
     pub fn user_message_with_image(

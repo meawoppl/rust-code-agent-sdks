@@ -360,6 +360,30 @@ impl SyncClient {
         Ok(request_id)
     }
 
+    /// Merge settings into the live session (`apply_flag_settings` control
+    /// request), e.g. change the effort level or toggle ultracode without
+    /// restarting.
+    ///
+    /// Returns the generated `request_id`; the CLI answers with a
+    /// `control_response` carrying the same id (an error response if it
+    /// rejects a value). The new effort takes effect on the next request.
+    pub fn apply_flag_settings(
+        &mut self,
+        settings: crate::io::ApplyFlagSettingsRequest,
+    ) -> Result<String> {
+        let request_id = format!("apply-flag-settings-{}", Uuid::new_v4());
+        let input = ClaudeInput::apply_flag_settings(&request_id, settings);
+        Protocol::write_sync(&mut self.stdin, &input)?;
+        Ok(request_id)
+    }
+
+    /// Change the session's effort level mid-session. Shorthand for
+    /// [`apply_flag_settings`](Self::apply_flag_settings) with only
+    /// `effortLevel` set.
+    pub fn set_effort(&mut self, level: crate::EffortLevel) -> Result<String> {
+        self.apply_flag_settings(crate::io::ApplyFlagSettingsRequest::new().effort_level(level))
+    }
+
     /// Check if tool approval protocol is enabled
     pub fn is_tool_approval_enabled(&self) -> bool {
         self.tool_approval_enabled
