@@ -309,6 +309,101 @@ impl<'de> Deserialize<'de> for ClaudeModel {
     }
 }
 
+/// A reasoning effort level, as accepted by `claude --effort` and the
+/// `effortLevel` setting (CLI 2.1.321: `low` | `medium` | `high` | `xhigh` |
+/// `max`).
+///
+/// The CLI caps or downgrades a level the model or org doesn't support
+/// (`max`/`xhigh` fall back to `high`); `system/init`'s `effort` reports the
+/// level that will actually be sent. Unknown or future levels round-trip
+/// through [`EffortLevel::Unknown`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum EffortLevel {
+    Low,
+    Medium,
+    High,
+    /// Extra-high effort (`xhigh`); the level the `ultrathink` keyword raises
+    /// a turn to.
+    Xhigh,
+    Max,
+    /// A level not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl EffortLevel {
+    /// The wire / CLI string for this level.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Low => "low",
+            Self::Medium => "medium",
+            Self::High => "high",
+            Self::Xhigh => "xhigh",
+            Self::Max => "max",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+
+    /// Every known level, lowest first.
+    pub fn known() -> &'static [EffortLevel] {
+        &[Self::Low, Self::Medium, Self::High, Self::Xhigh, Self::Max]
+    }
+}
+
+impl fmt::Display for EffortLevel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for EffortLevel {
+    fn from(s: &str) -> Self {
+        match s {
+            "low" => Self::Low,
+            "medium" => Self::Medium,
+            "high" => Self::High,
+            "xhigh" => Self::Xhigh,
+            "max" => Self::Max,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl From<EffortLevel> for String {
+    fn from(level: EffortLevel) -> Self {
+        level.as_str().to_string()
+    }
+}
+
+impl Serialize for EffortLevel {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for EffortLevel {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+#[cfg(test)]
+mod effort_tests {
+    use super::EffortLevel;
+
+    #[test]
+    fn effort_level_round_trips_known_and_unknown() {
+        for level in EffortLevel::known() {
+            assert_eq!(&EffortLevel::from(level.as_str()), level);
+            let json = serde_json::to_string(level).unwrap();
+            assert_eq!(&serde_json::from_str::<EffortLevel>(&json).unwrap(), level);
+        }
+        let future: EffortLevel = serde_json::from_str(r#""ultra""#).unwrap();
+        assert_eq!(future, EffortLevel::Unknown("ultra".to_string()));
+        assert_eq!(serde_json::to_string(&future).unwrap(), r#""ultra""#);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::ClaudeModel;

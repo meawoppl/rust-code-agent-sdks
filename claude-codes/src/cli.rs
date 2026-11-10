@@ -10,6 +10,7 @@
 //!
 
 use crate::error::{Error, Result};
+use crate::models::EffortLevel;
 use log::debug;
 use std::path::PathBuf;
 use std::process::Stdio;
@@ -129,6 +130,8 @@ pub enum CliFlag {
     DisableSlashCommands,
     /// Tool names to deny (e.g. "Bash(git:*) Edit")
     DisallowedTools(Vec<String>),
+    /// Effort level for the current session
+    Effort(EffortLevel),
     /// Automatic fallback model when default is overloaded
     FallbackModel(String),
     /// File resources to download at startup (format: file_id:relative_path)
@@ -206,6 +209,7 @@ impl CliFlag {
             CliFlag::DebugFile(_) => "--debug-file",
             CliFlag::DisableSlashCommands => "--disable-slash-commands",
             CliFlag::DisallowedTools(_) => "--disallowed-tools",
+            CliFlag::Effort(_) => "--effort",
             CliFlag::FallbackModel(_) => "--fallback-model",
             CliFlag::File(_) => "--file",
             CliFlag::ForkSession => "--fork-session",
@@ -282,6 +286,7 @@ impl CliFlag {
             | CliFlag::SystemPrompt(v) => vec![flag, v.clone()],
 
             // Format flags
+            CliFlag::Effort(level) => vec![flag, level.as_str().to_string()],
             CliFlag::InputFormat(f) => vec![flag, f.as_str().to_string()],
             CliFlag::OutputFormat(f) => vec![flag, f.as_str().to_string()],
             CliFlag::PermissionMode(m) => vec![flag, m.as_str().to_string()],
@@ -349,6 +354,7 @@ impl CliFlag {
             ("DebugFile", "--debug-file"),
             ("DisableSlashCommands", "--disable-slash-commands"),
             ("DisallowedTools", "--disallowed-tools"),
+            ("Effort", "--effort"),
             ("FallbackModel", "--fallback-model"),
             ("File", "--file"),
             ("ForkSession", "--fork-session"),
@@ -406,6 +412,7 @@ pub struct ClaudeCliBuilder {
     fork_session: bool,
     model: Option<String>,
     fallback_model: Option<String>,
+    effort: Option<EffortLevel>,
     settings: Option<String>,
     add_dir: Vec<PathBuf>,
     ide: bool,
@@ -447,6 +454,7 @@ impl ClaudeCliBuilder {
             fork_session: false,
             model: None,
             fallback_model: None,
+            effort: None,
             settings: None,
             add_dir: Vec::new(),
             ide: false,
@@ -595,6 +603,16 @@ impl ClaudeCliBuilder {
     /// Set fallback model for overload situations
     pub fn fallback_model<S: Into<String>>(mut self, model: S) -> Self {
         self.fallback_model = Some(model.into());
+        self
+    }
+
+    /// Set the session's effort level (`--effort`). The CLI may cap or
+    /// downgrade it for the model or org; `system/init`'s `effort` reports the
+    /// level actually used. Change it mid-session with an
+    /// `apply_flag_settings` control request (see
+    /// [`ApplyFlagSettingsRequest`](crate::io::ApplyFlagSettingsRequest)).
+    pub fn effort(mut self, level: EffortLevel) -> Self {
+        self.effort = Some(level);
         self
     }
 
@@ -765,6 +783,11 @@ impl ClaudeCliBuilder {
         if let Some(ref model) = self.fallback_model {
             args.push("--fallback-model".to_string());
             args.push(model.clone());
+        }
+
+        if let Some(ref level) = self.effort {
+            args.push("--effort".to_string());
+            args.push(level.to_string());
         }
 
         if let Some(tokens) = self.max_thinking_tokens {
@@ -970,6 +993,22 @@ mod tests {
         assert!(args.contains(&"sonnet".to_string()));
         assert!(args.contains(&"--fallback-model".to_string()));
         assert!(args.contains(&"opus".to_string()));
+    }
+
+    #[test]
+    fn test_with_effort() {
+        let args = ClaudeCliBuilder::new()
+            .effort(EffortLevel::Xhigh)
+            .build_args();
+        let i = args.iter().position(|a| a == "--effort").expect("--effort");
+        assert_eq!(args[i + 1], "xhigh");
+        assert!(!ClaudeCliBuilder::new()
+            .build_args()
+            .contains(&"--effort".to_string()));
+        assert_eq!(
+            CliFlag::Effort(EffortLevel::Max).to_args(),
+            vec!["--effort", "max"]
+        );
     }
 
     #[test]

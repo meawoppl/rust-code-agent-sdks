@@ -138,7 +138,7 @@ pub use io::{
     ClaudeOutput, ParseError, TranscriptMessage,
 };
 pub use messages::*;
-pub use models::ClaudeModel;
+pub use models::{ClaudeModel, EffortLevel};
 pub use protocol::{MessageEnvelope, Protocol};
 pub use types::*;
 
@@ -152,13 +152,14 @@ pub use io::{
 
 // Control protocol types for tool permission handling
 pub use io::{
-    AskUserQuestionResponseError, ControlCancelRequest, ControlRequest, ControlRequestMessage,
-    ControlRequestPayload, ControlResponse, ControlResponseMessage, ControlResponsePayload,
-    GetUsageResponse, HookCallbackRequest, InitializeRequest, McpMessageRequest,
-    ModelScopedRateLimit, Permission, PermissionBehavior, PermissionDenial, PermissionDestination,
-    PermissionModeName, PermissionResult, PermissionRule, PermissionSuggestion, PermissionType,
-    ToolCaller, ToolPermissionRequest, ToolUseBlock, UsageBehavior, UsageBehaviors,
-    UsageModelUsage, UsageRateLimitWindow, UsageRateLimits, UsageSession,
+    ApplyFlagSettingsRequest, AskUserQuestionResponseError, ControlCancelRequest, ControlRequest,
+    ControlRequestMessage, ControlRequestPayload, ControlResponse, ControlResponseMessage,
+    ControlResponsePayload, GetUsageResponse, HookCallbackRequest, InitializeRequest,
+    McpMessageRequest, ModelScopedRateLimit, Permission, PermissionBehavior, PermissionDenial,
+    PermissionDestination, PermissionModeName, PermissionResult, PermissionRule,
+    PermissionSuggestion, PermissionType, ToolCaller, ToolPermissionRequest, ToolUseBlock,
+    UsageBehavior, UsageBehaviors, UsageModelUsage, UsageRateLimitWindow, UsageRateLimits,
+    UsageSession,
 };
 
 // System message and assistant message types

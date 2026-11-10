@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.322] - 2026-11-10
+
+Crate-side release; still tested against Claude CLI **2.1.321**. Adds typed
+effort controls, at spawn and live.
+
+### Added
+
+- `EffortLevel` (`Low` / `Medium` / `High` / `Xhigh` / `Max`, plus
+  `Unknown(String)` for future levels), re-exported at the crate root.
+- `ClaudeCliBuilder::effort(EffortLevel)` and `CliFlag::Effort`: pass
+  `--effort <level>` at spawn.
+- `ControlRequestPayload::ApplyFlagSettings(ApplyFlagSettingsRequest)` for
+  the `apply_flag_settings` control request, which merges settings into the
+  live session's flag layer. `ApplyFlagSettingsRequest` holds an open
+  `settings` map, so unknown and future keys round-trip. It has typed setters
+  `effort_level()`, `clear_effort_level()` (sends `null`, which removes the
+  key) and `ultracode()`, a raw `set(key, value)`, and getters
+  `get_effort_level()` / `get_ultracode()`. Also adds
+  `ClaudeInput::apply_flag_settings(request_id, settings)`.
+- `AsyncClient` / `SyncClient`: `apply_flag_settings(settings)` and the
+  shorthand `set_effort(level)`. Like `interrupt()`, they return the generated
+  `request_id`; the CLI answers with a `control_response` for that id.
+  Checked against CLI 2.1.321: `{"effortLevel":"xhigh","ultracode":true}`
+  changes the effective settings, and `{"effortLevel":null}` reverts effort
+  to the lower settings layers.
+
+### Breaking
+
+- `ControlRequestPayload` and `CliFlag` each gain a variant, so exhaustive
+  `match`es on them need a new arm.
+
 ## [2.1.321] - 2026-11-09
 
 Re-baseline against Claude CLI **2.1.321**. Two new system subtypes, four
