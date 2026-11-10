@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.323] - 2026-11-10
+
+Re-pin to Claude CLI **2.1.322**. No wire changes: the extracted stream-json
+schemas are identical to 2.1.321 once minified identifiers are normalized.
+The `.describe()` strings, the model registry and aliases, and `--help` are
+also unchanged.
+
 ## [2.1.322] - 2026-11-10
 
 Crate-side release; still tested against Claude CLI **2.1.321**. Adds typed
