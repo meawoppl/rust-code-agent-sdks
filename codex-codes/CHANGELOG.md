@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.167.5] - 2026-11-11
+
+Re-pins the tested Codex CLI to **0.167.1** (its app-server schema is
+byte-identical to 0.167.0's) and tracks `openai/codex@main` schema drift
+(snapshot pinned at `9018f3a3b0`).
+
+### Added
+
+- `AudioReference` (untagged `Inline { audio_url }` / `File { file_id }`):
+  tool-output audio can now name a file uploaded to the Responses API
+  instead of inlining the audio data (openai/codex#60735). Mirrors the
+  existing `ImageReference`.
+
+### Changed
+
+- **Breaking:** `FunctionCallOutputContentItem::InputAudio` now holds a
+  flattened `audio: AudioReference` instead of `audio_url: String`. The wire
+  shape for inline audio is unchanged. Build `InputAudio { audio:
+  AudioReference::Inline { audio_url } }` where you previously built
+  `InputAudio { audio_url }`.
+
 ## [0.167.4] - 2026-11-09
 
 Tracks `openai/codex@main` schema drift (snapshot pinned at

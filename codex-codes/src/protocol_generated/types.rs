@@ -2798,9 +2798,23 @@ pub enum FunctionCallOutputContentItem {
         image: ImageReference,
     },
     #[serde(rename = "input_audio")]
-    InputAudio { audio_url: String },
+    InputAudio {
+        #[serde(flatten)]
+        audio: AudioReference,
+    },
     #[serde(rename = "encrypted_content")]
     EncryptedContent { encrypted_content: String },
+}
+
+/// How a Responses-API `input_audio` content item names its audio: inline
+/// `audio_url` data or a previously uploaded `file_id`. Flattened into
+/// [`FunctionCallOutputContentItem::InputAudio`]; untagged, so exactly one of
+/// the two keys is on the wire (openai/codex#60735).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum AudioReference {
+    Inline { audio_url: String },
+    File { file_id: String },
 }
 
 /// How a Responses-API `input_image` content item names its image: an
@@ -10598,7 +10612,8 @@ pub enum UserInputImageReference {
 /// How a [`UserInput::Audio`] names its audio: an inline `url` or a
 /// previously uploaded `fileId`. Flattened into the variant; untagged, so
 /// exactly one of the two keys is on the wire. Mirrors the v2
-/// `AudioReference` upstream.
+/// `AudioReference` upstream; the Responses-API twin used by tool outputs is
+/// [`AudioReference`].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum UserInputAudioReference {

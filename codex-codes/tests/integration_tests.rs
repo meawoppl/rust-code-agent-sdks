@@ -1182,6 +1182,46 @@ fn function_call_output_input_image_round_trips_image_url_and_file_id() {
     );
 }
 
+/// `FunctionCallOutputContentItem::InputAudio` keeps its snake_case
+/// Responses-API keys and accepts either `audio_url` or `file_id`.
+#[test]
+fn function_call_output_input_audio_round_trips_audio_url_and_file_id() {
+    use codex_codes::protocol::{AudioReference, FunctionCallOutputContentItem};
+
+    let inline: FunctionCallOutputContentItem = serde_json::from_value(serde_json::json!({
+        "type": "input_audio",
+        "audio_url": "data:audio/wav;base64,UklGRg=="
+    }))
+    .unwrap();
+    assert_eq!(
+        inline,
+        FunctionCallOutputContentItem::InputAudio {
+            audio: AudioReference::Inline {
+                audio_url: "data:audio/wav;base64,UklGRg==".into()
+            },
+        }
+    );
+    let wire = serde_json::to_value(&inline).unwrap();
+    assert_eq!(wire["type"], "input_audio");
+    assert_eq!(wire["audio_url"], "data:audio/wav;base64,UklGRg==");
+    assert!(wire.get("file_id").is_none());
+
+    let uploaded: FunctionCallOutputContentItem =
+        serde_json::from_value(serde_json::json!({"type": "input_audio", "file_id": "file_7"}))
+            .unwrap();
+    assert_eq!(
+        uploaded,
+        FunctionCallOutputContentItem::InputAudio {
+            audio: AudioReference::File {
+                file_id: "file_7".into()
+            },
+        }
+    );
+    let wire = serde_json::to_value(&uploaded).unwrap();
+    assert_eq!(wire["file_id"], "file_7");
+    assert!(wire.get("audio_url").is_none());
+}
+
 /// An `imageGeneration` item carries either an inline `result` or a durable
 /// `fileId`; migration-era items with both prefer the file reference.
 #[test]
