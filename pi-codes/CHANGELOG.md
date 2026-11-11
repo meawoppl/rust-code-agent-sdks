@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] - 2026-11-11
+
+Re-pin to pi **1.5.2**. No RPC wire changes: `dist/modes/json-event.d.ts`,
+`dist/modes/rpc/*.d.ts`, `dist/cli/args.d.ts`, `pi --help` and pi-ai's
+`dist/types.d.ts` are byte-identical to 1.5.1.
+
+- Upstream added a `Fork` choice when resuming a session whose working
+  directory no longer exists (interactive mode, `/resume`, `/import`). This
+  only affects the interactive path, not RPC mode.
+
 ## [1.5.1] - 2026-11-09
 
 Re-pin to pi **1.5.1**. No RPC wire changes: `dist/modes/json-event.d.ts`
