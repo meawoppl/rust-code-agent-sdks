@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.167.7] - 2026-11-12
+
+Re-pins to Codex CLI **0.167.2**. Its `generate-json-schema` output is
+byte-identical to 0.167.1's, and the `models.json` catalog (12 slugs) is
+unchanged, so there are no type changes.
+
+### Changed
+
+- Tested Codex CLI version: 0.167.1 → 0.167.2.
+
 ## [0.167.6] - 2026-11-11
 
 Tracks `openai/codex@main` schema drift (snapshot pinned at `b75ec48a2c`).
