@@ -248,35 +248,87 @@ fn agent_message_moderation_and_queued_metadata_round_trip() {
     assert_eq!(legacy.responsesapi_client_metadata, None);
 }
 
-/// Agent message moderation carries an optional `display` instruction with camelCase fields.
+/// Agent message moderation carries an optional `display` instruction tagged by `mode`.
 #[test]
 fn agent_message_moderation_display_round_trip() {
-    use codex_codes::protocol::{AgentMessageDisplay, AgentMessageModeration};
+    use codex_codes::protocol::{
+        AgentMessageDisplay, AgentMessageDisplayVersion, AgentMessageModeration, AnswerAnnotation,
+        AnswerReplacement, BlockReason, HelplineSubject, TrustedContacts,
+    };
 
-    let json = serde_json::json!({
-        "moderated": true,
-        "display": {
-            "action": "block",
-            "blockType": "cyber",
-            "cyberTrustedAccess": false,
-            "checkTrustedContacts": true
-        }
+    let cases = [
+        (
+            serde_json::json!({
+                "mode": "show",
+                "version": 1,
+                "annotation": { "kind": "wellbeingHelpline", "subject": "prompt" },
+                "trustedContacts": "check"
+            }),
+            AgentMessageDisplay::Show {
+                version: AgentMessageDisplayVersion,
+                annotation: Some(AnswerAnnotation::WellbeingHelpline {
+                    subject: HelplineSubject::Prompt,
+                }),
+                trusted_contacts: TrustedContacts::Check,
+            },
+        ),
+        (
+            serde_json::json!({ "mode": "show", "version": 1, "trustedContacts": "skip" }),
+            AgentMessageDisplay::Show {
+                version: AgentMessageDisplayVersion,
+                annotation: None,
+                trusted_contacts: TrustedContacts::Skip,
+            },
+        ),
+        (
+            serde_json::json!({
+                "mode": "hide",
+                "version": 1,
+                "replacement": { "kind": "wellbeingPromptHelpline" }
+            }),
+            AgentMessageDisplay::Hide {
+                version: AgentMessageDisplayVersion,
+                replacement: AnswerReplacement::WellbeingPromptHelpline {},
+            },
+        ),
+        (
+            serde_json::json!({
+                "mode": "block",
+                "version": 1,
+                "reason": { "kind": "protection", "protectionType": "selfHarm" }
+            }),
+            AgentMessageDisplay::Block {
+                version: AgentMessageDisplayVersion,
+                reason: BlockReason::Protection {
+                    protection_type: "selfHarm".into(),
+                },
+            },
+        ),
+        (
+            serde_json::json!({
+                "mode": "block",
+                "version": 1,
+                "reason": { "kind": "cyber", "trustedAccess": false }
+            }),
+            AgentMessageDisplay::Block {
+                version: AgentMessageDisplayVersion,
+                reason: BlockReason::Cyber {
+                    trusted_access: Some(false),
+                },
+            },
+        ),
+    ];
+    for (display, expected) in cases {
+        let json = serde_json::json!({ "moderated": true, "display": display });
+        let moderation: AgentMessageModeration = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(moderation.display, Some(expected));
+        assert_eq!(serde_json::to_value(&moderation).unwrap(), json);
+    }
+
+    let unsupported = serde_json::json!({
+        "mode": "show", "version": 2, "trustedContacts": "skip"
     });
-    let moderation: AgentMessageModeration = serde_json::from_value(json.clone()).unwrap();
-    assert_eq!(
-        moderation.display,
-        Some(AgentMessageDisplay {
-            action: "block".into(),
-            block_type: Some("cyber".into()),
-            cyber_trusted_access: Some(false),
-            check_trusted_contacts: Some(true),
-        })
-    );
-    assert_eq!(serde_json::to_value(&moderation).unwrap(), json);
-
-    let minimal = serde_json::json!({ "moderated": false, "display": { "action": "future" } });
-    let parsed: AgentMessageModeration = serde_json::from_value(minimal.clone()).unwrap();
-    assert_eq!(serde_json::to_value(&parsed).unwrap(), minimal);
+    assert!(serde_json::from_value::<AgentMessageDisplay>(unsupported).is_err());
 }
 
 /// TurnToolOutput omits `retain` when false, defaults it when absent, and round-trips `retain: true`.

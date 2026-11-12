@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.167.6] - 2026-11-11
+
+Tracks `openai/codex@main` schema drift (snapshot pinned at `b75ec48a2c`).
+The tested pin stays at Codex CLI **0.167.1**.
+
+### Added
+
+- `AgentMessageDisplayVersion` (wire value `1`; other versions are rejected),
+  `AnswerAnnotation`, `HelplineSubject`, `TrustedContacts`,
+  `AnswerReplacement`, and `BlockReason`: the typed pieces of the versioned
+  answer-display contract (openai/codex#60904).
+
+### Changed
+
+- **Breaking:** `AgentMessageDisplay` is now an enum tagged by `mode`
+  (`Show { version, annotation, trusted_contacts }`,
+  `Hide { version, replacement }`, `Block { version, reason }`) instead of a
+  struct with free-form `action`, `block_type`, `cyber_trusted_access`, and
+  `check_trusted_contacts` fields, matching upstream's wire change. Map
+  `action: "block"` + `block_type: "cyber"` + `cyber_trusted_access` to
+  `Block { reason: BlockReason::Cyber { trusted_access } }`, and
+  `check_trusted_contacts` to `Show { trusted_contacts: TrustedContacts::Check }`.
+
 ## [0.167.5] - 2026-11-11
 
 Re-pins the tested Codex CLI to **0.167.1** (its app-server schema is
