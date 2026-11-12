@@ -7069,18 +7069,96 @@ pub struct AgentMessageModeration {
     pub display: Option<AgentMessageDisplay>,
 }
 
-/// A presentation instruction for Chat to apply to this answer when recovering history.
+/// The only supported version of the answer display contract (wire value `1`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "u8", into = "u8")]
+pub struct AgentMessageDisplayVersion;
+
+impl TryFrom<u8> for AgentMessageDisplayVersion {
+    type Error = &'static str;
+
+    fn try_from(version: u8) -> Result<Self, Self::Error> {
+        match version {
+            1 => Ok(Self),
+            _ => Err("unsupported answer display version"),
+        }
+    }
+}
+
+impl From<AgentMessageDisplayVersion> for u8 {
+    fn from(_: AgentMessageDisplayVersion) -> Self {
+        1
+    }
+}
+
+/// How Chat should present a recovered answer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "mode", rename_all = "camelCase")]
+pub enum AgentMessageDisplay {
+    Show {
+        version: AgentMessageDisplayVersion,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        annotation: Option<AnswerAnnotation>,
+        #[serde(rename = "trustedContacts")]
+        trusted_contacts: TrustedContacts,
+    },
+    Hide {
+        version: AgentMessageDisplayVersion,
+        replacement: AnswerReplacement,
+    },
+    Block {
+        version: AgentMessageDisplayVersion,
+        reason: BlockReason,
+    },
+}
+
+/// An annotation Chat shows alongside a displayed answer.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum AnswerAnnotation {
+    WellbeingHelpline { subject: HelplineSubject },
+}
+
+/// Whether a wellbeing helpline annotation refers to the answer or the prompt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AgentMessageDisplay {
-    /// Unknown actions must be left for the producing client to handle.
-    pub action: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub block_type: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cyber_trusted_access: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub check_trusted_contacts: Option<bool>,
+pub enum HelplineSubject {
+    Answer,
+    Prompt,
+}
+
+/// Whether Chat should check the user's trusted contacts before showing an answer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TrustedContacts {
+    Check,
+    Skip,
+}
+
+/// What Chat shows in place of a hidden answer.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum AnswerReplacement {
+    WellbeingPromptHelpline {},
+}
+
+/// Why an answer is blocked.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum BlockReason {
+    Protection {
+        /// Identifies the same moderation row that Chat writes on the live path.
+        #[serde(rename = "protectionType")]
+        protection_type: String,
+    },
+    Cyber {
+        #[serde(
+            default,
+            rename = "trustedAccess",
+            skip_serializing_if = "Option::is_none"
+        )]
+        trusted_access: Option<bool>,
+    },
 }
 
 /// Where the CLI stores auth credentials.
