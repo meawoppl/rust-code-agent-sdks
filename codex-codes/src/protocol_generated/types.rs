@@ -3953,6 +3953,15 @@ pub struct ListMcpServerStatusParams {
     pub cursor: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detail: Option<McpServerStatusDetail>,
+    /// Select this environment's registration. Requires `server_name` and
+    /// `thread_id`. When omitted, a named request uses the same server as
+    /// older clients.
+    #[serde(
+        rename = "environmentId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub environment_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
     /// Limit discovery to one server. With a thread ID, reuse that thread's
@@ -4452,6 +4461,13 @@ pub struct McpResourceReadParams {
         skip_serializing_if = "Option::is_none"
     )]
     pub connector_id: Option<String>,
+    /// Exact registration scope; omission preserves legacy name-only selection.
+    #[serde(
+        rename = "environmentId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub environment_id: Option<String>,
     /// Originating MCP tool call used to select the resource's app.
     #[serde(
         rename = "originCallId",
@@ -4607,6 +4623,13 @@ pub struct McpServerOauthLoginParams {
         skip_serializing_if = "Option::is_none"
     )]
     pub client_registration: Option<McpServerOauthClientRegistration>,
+    /// Exact registration scope; omission preserves legacy name-only selection.
+    #[serde(
+        rename = "environmentId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub environment_id: Option<String>,
     #[serde(default)]
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4663,6 +4686,14 @@ pub enum McpServerStartupState {
 pub struct McpServerStatus {
     #[serde(rename = "authStatus")]
     pub auth_status: McpAuthStatus,
+    /// Environment that contributed this registration; `None` for a
+    /// thread-wide server. Older servers omit this field.
+    #[serde(
+        rename = "environmentId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub environment_id: Option<String>,
     /// HTTP origin of the effective configured endpoint, including plugin
     /// servers. Excludes credentials, path, query, and fragment; `None` for
     /// non-HTTP transports.
@@ -4732,6 +4763,13 @@ pub enum McpServerStatusDetail {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct McpServerStatusUpdatedNotification {
+    /// Registration scope, not necessarily the server's execution environment.
+    #[serde(
+        rename = "environmentId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub environment_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
     #[serde(
@@ -4755,6 +4793,13 @@ pub struct McpServerToolCallParams {
     pub _meta: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub arguments: Option<Value>,
+    /// Exact registration scope; omission preserves legacy name-only selection.
+    #[serde(
+        rename = "environmentId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub environment_id: Option<String>,
     #[serde(default)]
     pub server: String,
     #[serde(rename = "threadId", default)]
@@ -8759,6 +8804,14 @@ pub enum ThreadItemPayload {
             skip_serializing_if = "Option::is_none"
         )]
         duration_ms: Option<i64>,
+        /// Registration scope, not necessarily the server's execution
+        /// environment.
+        #[serde(
+            rename = "environmentId",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        environment_id: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         error: Option<McpToolCallError>,
         id: String,
