@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.167.8] - 2026-11-13
+
+Tracks `openai/codex@main` schema drift (snapshot pinned at `69231e119b`).
+The tested pin stays at Codex CLI **0.167.2**.
+
+### Added
+
+- `environment_id: Option<String>` (wire `environmentId`), the MCP
+  registration scope from openai/codex#61257, on `ListMcpServerStatusParams`,
+  `McpResourceReadParams`, `McpServerOauthLoginParams`,
+  `McpServerToolCallParams`, `McpServerStatus`,
+  `McpServerStatusUpdatedNotification`, and the
+  `ThreadItemPayload::McpToolCall` variant. Omitting it keeps the legacy
+  name-only server selection.
+
+### Notes
+
+- The v1 `McpServerElicitationRequestParams` also gained `environmentId`.
+  It isn't modeled because the crate's `mode`-tagged enum already leaves out
+  the request's outer `serverName`/`threadId`/`turnId` fields.
+- Model catalog: `codex-rs/models-manager/models.json` at `69231e119b`
+  (fetched 2026-11-13) has no slugs missing from `CodexModel`.
+
 ## [0.167.7] - 2026-11-12
 
 Re-pins to Codex CLI **0.167.2**. Its `generate-json-schema` output is

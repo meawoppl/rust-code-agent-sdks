@@ -1726,6 +1726,58 @@ fn mcp_resource_read_params_meta_round_trips() {
     assert!(serde_json::to_value(bare).unwrap().get("_meta").is_none());
 }
 
+/// MCP registration scope via `environmentId` (openai/codex#61257).
+#[test]
+fn mcp_environment_id_round_trips() {
+    use codex_codes::protocol::{
+        McpServerStatus, McpServerStatusUpdatedNotification, McpServerToolCallParams,
+        ThreadItemPayload,
+    };
+
+    let raw = serde_json::json!({
+        "environmentId": "env_1", "server": "docs", "threadId": "thr_1", "tool": "search"
+    });
+    let p: McpServerToolCallParams = serde_json::from_value(raw.clone()).unwrap();
+    assert_eq!(p.environment_id.as_deref(), Some("env_1"));
+    assert_eq!(serde_json::to_value(&p).unwrap(), raw);
+
+    let legacy = McpServerToolCallParams {
+        server: "docs".into(),
+        thread_id: "thr_1".into(),
+        tool: "search".into(),
+        ..Default::default()
+    };
+    assert!(serde_json::to_value(legacy)
+        .unwrap()
+        .get("environmentId")
+        .is_none());
+
+    let status = serde_json::json!({
+        "authStatus": "unsupported", "environmentId": "env_1", "name": "docs",
+        "resourceTemplates": [], "resources": [], "tools": {}
+    });
+    let s: McpServerStatus = serde_json::from_value(status).unwrap();
+    assert_eq!(s.environment_id.as_deref(), Some("env_1"));
+
+    let update = serde_json::json!({
+        "environmentId": "env_1", "name": "docs", "status": "ready"
+    });
+    let u: McpServerStatusUpdatedNotification = serde_json::from_value(update.clone()).unwrap();
+    assert_eq!(u.environment_id.as_deref(), Some("env_1"));
+    assert_eq!(serde_json::to_value(&u).unwrap(), update);
+
+    let item = serde_json::json!({
+        "type": "mcpToolCall", "id": "i1", "arguments": {}, "environmentId": "env_1",
+        "server": "docs", "status": "completed", "tool": "search"
+    });
+    let ThreadItemPayload::McpToolCall { environment_id, .. } =
+        serde_json::from_value(item).unwrap()
+    else {
+        panic!("expected mcpToolCall");
+    };
+    assert_eq!(environment_id.as_deref(), Some("env_1"));
+}
+
 /// `thread/items/list` output deferral (openai/codex#59601).
 #[test]
 fn thread_items_list_defer_output_round_trips() {
