@@ -1452,6 +1452,18 @@ pub struct UserMessage {
     /// the person's own words; there, show `message` (CLI 2.1.317+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plugin_prompt: Option<PluginPrompt>,
+    /// Output only, and to be read only on a message the CLI wrote (on a
+    /// session event, only where its `source` is `worker`). Only on the
+    /// synthetic message that asks the model again after a response whose
+    /// tool call could not be parsed: the uuids of that response's
+    /// messages, which the CLI has dropped from the conversation. Remove them
+    /// on receipt; an unknown uuid is a no-op. If another assistant message
+    /// follows in the turn, it names them again in
+    /// [`AssistantMessage::supersedes`]. Absent if none of the response's
+    /// messages was sent, on a subagent's messages, over Remote Control, and
+    /// from older CLIs. Marked `@internal` upstream (CLI 2.1.323+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retracted_message_uuids: Option<Vec<String>>,
 }
 
 /// [`UserMessage::plugin_prompt`]: what a host can show for a message a
@@ -2676,6 +2688,11 @@ pub struct BackgroundTaskInfo {
     /// [`TaskStartedMessage::awaited`] (CLI 2.1.293+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub awaited: Option<bool>,
+    /// True for a task whose work goes on outside this process: show the
+    /// task as running, but a host need not stay up for it. Marked
+    /// `@internal` upstream (CLI 2.1.323+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub off_host: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -5250,7 +5267,8 @@ pub struct UiStatusMessage {
 
 /// `system/ui_invalidate` — a plugin called `$.ui.invalidate("ui.render")`,
 /// a plugin loaded or reloaded, or (CLI 2.1.318+) a mobile client already
-/// known to the session named a field in `draws` it had not named before:
+/// known to the session named a field (or, on CLI 2.1.323+, `Progress`) in
+/// `draws` it had not named before:
 /// every tree a remote surface drew through `ui_render` may be stale, and the surface re-asks each mounted instance.
 /// Bumps from one plugin fold to at most one per 100 ms (CLI 2.1.285+).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -5264,8 +5282,10 @@ pub struct UiInvalidateMessage {
     /// alone. The theme of the session being set or cleared
     /// (`$.theme.set` / `$.theme.clear` on CLI 2.1.319+), or a client of a
     /// surface that draws it joining where one ever stood, names the
-    /// `Backdrop` instance (`instance_id` `backdrop`) and, on CLI 2.1.321+,
-    /// the `Theme` instance (`instance_id` `theme`) on each such surface.
+    /// `Theme` instance (`instance_id` `theme`, CLI 2.1.321+) on each such
+    /// surface, and the instance whose `instance_id` is `backdrop`; on CLI
+    /// 2.1.323+ the `backdrop` one only where the scene changed or a client
+    /// joined.
     /// Absent, every mounted instance may be stale.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instances: Option<Vec<UiInvalidatedInstance>>,
@@ -5352,6 +5372,14 @@ pub struct UiPane {
     /// person's own sizing overrides.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub columns: Option<u64>,
+    /// `widget` when the pane's latest open asked to start as a widget, the
+    /// small form of a minimized pane. A request, repeated on every roster
+    /// while it stands: honour it on first seeing the pane; after that the
+    /// person's expand or minimize stands. The CLI reads any other value as
+    /// absent, so treat unrecognized values the same. Marked `@internal`
+    /// upstream (CLI 2.1.323+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placement: Option<String>,
 }
 
 /// `system/ui_placed` — a fire-and-forget push from a headless session when
@@ -5872,6 +5900,12 @@ pub struct AssistantMessage {
     /// back so the normalizer keeps the run's prefix on the wire.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resumed_from_incomplete_thinking: Option<bool>,
+    /// Uuids of earlier messages that this message replaces: after a refusal
+    /// fallback, or (CLI 2.1.323+) after a response whose tool call could not
+    /// be parsed. It can name user messages too, such as a refused attempt's
+    /// tool results. Remove the named messages when this one arrives. After a
+    /// refusal fallback it is idempotent with the end-of-turn
+    /// `system/model_refusal_fallback` notice.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub supersedes: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

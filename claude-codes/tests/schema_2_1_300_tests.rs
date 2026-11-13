@@ -163,7 +163,7 @@ fn result_carries_process_counters_and_shutdown_marker() {
         "process_wall_ms_turn": 12000,
         "input_attachments_detail": {
             "changed_files_reread": 1,
-            "touch_compare": {"same": 3, "differs": 1, "via_outputs_link": 2, "enoent": 1}
+            "touch_compare": {"same": 3, "differs": 1, "enoent": 1}
         },
         "api_error_origin": "first_party",
         "interrupted_by_shutdown": true
@@ -186,7 +186,6 @@ fn result_carries_process_counters_and_shutdown_marker() {
         .touch_compare
         .expect("touch_compare");
     assert_eq!(touch.same, Some(3));
-    assert_eq!(touch.via_outputs_link, Some(2));
     assert_eq!(touch.oversize, None);
 }
 

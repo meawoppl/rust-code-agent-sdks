@@ -176,6 +176,20 @@ pub struct StreamEventMessage {
     /// Marked `@internal` upstream.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_runs_joined: Option<bool>,
+    /// The uuids of the `project_doc_reads` rows that this turn wrote ahead
+    /// of its first model request and that give the text of an added
+    /// claude.ai Project document (Claude Code's own read of the Project's
+    /// documents). A row with only replaced, edited or removed documents is
+    /// not listed, nor is a row from before the conversation's first reply.
+    /// `Some(vec![])` when the turn wrote no row to list, so a consumer that
+    /// read the transcript at the turn's start can tell whether that read
+    /// lacks such a row; the rows may not have reached the session server
+    /// yet. Present exactly when
+    /// [`user_message_uuid`](Self::user_message_uuid) is; absent from older
+    /// producers, and then it states nothing. Marked `@internal` upstream
+    /// (CLI 2.1.323+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub owed_rows: Option<Vec<String>>,
 }
 
 /// The cut-short response named by [`StreamEventMessage::abandoned_blocks`].
