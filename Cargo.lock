@@ -1356,7 +1356,6 @@ name = "pi-codes"
 version = "1.5.2"
 dependencies = [
  "env_logger",
- "log",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
