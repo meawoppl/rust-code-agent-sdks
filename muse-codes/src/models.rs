@@ -6,7 +6,7 @@
 //!
 //! The table mirrors Muse Code's on-disk model catalog
 //! (`~/.local/share/muse/model-catalog/`, `provider_catalog` source) as of
-//! Muse Code 1.4.15 (catalog refreshed 2026-11-10). Unknown or future model ids round-trip through
+//! Muse Code 1.4.18 (catalog refreshed 2026-11-13). Unknown or future model ids round-trip through
 //! [`MuseModel::Custom`], including the hidden image-generation row
 //! `muse-image-1.0`, which is not an `exec --model` chat model. Context/output limits from the same catalog are
 //! exposed via [`MuseModel::context_limit`] / [`MuseModel::output_limit`].

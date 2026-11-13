@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.18] - 2026-11-13
+
+Re-pin to Muse Code **1.4.18** (`1.4.18-R8587.1`, from 1.4.15-R8339.1).
+`muse exec --help` and the stream fingerprint are unchanged, and so is the
+provider model catalog. The top-level CLI gains an `acp` subcommand (Agent
+Client Protocol over stdio), which `muse exec --json` does not use. The live
+suite and the wirecheck pass against 1.4.18.
+
 ## [1.4.15] - 2026-11-10
 
 ### Added
