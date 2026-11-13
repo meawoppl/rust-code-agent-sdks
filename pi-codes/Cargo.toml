@@ -6,7 +6,6 @@ rust-version = "1.85"
 authors = ["Matthew Goodman <d3a6d0cec0c16f3e@inboxnegative.com>"]
 description = "Typed Rust SDK for the pi coding agent (earendil-works/pi): serde models of the `pi --mode json` event stream and the `pi --mode rpc` stdin/stdout command protocol, plus an async (Tokio) RPC client."
 documentation = "https://docs.rs/pi-codes"
-homepage = "https://github.com/meawoppl/rust-code-agent-sdks"
 repository = "https://github.com/meawoppl/rust-code-agent-sdks"
 license = "Apache-2.0"
 readme = "README.md"

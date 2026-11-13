@@ -6,7 +6,6 @@ rust-version = "1.85"
 authors = ["Matthew Goodman <d3a6d0cec0c16f3e@inboxnegative.com>"]
 description = "Typed Rust SDK for the opencode agent server: serde models of its OpenAPI 3.1 HTTP/SSE protocol, plus an async (Tokio) client and a managed local-server launcher for driving opencode sessions, prompts, and permission flows."
 documentation = "https://docs.rs/opencode-codes"
-homepage = "https://github.com/meawoppl/rust-code-agent-sdks"
 repository = "https://github.com/meawoppl/rust-code-agent-sdks"
 license = "Apache-2.0"
 readme = "README.md"
