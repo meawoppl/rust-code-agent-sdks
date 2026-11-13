@@ -183,6 +183,27 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_pool_build_count: Option<u64>,
 
+    /// Of [`tool_pool_build_count`](Self::tool_pool_build_count), the builds
+    /// made only because the stored list had reached its age limit, with
+    /// nothing that the session checks having changed. Sent with
+    /// `tool_pool_build_count`. Marked `@internal` upstream (CLI 2.1.323+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_pool_build_lapsed_count: Option<u64>,
+
+    /// How many tools came or went, by name, at the builds in
+    /// [`tool_pool_build_lapsed_count`](Self::tool_pool_build_lapsed_count).
+    /// Sent with `tool_pool_build_count`. Marked `@internal` upstream
+    /// (CLI 2.1.323+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_pool_moved_at_lapse_count: Option<u64>,
+
+    /// The age limit that the stored tool list was given at its last build,
+    /// in ms. Sent with
+    /// [`tool_pool_build_count`](Self::tool_pool_build_count), and left out
+    /// until the first build. Marked `@internal` upstream (CLI 2.1.323+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_pool_limit_ms: Option<u64>,
+
     /// Monotonic wall time of the
     /// [`process_cpu_ms_turn`](Self::process_cpu_ms_turn) stretch, in ms
     /// (CLI 2.1.300+).
@@ -648,6 +669,21 @@ pub struct ResultMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub terminal_reason: Option<String>,
 
+    /// What the process holds of its organization's policy limits: a value
+    /// of `system/init`'s `startup_timing.policy_answer`, sent under the same
+    /// conditions as that field. An open string, since new values can be
+    /// added. Only on the error result written when the organizations load
+    /// gate refuses a message (`terminal_reason` `turn_setup_failed`), which
+    /// has no `system/init`. Marked `@internal` upstream (CLI 2.1.323+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub policy_answer: Option<String>,
+
+    /// As `system/init`'s `startup_timing.policy_answer_reason`. Only where
+    /// [`policy_answer`](Self::policy_answer) is. Marked `@internal`
+    /// upstream (CLI 2.1.323+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub policy_answer_reason: Option<String>,
+
     /// Present, and true, when the host of a multi-tenant worker shut the
     /// worker down while this turn ran, the shutdown was the first thing to
     /// abort the turn, and the turn is left for the session's next worker.
@@ -899,10 +935,6 @@ pub struct TouchCompareCounts {
     /// The text had changed, so it was read again.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub differs: Option<u64>,
-    /// Those of `same` and `differs` reached through the hosted container's
-    /// outputs link (`/mnt/user-data/outputs` → `/mnt/attach/outputs`).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub via_outputs_link: Option<u64>,
     /// Not compared, because the conversation has seen only part of the
     /// file; read again.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -911,9 +943,9 @@ pub struct TouchCompareCounts {
     /// conversation last read or wrote it; read again.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub already_compared: Option<u64>,
-    /// The file could not be shown to be the one its path names (a symbolic
-    /// link on the way, an unjudged outputs-link landing, or the file swapped
-    /// or removed meanwhile); read again.
+    /// The file could not be shown to be the one its path names (the file
+    /// swapped or removed meanwhile, or on Linux a symbolic link on the way);
+    /// read again.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub link_on_path: Option<u64>,
     /// The open met a symbolic link; read again.
@@ -1226,6 +1258,15 @@ pub enum StartupFailureReason {
     /// every start without a terminal is refused until it is repaired, so a
     /// retry alone does not help (CLI 2.1.318+).
     ConfigFileInvalid,
+    /// `managed_settings_not_delivered` — Claude Code was started with
+    /// `--managed-settings-in-initialize` and could not use the managed
+    /// settings in the `initialize` control request: stdin ended or failed
+    /// first or its first line was too long; the request has no usable
+    /// `managedSettings` object or a malformed `plugins` field; or the launch
+    /// does not read that request at start-up or also passes
+    /// `--managed-settings`. `errors` says which. The fix is in the host or a
+    /// wrapper script, not a retry (CLI 2.1.323+).
+    ManagedSettingsNotDelivered,
     /// A cause not yet known to this version of the crate.
     Unknown(String),
 }
@@ -1255,6 +1296,7 @@ impl StartupFailureReason {
             Self::SandboxRequiredUnavailable => "sandbox_required_unavailable",
             Self::InitializeNotFirst => "initialize_not_first",
             Self::ConfigFileInvalid => "config_file_invalid",
+            Self::ManagedSettingsNotDelivered => "managed_settings_not_delivered",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -1291,6 +1333,7 @@ impl From<&str> for StartupFailureReason {
             "sandbox_required_unavailable" => Self::SandboxRequiredUnavailable,
             "initialize_not_first" => Self::InitializeNotFirst,
             "config_file_invalid" => Self::ConfigFileInvalid,
+            "managed_settings_not_delivered" => Self::ManagedSettingsNotDelivered,
             other => Self::Unknown(other.to_string()),
         }
     }

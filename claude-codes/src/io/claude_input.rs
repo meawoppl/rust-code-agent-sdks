@@ -86,6 +86,7 @@ impl ClaudeInput {
             ultrathink_typed: None,
             tool_states: None,
             plugin_prompt: None,
+            retracted_message_uuids: None,
         })
     }
 
@@ -134,6 +135,7 @@ impl ClaudeInput {
             ultrathink_typed: None,
             tool_states: None,
             plugin_prompt: None,
+            retracted_message_uuids: None,
         })
     }
 

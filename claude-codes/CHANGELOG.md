@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Models the Claude CLI 2.1.322 → 2.1.323 stream-json drift: optional fields
+added, one new startup failure reason, and one internal `result` counter
+removed. The model registry and aliases match the crate.
+
+### Added
+
+- `ResultMessage::policy_answer` / `policy_answer_reason`: on the error
+  result written when the organizations load gate refuses a message, what
+  the process holds of its organization's policy limits.
+- `ResultMessage::tool_pool_build_lapsed_count`,
+  `tool_pool_moved_at_lapse_count` and `tool_pool_limit_ms` (success
+  result): tool-list builds forced only by the stored list's age limit, how
+  many tools those builds moved, and the limit itself.
+- `StartupFailureReason::ManagedSettingsNotDelivered`
+  (`managed_settings_not_delivered`): started with
+  `--managed-settings-in-initialize` and the `initialize` request's managed
+  settings could not be used.
+- `StreamEventMessage::owed_rows`: uuids of the `project_doc_reads` rows the
+  turn wrote ahead of its first request for added claude.ai Project
+  documents. `Some(vec![])` is kept distinct from absent.
+- `UserMessage::retracted_message_uuids`: on the synthetic re-ask after a
+  response whose tool call could not be parsed, the uuids of that
+  response's messages, which the CLI dropped.
+- `BackgroundTaskInfo::off_host`: the task's work goes on outside this
+  process.
+- `UiPane::placement`: `widget` when the pane's latest open asked to start
+  as a widget.
+
+### Changed
+
+- **Breaking:** `StartupFailureReason` gains a variant, which breaks
+  exhaustive downstream matches.
+- `AssistantMessage::supersedes` is now documented; on CLI 2.1.323 it also
+  names the messages of a response whose tool call could not be parsed.
+- `UiInvalidateMessage` docs: a mobile client naming `Progress` in `draws`
+  also invalidates, and the `backdrop` instance is named only where the
+  scene changed or a client joined.
+- `tests/schemas/claude_stream_json_snapshot.txt` re-snapshotted against
+  CLI 2.1.323.
+
+### Removed
+
+- **Breaking:** `TouchCompareCounts::via_outputs_link`. CLI 2.1.323 no
+  longer defines or emits the counter. If an older CLI still sends it, it
+  is now ignored.
+
 ## [2.1.323] - 2026-11-10
 
 Re-pin to Claude CLI **2.1.322**. No wire changes: the extracted stream-json
