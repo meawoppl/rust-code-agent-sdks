@@ -646,6 +646,14 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_error_code: Option<String>,
 
+    /// The `api_error_type` of the API error that ended the turn (see
+    /// `AssistantMessage::api_error_type`): the response body's
+    /// `error.type` when it is an identifier. Absent when the turn did not
+    /// end on an API error, in the cases listed on that field, and from CLIs
+    /// before 2.1.325. Marked `@internal` upstream.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_error_type: Option<String>,
+
     /// The `api_error_origin` of the API error that ended the turn (see
     /// `AssistantMessage::api_error_origin`): `first_party` when Anthropic's
     /// own API sent the response. Absent when the turn did not end on an API
@@ -703,6 +711,14 @@ pub struct ResultMessage {
     /// upstream (CLI 2.1.319+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stopped_by_permission_check: Option<bool>,
+
+    /// The usage limit refused this turn, and the session service has
+    /// confirmed that the messages removed by a `rewind_conversation`
+    /// request with `restore_if_usage_limited` are back. This turn's prompt
+    /// and its error message are no longer part of the conversation. Marked
+    /// `@internal` upstream (CLI 2.1.325+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub restored_rewind: Option<RestoredRewind>,
 
     /// Delivery sequence of this result within the run: how many results the
     /// run numbered before this one, starting at 0, in the order the process
@@ -807,6 +823,48 @@ pub struct ResultMessage {
     /// from CLIs before 2.1.274.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub startup_failure_reason: Option<StartupFailureReason>,
+
+    /// Set when [`Self::startup_failure_reason`] is `config_file_invalid`:
+    /// the config file that did not parse and its backup, as separate
+    /// fields. Read paths from here, never from the text of `errors`. Each
+    /// path is in the form the machine running Claude Code uses, which can
+    /// differ from the host's. Absent on every other result and from CLIs
+    /// before 2.1.325.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub invalid_config_file: Option<InvalidConfigFile>,
+}
+
+/// [`ResultMessage::restored_rewind`]: the rewind a usage-limited turn
+/// restored (CLI 2.1.325+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct RestoredRewind {
+    /// The `request_id` of the `rewind_conversation` request.
+    pub request_id: String,
+    /// The last user or assistant message of the restored conversation that
+    /// a load of the session keeps.
+    pub last_message_uuid: String,
+}
+
+/// [`ResultMessage::invalid_config_file`]: a config file that is not valid
+/// JSON, and its backup (CLI 2.1.325+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct InvalidConfigFile {
+    /// The file that is not valid JSON.
+    pub path: String,
+    /// Whether this is Claude Code's global config file. Only that file has
+    /// backups, and only its message says how to repair it.
+    pub is_global: bool,
+    /// Whether Claude Code knows the result of its search for a backup.
+    /// `true` with no [`backup_path`](Self::backup_path): it found none.
+    /// `false`: the result is not known, or this is not the global config.
+    pub backup_searched: bool,
+    /// The backup that the message in `errors` names. Usually one that
+    /// parses; where none does, the newest with an account, then the newest
+    /// holding anything, or at last one that does not parse or could not be
+    /// read. Show it to a person, or check that it parses before copying it
+    /// over [`path`](Self::path).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backup_path: Option<String>,
 }
 
 /// [`ResultMessage::input_attachments_detail`] — what the
