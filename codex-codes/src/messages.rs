@@ -1235,6 +1235,121 @@ mod tests {
     }
 
     #[test]
+    fn test_model_provider_default_set_round_trips() {
+        use crate::protocol_generated::types::ModelProviderDefaultSetParams;
+
+        let wire = serde_json::json!({"providerId": "amazon-bedrock"});
+        let params: ModelProviderDefaultSetParams = serde_json::from_value(wire.clone()).unwrap();
+        assert_eq!(params.provider_id, "amazon-bedrock");
+        assert_eq!(serde_json::to_value(&params).unwrap(), wire);
+        assert!(
+            serde_json::from_value::<ModelProviderDefaultSetParams>(serde_json::json!({})).is_err()
+        );
+    }
+
+    #[test]
+    fn test_thread_list_included_thread_ids_round_trips() {
+        use crate::protocol_generated::types::ThreadListParams;
+
+        let params = ThreadListParams {
+            included_thread_ids: Some(vec!["t1".to_string()]),
+            ..Default::default()
+        };
+        assert_eq!(
+            serde_json::to_value(&params).unwrap(),
+            serde_json::json!({"includedThreadIds": ["t1"]})
+        );
+        assert_eq!(
+            serde_json::to_value(ThreadListParams::default()).unwrap(),
+            serde_json::json!({})
+        );
+    }
+
+    #[test]
+    fn test_thread_realtime_persisted_items_round_trip() {
+        use crate::protocol_generated::types::{
+            ThreadRealtimeCoverage, ThreadRealtimeEntry, ThreadRealtimeHandoffMode,
+            ThreadRealtimeItem, ThreadRealtimeItemDetail, ThreadRealtimeOrder,
+            ThreadRealtimeTranscriptRole,
+        };
+
+        let frame = serde_json::json!({
+            "id": "f1", "realtimeSessionId": "voice", "observedAtMs": 1_700_000_000_000_i64,
+            "type": "frame",
+            "channels": {"voice_transcript": {"role": "user", "text": "hi"}}
+        });
+        let item: ThreadRealtimeItem = serde_json::from_value(frame.clone()).unwrap();
+        assert_eq!(item.observed_at_ms, Some(1_700_000_000_000));
+        match &item.detail {
+            ThreadRealtimeItemDetail::Frame { channels } => {
+                assert_eq!(
+                    channels.voice_transcript.role,
+                    ThreadRealtimeTranscriptRole::User
+                );
+                assert_eq!(channels.voice_transcript.text, "hi");
+            }
+            other => panic!("expected frame, got {other:?}"),
+        }
+        assert_eq!(serde_json::to_value(&item).unwrap(), frame);
+
+        // An undated live item keeps its wire shape (no observedAtMs key).
+        let live = serde_json::json!({
+            "id": "speech", "realtimeSessionId": "voice", "type": "transcriptSegment",
+            "role": "assistant", "text": "hello"
+        });
+        let item: ThreadRealtimeItem = serde_json::from_value(live.clone()).unwrap();
+        assert_eq!(item.observed_at_ms, None);
+        assert_eq!(serde_json::to_value(&item).unwrap(), live);
+
+        let accepted = serde_json::json!({
+            "id": "a1", "realtimeSessionId": "voice", "type": "turnInputAccepted",
+            "handoff_id": "h1", "turn_id": "turn1", "mode": "steer",
+            "source_event_ids": ["e1", "e2"], "input_item_id": "in1", "input": "do it"
+        });
+        let entry: ThreadRealtimeEntry = serde_json::from_value(serde_json::json!({
+            "position": 7, "item": accepted.clone()
+        }))
+        .unwrap();
+        assert_eq!(entry.position, 7);
+        match &entry.item.detail {
+            ThreadRealtimeItemDetail::TurnInputAccepted {
+                mode,
+                source_event_ids,
+                ..
+            } => {
+                assert_eq!(*mode, ThreadRealtimeHandoffMode::Steer);
+                assert_eq!(source_event_ids.len(), 2);
+            }
+            other => panic!("expected turnInputAccepted, got {other:?}"),
+        }
+        assert_eq!(serde_json::to_value(&entry.item).unwrap(), accepted);
+
+        let saved = serde_json::json!({
+            "id": "s1", "realtimeSessionId": "voice", "type": "sessionEndInputSaved",
+            "source_event_ids": [], "input_item_id": "in2", "input": "later"
+        });
+        let item: ThreadRealtimeItem = serde_json::from_value(saved.clone()).unwrap();
+        assert!(matches!(
+            item.detail,
+            ThreadRealtimeItemDetail::SessionEndInputSaved { .. }
+        ));
+        assert_eq!(serde_json::to_value(&item).unwrap(), saved);
+
+        assert_eq!(
+            ThreadRealtimeOrder::default(),
+            ThreadRealtimeOrder::ObservedAt
+        );
+        assert_eq!(
+            serde_json::to_value(ThreadRealtimeOrder::ObservedAt).unwrap(),
+            "observedAt"
+        );
+        assert_eq!(
+            serde_json::from_value::<ThreadRealtimeCoverage>(serde_json::json!("pending")).unwrap(),
+            ThreadRealtimeCoverage::Pending
+        );
+    }
+
+    #[test]
     fn test_human_command_approval_request_decodes() {
         use crate::protocol_generated::types::CommandExecutionApprovalKind;
 

@@ -383,6 +383,7 @@ pub fn client_request_samples() -> Vec<(&'static str, Value)> {
             "modelProvider/config/write",
             json!({"settings": {"type": "customGateway"}}),
         ),
+        ("modelProvider/default/set", json!({"providerId": "openai"})),
         ("modelProvider/list", json!({})),
         ("permissionProfile/list", json!({})),
         ("plugin/install", json!({"pluginName": "x"})),

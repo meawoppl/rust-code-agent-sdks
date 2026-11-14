@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Tracks `openai/codex@main` schema drift (snapshot pinned at `05229d1874`).
+
+### Added
+
+- `methods::MODELPROVIDER_DEFAULT_SET` (`modelProvider/default/set`) and
+  `ModelProviderDefaultSetParams { provider_id }`, which pick the configured
+  provider used by new threads and unscoped model lists. The response is the
+  existing `ConfigWriteResponse` (openai/codex#61397).
+- `ThreadListParams::included_thread_ids` (wire `includedThreadIds`): restrict
+  `thread/list` to up to 100 thread IDs before pagination; an empty list
+  matches nothing (openai/codex#61446).
+- `ThreadRealtimeItem::observed_at_ms` (wire `observedAtMs`), plus three new
+  `ThreadRealtimeItemDetail` variants: `Frame { channels }`,
+  `TurnInputAccepted { handoff_id, turn_id, mode, source_event_ids,
+  input_item_id, input }`, and `SessionEndInputSaved { source_event_ids,
+  input_item_id, input }`. New supporting types: `ThreadRealtimeFrameChannels`,
+  `ThreadRealtimeVoiceTranscript`, `ThreadRealtimeHandoffMode`
+  (openai/codex#61473).
+- `ThreadRealtimeEntry`, `ThreadRealtimeOrder`, and `ThreadRealtimeCoverage`,
+  the persisted realtime-history types from openai/codex#61480. Their
+  `thread/realtime/list` method is `#[experimental]` upstream and absent from
+  the stable schema, so it has no `methods` constant here.
+
+### Notes
+
+- The Codex CLI 0.169.0 release schema is a subset of this snapshot, except
+  for the pre-#60904 flat `AgentMessageDisplay` fields it still emits. This
+  crate already models `AgentMessageDisplay` in its `main` shape.
+
 ## [0.167.8] - 2026-11-13
 
 Tracks `openai/codex@main` schema drift (snapshot pinned at `69231e119b`).
