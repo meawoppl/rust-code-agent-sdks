@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.20] - 2026-11-14
+
+Re-pin to Muse Code **1.4.20** (`1.4.20-R8619.1`, from 1.4.15-R8339.1).
+`muse exec --help` and the stream fingerprint are unchanged, and so is the
+provider model catalog. 1.4.18 added a top-level `acp` subcommand (Agent
+Client Protocol over stdio); 1.4.20's MSP schema adds `session/start.clear`
+plus experimental built-in-tool restriction fields. `muse exec --json` uses
+neither. The live suite and the wirecheck pass against 1.4.20.
+
 ## [1.4.15] - 2026-11-10
 
 ### Added
