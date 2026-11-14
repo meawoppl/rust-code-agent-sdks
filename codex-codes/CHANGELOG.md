@@ -5,7 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.169.0] - 2026-11-14
+
+Re-pin to Codex CLI **0.169.0** (from 0.167.2). The release's
+`generate-json-schema` output is a subset of the `openai/codex@main` snapshot
+the crate tracks, apart from the old flat `AgentMessageDisplay` fields that
+main has since restructured (already modeled in the main shape). The 12
+`models.json` slugs are the same at `rust-v0.169.0` and on main, and all are
+modeled. The live suite passes against 0.169.0.
 
 Tracks `openai/codex@main` schema drift (snapshot pinned at `05229d1874`).
 
