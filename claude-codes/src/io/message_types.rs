@@ -704,6 +704,14 @@ pub struct ToolResultMeta {
     /// turn), and on a subagent's messages (CLI 2.1.317+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub built_in_tool: Option<String>,
+    /// Stands only beside [`built_in_tool`](Self::built_in_tool), and only
+    /// from a worker that takes its messages over Claude Code Remote. Its one
+    /// value today, `person_typed`, says a person typed (in the iOS, Android,
+    /// claude.ai or desktop app) every message that opened or joined the run
+    /// up to this call, as far as the messages show. Absent on any doubt;
+    /// read absence, and any value you do not know, as no (CLI 2.1.325+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_input: Option<String>,
 }
 
 /// [`ToolResultMeta::permission_decision`] — how a tool call's permission
@@ -2950,10 +2958,38 @@ pub struct InformationalMessage {
     /// instead of reading `content` (CLI 2.1.317+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_restriction: Option<ModelRestriction>,
+    /// Present on the warning, tagged `hook_no_verdict`, that a PreToolUse
+    /// hook gave no verdict on a call and that its failure did not refuse
+    /// the call, so a host can word the notice itself instead of reading
+    /// `content`. Sent once per hook per session, for the first such call.
+    /// Marked `@internal` upstream (CLI 2.1.325+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hook_no_verdict: Option<HookNoVerdict>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_id: Option<String>,
+}
+
+/// [`InformationalMessage::hook_no_verdict`]: a PreToolUse hook gave no
+/// verdict on a tool call, and its failure did not refuse the call. Another
+/// hook, a rule or the person may still stop that call. Not sent for a hook
+/// that chose a non-blocking exit, nor where the failure refused the call
+/// (CLI 2.1.325+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HookNoVerdict {
+    /// The hook event, e.g. `PreToolUse`.
+    pub hook_event: String,
+    /// The tool call the hook gave no verdict on.
+    pub tool_use_id: String,
+    /// `true` for a hook that ended with no answer, usually at its timeout.
+    pub timed_out: bool,
+    /// The plugin that owns the hook, for a plugin's hook.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugin_id: Option<String>,
+    /// The root directory of the plugin that owns the hook.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugin_root: Option<String>,
 }
 
 /// [`InformationalMessage::model_restriction`]: a requested model was
@@ -3089,6 +3125,38 @@ pub struct PluginDiagnostic {
     #[serde(rename = "type")]
     pub diagnostic_type: String,
     pub message: String,
+    /// Present only when a `--plugin-dir`, SDK `plugins` or synced directory
+    /// entry did not load at all: the path of that entry, resolved against
+    /// the cwd (a `--plugin-url` entry carries none). `plugin` is then the
+    /// positional `inline[N]` / `synced[N]` tag, so a host that mounts
+    /// several directories pairs the error to its own by this path.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    /// Present only when a managed-settings `enabledPlugins` entry dropped
+    /// this directory, SDK, skills-directory or synced copy (CLI 2.1.325+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub managed_lock: Option<PluginManagedLock>,
+}
+
+/// [`PluginDiagnostic::managed_lock`]: the managed-settings `enabledPlugins`
+/// entry that dropped a directory copy of a plugin. Neither value stops an
+/// install of the same name from another marketplace, which can load beside
+/// it. `name` and `marketplace` are byte-exact and unbounded (control and
+/// bidi characters are not removed), so clean and bound them before showing
+/// them (CLI 2.1.325+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PluginManagedLock {
+    /// `true`: the entry turns that plugin on, and Claude Code does not
+    /// accept this copy as that plugin. `false`: the entry turns it off, and
+    /// no directory copy of the name may load.
+    pub plugin_enabled: bool,
+    /// The plugin name as the entry spells it, which can differ from the
+    /// copy (case, Unicode form, an earlier name of a built-in).
+    pub name: String,
+    /// The entry's marketplace. Absent where the entry names no marketplace
+    /// that an install could come from.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub marketplace: Option<String>,
 }
 
 /// Memory paths reported by system init.
@@ -6085,6 +6153,19 @@ pub struct AssistantMessage {
     /// from CLIs before 2.1.274.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_error_code: Option<String>,
+    /// The `error.type` of the response body for this API error (such as
+    /// `rate_limit_error`, `overloaded_error` or `invalid_request_error`),
+    /// copied through when it is an identifier (`^[a-z][a-z0-9_]{0,63}$`)
+    /// and dropped otherwise, so a host can read the class without working
+    /// it out from `error`, `api_error_status` or the text. The CLI does not
+    /// check the value: a gateway or third-party provider can send others
+    /// (see [`Self::api_error_origin`]), and a first-party 503 with
+    /// `x-should-retry: false` still says `overloaded_error`, so the value
+    /// alone does not say a retry can help. Bodies Claude Code writes itself
+    /// carry their own type (a hook's plain refusal is `permission_error`).
+    /// Marked `@internal` upstream (CLI 2.1.325+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_error_type: Option<String>,
     /// `first_party` when this API error was built from a response
     /// Anthropic's own API sent: the first-party provider, the default
     /// `https://api.anthropic.com` endpoint answering directly, over TLS

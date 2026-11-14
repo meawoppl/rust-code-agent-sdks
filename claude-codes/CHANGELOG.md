@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Models the Claude CLI 2.1.323 → 2.1.325 stream-json drift: optional fields
+only, no new message types or subtypes. The model registry (31 ids), the
+alias table and `best: "opus"` are unchanged from 2.1.323.
+
+### Added
+
+- `AssistantMessage::api_error_type` / `ResultMessage::api_error_type`: the
+  API error response body's `error.type` (`rate_limit_error`,
+  `overloaded_error`, …) when it is an identifier.
+- `ResultMessage::restored_rewind` (`RestoredRewind`): on a usage-limited
+  turn, the `rewind_conversation` request with `restore_if_usage_limited`
+  whose removed messages the session service has put back.
+- `ResultMessage::invalid_config_file` (`InvalidConfigFile`): on the
+  `config_file_invalid` startup result, the file that did not parse and its
+  backup as separate fields (`path`, `is_global`, `backup_searched`,
+  `backup_path`).
+- `InformationalMessage::hook_no_verdict` (`HookNoVerdict`): on the
+  `hook_no_verdict` warning, the PreToolUse hook that gave no verdict, the
+  call, whether it timed out, and the owning plugin.
+- `PluginDiagnostic::managed_lock` (`PluginManagedLock`): the
+  managed-settings `enabledPlugins` entry that dropped a directory copy of a
+  plugin.
+- `PluginDiagnostic::path`: the path of a directory plugin entry that did
+  not load at all. Older CLIs already sent it; the crate had not modeled it.
+- `ToolResultMeta::run_input`: `person_typed` from a Claude Code Remote
+  worker when a person typed every message of the run.
+
+### Changed
+
+- `tests/schemas/claude_stream_json_snapshot.txt` re-snapshotted against
+  CLI 2.1.325.
+
 Models the Claude CLI 2.1.322 → 2.1.323 stream-json drift: optional fields
 added, one new startup failure reason, and one internal `result` counter
 removed. The model registry and aliases match the crate.
