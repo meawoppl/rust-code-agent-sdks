@@ -5264,6 +5264,16 @@ pub struct ModelProviderConfigWriteParams {
     pub settings: ProviderSettingsPatch,
 }
 
+/// Params for `modelProvider/default/set`; the response is a
+/// [`ConfigWriteResponse`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelProviderDefaultSetParams {
+    /// Configured provider to use by default for new threads and unscoped
+    /// model lists.
+    pub provider_id: String,
+}
+
 /// Response to `modelProvider/config/write`: the provider as written.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -9020,6 +9030,16 @@ pub struct ThreadListParams {
         skip_serializing_if = "Option::is_none"
     )]
     pub excluded_thread_ids: Option<Vec<String>>,
+    /// Restrict results to up to 100 thread IDs before pagination. Omit or
+    /// send null for unrestricted results. An empty list matches nothing.
+    /// Exclusions still apply. Repeat the same IDs on each page. The local
+    /// store uses indexed metadata for this filter.
+    #[serde(
+        rename = "includedThreadIds",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub included_thread_ids: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
     #[serde(
@@ -9055,6 +9075,9 @@ pub struct ThreadListParams {
         skip_serializing_if = "Option::is_none"
     )]
     pub source_kinds: Option<Vec<ThreadSourceKind>>,
+    /// If true, the local store returns indexed metadata without scanning
+    /// JSONL rollouts for repairs. Requests with `includedThreadIds` always
+    /// use indexed metadata.
     #[serde(
         rename = "useStateDbOnly",
         default,
@@ -9569,6 +9592,14 @@ pub struct ThreadRealtimeItem {
     pub id: String,
     #[serde(rename = "realtimeSessionId", default)]
     pub realtime_session_id: String,
+    /// Canonical observation time in Unix milliseconds for eligible voice
+    /// calls.
+    #[serde(
+        rename = "observedAtMs",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub observed_at_ms: Option<i64>,
     #[serde(flatten)]
     pub detail: ThreadRealtimeItemDetail,
 }
@@ -9579,6 +9610,13 @@ pub struct ThreadRealtimeItem {
 pub enum ThreadRealtimeItemDetail {
     #[serde(rename = "realtimeSessionStarted")]
     RealtimeSessionStarted,
+    /// A sealed frame of one or more channel payloads sharing one ID,
+    /// observation time, and seal. Persisted reads keep this shape; live and
+    /// mixed timeline APIs present speech as `transcriptSegment`.
+    #[serde(rename = "frame")]
+    Frame {
+        channels: ThreadRealtimeFrameChannels,
+    },
     #[serde(rename = "transcriptSegment")]
     TranscriptSegment {
         role: ThreadRealtimeTranscriptRole,
@@ -9594,6 +9632,77 @@ pub enum ThreadRealtimeItemDetail {
     RealtimeSessionClosed {
         outcome: ThreadRealtimeSessionOutcome,
     },
+    /// A realtime handoff was accepted as input to an agent turn.
+    #[serde(rename = "turnInputAccepted")]
+    TurnInputAccepted {
+        handoff_id: String,
+        input: String,
+        input_item_id: String,
+        mode: ThreadRealtimeHandoffMode,
+        source_event_ids: Vec<String>,
+        turn_id: String,
+    },
+    /// Input pending at session end was saved for a later turn.
+    #[serde(rename = "sessionEndInputSaved")]
+    SessionEndInputSaved {
+        input: String,
+        input_item_id: String,
+        source_event_ids: Vec<String>,
+    },
+}
+
+/// EXPERIMENTAL upstream — channel payloads of a realtime `frame` item. A
+/// frame holds at most one payload per channel; V1 requires its only
+/// channel, `voice_transcript`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ThreadRealtimeFrameChannels {
+    pub voice_transcript: ThreadRealtimeVoiceTranscript,
+}
+
+/// EXPERIMENTAL upstream — the `voice_transcript` channel of a realtime frame.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ThreadRealtimeVoiceTranscript {
+    pub role: ThreadRealtimeTranscriptRole,
+    pub text: String,
+}
+
+/// EXPERIMENTAL upstream — whether a realtime handoff started a new turn or
+/// steered an active one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ThreadRealtimeHandoffMode {
+    Start,
+    Steer,
+}
+
+/// EXPERIMENTAL upstream — one persisted realtime history entry at a
+/// committed position (returned by the experimental `thread/realtime/list`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ThreadRealtimeEntry {
+    pub item: ThreadRealtimeItem,
+    pub position: u64,
+}
+
+/// EXPERIMENTAL upstream — sort order for persisted realtime history reads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ThreadRealtimeOrder {
+    /// Sort by canonical observation time, then committed position.
+    #[default]
+    ObservedAt,
+    /// Sort by committed position, including events sealed after older
+    /// snapshots.
+    Position,
+}
+
+/// EXPERIMENTAL upstream — whether persisted realtime history is available
+/// for a read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ThreadRealtimeCoverage {
+    Unsupported,
+    Pending,
+    Ready,
 }
 
 /// EXPERIMENTAL upstream — how an existing agent item appears in a realtime
