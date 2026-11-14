@@ -5,7 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.1.325] - 2026-11-14
+
+Tested against Claude CLI **2.1.325**. Rolls up the 2.1.322 → 2.1.323 and
+2.1.323 → 2.1.325 drift below; the live suite passes against 2.1.325.
 
 Models the Claude CLI 2.1.323 → 2.1.325 stream-json drift: optional fields
 only, no new message types or subtypes. The model registry (31 ids), the
