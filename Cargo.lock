@@ -328,7 +328,7 @@ dependencies = [
 
 [[package]]
 name = "claude-codes"
-version = "2.1.323"
+version = "2.1.325"
 dependencies = [
  "anyhow",
  "base64",
@@ -1162,7 +1162,7 @@ dependencies = [
 
 [[package]]
 name = "muse-codes"
-version = "1.4.15"
+version = "1.4.20"
 dependencies = [
  "env_logger",
  "log",
