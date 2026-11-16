@@ -7240,8 +7240,6 @@ pub struct Project {
     pub metadata: std::collections::HashMap<String, String>,
     #[serde(default)]
     pub name: String,
-    #[serde(default)]
-    pub position: i64,
     /// Newest non-archived member thread's recency, in Unix seconds;
     /// absent/null when none exist (0.148 upstream).
     #[serde(rename = "recencyAt", default, skip_serializing_if = "Option::is_none")]

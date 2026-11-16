@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.169.1] - 2026-11-16
+
+Tracks `openai/codex@main` schema drift (snapshot pinned at `75fc67e8f4`).
+Still tested against Codex CLI 0.169.0.
+
+### Removed
+
+- `Project::position`. Upstream no longer exposes numeric project positions;
+  clients should use the order `project/list` returns, and
+  `beforeProjectId` places a moved project before another (or appends it
+  when omitted/null). `ProjectSortKey::Position` is unchanged
+  (openai/codex#61771).
+
 ## [0.169.0] - 2026-11-14
 
 Re-pin to Codex CLI **0.169.0** (from 0.167.2). The release's
