@@ -5,7 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.4.23] - 2026-11-17
+
+Re-pin to Muse Code **1.4.23** (`1.4.23-R8977.1`, from 1.4.20-R8619.1).
+`muse exec --help` only rewords `--reasoning-effort` (the default is now
+Meta's top served tier, up to `max`). The MSP schema changes are additive
+and `muse exec --json` doesn't use them. The provider model catalog is
+unchanged. The live suite and the wirecheck pass against 1.4.23.
 
 ### Changed
 
