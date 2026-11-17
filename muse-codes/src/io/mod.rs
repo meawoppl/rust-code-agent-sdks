@@ -466,8 +466,11 @@ pub struct TaskLifecycle {
 
 /// The `event` member of [`TaskLifecycle`], tagged by `kind`.
 ///
-/// Observed lifecycle: `proposed → accepted → started → (scheduled →
-/// side_effect_intent →) completed | failed`.
+/// Observed lifecycle: `proposed → accepted → (side_effect_intent →)
+/// started → completed | failed`. Builds up to 1.4.20 also emitted
+/// `scheduled` before `side_effect_intent`, and placed both after `started`.
+/// 1.4.23 no longer emits `scheduled` in echo runs, but its payload-type table
+/// still lists `task.lifecycle.scheduled`, so the variant stays.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TaskLifecycleEvent {
