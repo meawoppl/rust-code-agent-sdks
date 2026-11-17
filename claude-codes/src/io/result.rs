@@ -322,6 +322,14 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resume_store_confirm_detail: Option<ResumeStoreConfirmDetail>,
 
+    /// How the turn went about its memory check — the request asking the
+    /// session server whether the account's memory has changed. Present, in
+    /// a cloud session that makes such checks, on the result of a turn that
+    /// reached the model loop (stopped or not); absent on a local command's
+    /// (CLI 2.1.326+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memory_check_detail: Option<MemoryCheckDetail>,
+
     /// How the `tool_schema_build` phase of `time_to_request_phases_ms` was
     /// spent, over the main-conversation requests built before the turn's
     /// first dispatch (normally one). Present where that phase is
@@ -1654,6 +1662,166 @@ impl Serialize for StreamPostQueuedBehind {
 }
 
 impl<'de> Deserialize<'de> for StreamPostQueuedBehind {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// [`ResultMessage::memory_check_detail`] — how the turn went about its
+/// memory check (CLI 2.1.326+). A turn that will wait for the answer can
+/// first be held until the request is sent; the `memory_send_wait` phase of
+/// `time_to_request_phases_ms` times that hold.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MemoryCheckDetail {
+    /// The hold's feature flag as the turn started: `1` on in
+    /// claude-code-server, `2` on in every cloud worker, `0` otherwise.
+    /// Absent where the process's flags were not fresh.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flag: Option<u64>,
+    /// Whether the turn was held until the request was sent, and how the
+    /// hold ended.
+    pub hold: MemoryCheckHold,
+    /// How the wait for the check's answer went. Absent where the turn was
+    /// stopped first or never came to that wait. Decided the same way with
+    /// the hold on and off.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wait: Option<MemoryCheckWait>,
+    /// How many such checks the process has started since the last turn that
+    /// reported this number (start-up, ahead of the message, after the
+    /// previous turn or for this turn), counting one refused before it was
+    /// sent; `9` means 9 or more. Present with `wait`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requests: Option<u64>,
+}
+
+/// [`MemoryCheckDetail::hold`] — whether a turn was held until its memory
+/// check request was sent, and how the hold ended (CLI 2.1.326+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum MemoryCheckHold {
+    /// `off` — the hold is not on for this worker.
+    Off,
+    /// `not_due` — the turn was not expected to wait, or that could not be
+    /// told.
+    NotDue,
+    /// `nothing_to_send` — the request had already been sent or answered,
+    /// none was due, or it is one the server may hold (the wait replaces it).
+    NothingToSend,
+    /// `sent` — the hold ended when the request was sent.
+    Sent,
+    /// `cap` — the hold's time limit came first.
+    Cap,
+    /// `abort` — the turn was stopped.
+    Abort,
+    /// `failed` — the request ended before it was sent.
+    Failed,
+    /// A value not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl MemoryCheckHold {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Off => "off",
+            Self::NotDue => "not_due",
+            Self::NothingToSend => "nothing_to_send",
+            Self::Sent => "sent",
+            Self::Cap => "cap",
+            Self::Abort => "abort",
+            Self::Failed => "failed",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for MemoryCheckHold {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for MemoryCheckHold {
+    fn from(s: &str) -> Self {
+        match s {
+            "off" => Self::Off,
+            "not_due" => Self::NotDue,
+            "nothing_to_send" => Self::NothingToSend,
+            "sent" => Self::Sent,
+            "cap" => Self::Cap,
+            "abort" => Self::Abort,
+            "failed" => Self::Failed,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for MemoryCheckHold {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for MemoryCheckHold {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// [`MemoryCheckDetail::wait`] — how a turn's wait for its memory check
+/// answer went (CLI 2.1.326+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum MemoryCheckWait {
+    /// `went_on` — the turn did not need its own check's answer, took one
+    /// asked for ahead of the message, or the server had stopped the checks.
+    WentOn,
+    /// `answered` — the answer came.
+    Answered,
+    /// `cut` — the wait for the answer ran out.
+    Cut,
+    /// `unanswered` — the request was refused or failed.
+    Unanswered,
+    /// A value not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl MemoryCheckWait {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::WentOn => "went_on",
+            Self::Answered => "answered",
+            Self::Cut => "cut",
+            Self::Unanswered => "unanswered",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for MemoryCheckWait {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for MemoryCheckWait {
+    fn from(s: &str) -> Self {
+        match s {
+            "went_on" => Self::WentOn,
+            "answered" => Self::Answered,
+            "cut" => Self::Cut,
+            "unanswered" => Self::Unanswered,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for MemoryCheckWait {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for MemoryCheckWait {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let s = String::deserialize(deserializer)?;
         Ok(Self::from(s.as_str()))

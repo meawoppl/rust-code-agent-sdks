@@ -57,6 +57,7 @@ pub enum SystemSubtype {
     FileAttachmentsMissing,
     PermissionCheckStatus,
     InheritedAsksSettled,
+    LateAllowNotRun,
     UiFocus,
     UiInvalidate,
     UiLog,
@@ -117,6 +118,7 @@ impl SystemSubtype {
             Self::FileAttachmentsMissing => "file_attachments_missing",
             Self::PermissionCheckStatus => "permission_check_status",
             Self::InheritedAsksSettled => "inherited_asks_settled",
+            Self::LateAllowNotRun => "late_allow_not_run",
             Self::UiFocus => "ui_focus",
             Self::UiInvalidate => "ui_invalidate",
             Self::UiLog => "ui_log",
@@ -184,6 +186,7 @@ impl From<&str> for SystemSubtype {
             "file_attachments_missing" => Self::FileAttachmentsMissing,
             "permission_check_status" => Self::PermissionCheckStatus,
             "inherited_asks_settled" => Self::InheritedAsksSettled,
+            "late_allow_not_run" => Self::LateAllowNotRun,
             "ui_focus" => Self::UiFocus,
             "ui_invalidate" => Self::UiInvalidate,
             "ui_log" => Self::UiLog,
@@ -1377,6 +1380,12 @@ pub struct UserMessage {
     pub client_platform: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub inbound_origin: Option<String>,
+    /// Input only: the `request_id` of an unanswered permission card that the
+    /// sender keeps up behind this message. A worker that took the card over
+    /// then sends no cancel for it when this message ends it, so a later
+    /// Allow can still run its call (CLI 2.1.326+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keeps_request_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", rename = "isReplay")]
     pub is_replay: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1980,6 +1989,19 @@ impl SystemMessage {
         serde_json::from_value(self.data.clone()).ok()
     }
 
+    /// Check if this is a late_allow_not_run message.
+    pub fn is_late_allow_not_run(&self) -> bool {
+        self.subtype == SystemSubtype::LateAllowNotRun
+    }
+
+    /// Try to parse as a late_allow_not_run message.
+    pub fn as_late_allow_not_run(&self) -> Option<LateAllowNotRunMessage> {
+        if self.subtype != SystemSubtype::LateAllowNotRun {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
     /// Check if this is a file_attachments_missing message.
     pub fn is_file_attachments_missing(&self) -> bool {
         self.subtype == SystemSubtype::FileAttachmentsMissing
@@ -2215,6 +2237,7 @@ impl SystemMessage {
             SystemSubtype::InheritedAsksSettled => {
                 parse!(InheritedAsksSettled, InheritedAsksSettledMessage)
             }
+            SystemSubtype::LateAllowNotRun => parse!(LateAllowNotRun, LateAllowNotRunMessage),
             SystemSubtype::UiFocus => parse!(UiFocus, UiFocusMessage),
             SystemSubtype::UiInvalidate => parse!(UiInvalidate, UiInvalidateMessage),
             SystemSubtype::UiLog => parse!(UiLog, UiLogMessage),
@@ -2333,6 +2356,9 @@ impl SystemMessage {
             SystemSubtype::InheritedAsksSettled => {
                 reserialize(parse_system::<InheritedAsksSettledMessage>(self))
             }
+            SystemSubtype::LateAllowNotRun => {
+                reserialize(parse_system::<LateAllowNotRunMessage>(self))
+            }
             SystemSubtype::UiFocus => reserialize(parse_system::<UiFocusMessage>(self)),
             SystemSubtype::UiInvalidate => reserialize(parse_system::<UiInvalidateMessage>(self)),
             SystemSubtype::UiLog => reserialize(parse_system::<UiLogMessage>(self)),
@@ -2405,6 +2431,7 @@ pub enum KnownSystemEvent {
     FileAttachmentsMissing(FileAttachmentsMissingMessage),
     PermissionCheckStatus(PermissionCheckStatusMessage),
     InheritedAsksSettled(InheritedAsksSettledMessage),
+    LateAllowNotRun(LateAllowNotRunMessage),
     UiFocus(UiFocusMessage),
     UiInvalidate(UiInvalidateMessage),
     UiLog(UiLogMessage),
@@ -2605,6 +2632,21 @@ pub struct HookStartedMessage {
     pub hook_id: String,
     pub hook_name: String,
     pub hook_event: String,
+    /// Who configured the hook (`user_settings`, `project_settings`,
+    /// `policy_settings`, `official_plugin`, …); treat an unfamiliar value as
+    /// unknown. Set only on `SessionStart` hooks in the Claude desktop app's
+    /// Code tab while the session's records stay local (CLI 2.1.326+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<String>,
+    /// With `origin`: a short display name — the hook's `statusMessage`, or
+    /// the file name of its program for a settings hook. One line, at most 80
+    /// characters, untrusted (CLI 2.1.326+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    /// With `origin`: the plugin the hook comes from. One line, at most 80
+    /// characters, untrusted (CLI 2.1.326+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugin_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2622,6 +2664,11 @@ pub struct HookProgressMessage {
     pub stderr: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub output: Option<String>,
+    /// `true` when the hook went to the background and the session no longer
+    /// waits for it. Sent once, with no output, for a hook whose
+    /// `hook_started` carried `origin` (CLI 2.1.326+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backgrounded: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3913,6 +3960,13 @@ pub struct TaskNotificationMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<TaskEndReason>,
     pub summary: String,
+    /// `true` when `summary` is the final report of a subagent that nothing
+    /// waits for, with no review to come: show it as the report. A later
+    /// notification for the same `task_id` replaces it. Absent when the
+    /// summary may be a description or interim text, under `handback` (see
+    /// `handback_report`), or in auto mode (CLI 2.1.326+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary_is_report: Option<bool>,
     pub output_file: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_use_id: Option<String>,
@@ -4994,6 +5048,101 @@ pub struct InheritedAsksSettledMessage {
     pub kept_request_ids: Vec<String>,
     pub uuid: String,
     pub session_id: String,
+}
+
+/// `system/late_allow_not_run` — a cloud worker's report that the call of a
+/// permission card, which a message had closed and the client kept up (see
+/// `keeps_request_id` on user messages), will not run on a late Allow: the
+/// worker refused the person's Allow, a Deny came, or the worker cancels the
+/// card itself. Sent once the worker has stored that, and again by each later
+/// worker handed a copy of the Allow (CLI 2.1.326+).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LateAllowNotRunMessage {
+    /// The answer's own request id, which is not checked — or the card's, at
+    /// the worker's own cancel.
+    pub request_id: String,
+    /// The id of the card's call.
+    pub tool_use_id: String,
+    /// Why no late Allow runs the call. Treat any value as "did not run".
+    pub reason: LateAllowNotRunReason,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// [`LateAllowNotRunMessage::reason`]. Every value, including unknown ones,
+/// means the call did not run (CLI 2.1.326+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LateAllowNotRunReason {
+    TurnRunning,
+    CardOpen,
+    CallGone,
+    InvalidAnswer,
+    Limited,
+    Stopped,
+    Declined,
+    AskedAgain,
+    Withdrawn,
+    Expired,
+    NotRun,
+    /// A reason not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl LateAllowNotRunReason {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::TurnRunning => "turn_running",
+            Self::CardOpen => "card_open",
+            Self::CallGone => "call_gone",
+            Self::InvalidAnswer => "invalid_answer",
+            Self::Limited => "limited",
+            Self::Stopped => "stopped",
+            Self::Declined => "declined",
+            Self::AskedAgain => "asked_again",
+            Self::Withdrawn => "withdrawn",
+            Self::Expired => "expired",
+            Self::NotRun => "not_run",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for LateAllowNotRunReason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for LateAllowNotRunReason {
+    fn from(s: &str) -> Self {
+        match s {
+            "turn_running" => Self::TurnRunning,
+            "card_open" => Self::CardOpen,
+            "call_gone" => Self::CallGone,
+            "invalid_answer" => Self::InvalidAnswer,
+            "limited" => Self::Limited,
+            "stopped" => Self::Stopped,
+            "declined" => Self::Declined,
+            "asked_again" => Self::AskedAgain,
+            "withdrawn" => Self::Withdrawn,
+            "expired" => Self::Expired,
+            "not_run" => Self::NotRun,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for LateAllowNotRunReason {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for LateAllowNotRunReason {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// Phase of a [`PermissionCheckStatusMessage`].
@@ -6141,7 +6290,13 @@ pub struct AssistantMessage {
     /// network location (an unsupported region, or a VPN, proxy or network
     /// routing through one) before it reached the API; no sign-in or
     /// credential change fixes it — and (CLI 2.1.321+) `hook_denied` — a
-    /// mod's `http.fetch` hook stopped the request.
+    /// mod's `http.fetch` hook stopped the request — and (CLI 2.1.326+)
+    /// `tls_cert_signature_failure` — a certificate the API's server sent
+    /// failed signature verification (e.g. a CA list holding two same-named
+    /// certificates after a renewal, or tampering; a host should not offer a
+    /// way around the check) — and `message_over_context_limit` — the turn's
+    /// own text exceeds the model's largest context window, so no request
+    /// was sent and the text did not join the conversation.
     /// Kinds with parameters carry them in [`Self::api_error_params`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_error: Option<String>,
