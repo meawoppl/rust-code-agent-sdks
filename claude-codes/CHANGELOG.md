@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.327] - 2026-11-16
+
+Crate-side release; still tested against Claude CLI **2.1.326**. Fixes
+login completion detection (#559).
+
+### Fixed
+
+- `LoginFlow::poll_outcome` and `submit_code_and_wait` no longer report a
+  login child's clean exit (code 0) as `LoginChildExited` just because no
+  credentials-file write was seen. The CLI may keep credentials somewhere the
+  flow can't watch, such as an OS keychain. The exit code alone is not
+  trusted either: for the login modes the flow now runs a bounded
+  `claude auth status` with the same binary.
+  - If it shows a login of the flow's kind (`claude.ai` / `console`), the
+    result is a success with the new `LoginOutcome::verified_status` set
+    (`credentials_updated` stays `false`).
+  - Anything else is the new `Error::LoginExitUnverified { logged_in,
+    auth_method, status_error, transcript }`: signed out, a different
+    credential kind, or a status check that failed or timed out.
+  - Non-zero exits remain `LoginChildExited` even when an older login is
+    still active, and `SetupToken` behaviour is unchanged.
+- `poll_outcome` now keeps its credentials-write grace window across calls.
+  Before, a caller polling in steps shorter than 3 s never received the
+  credentials outcome.
+- `poll_outcome` waits briefly for the PTY reader to drain after the child
+  exits, so a fast exit no longer loses the CLI's final output from the
+  transcript.
+
+### Added
+
+- `auth_status_timeout(timeout)` / `auth_status_with_binary_timeout(binary,
+  timeout)`: `claude auth status` that kills the child and returns
+  `Error::Timeout` if it hasn't exited in time.
+
+### Breaking
+
+- `Error` gains `LoginExitUnverified`, and `LoginOutcome` gains
+  `verified_status` (`#[serde(default)]`, so serialized outcomes from older
+  versions still deserialize).
+
 ## [2.1.326] - 2026-11-16
 
 Tested against Claude CLI **2.1.326**. Models the 2.1.325 → 2.1.326

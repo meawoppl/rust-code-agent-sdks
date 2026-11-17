@@ -90,6 +90,52 @@ pub fn auth_status_with_binary(binary: &str) -> Result<AuthStatus> {
     serde_json::from_slice(&out.stdout).map_err(Error::Json)
 }
 
+/// [`auth_status`] bounded by `timeout`: the status child is killed and
+/// [`Error::Timeout`] returned if it hasn't exited in time.
+pub fn auth_status_timeout(timeout: Duration) -> Result<AuthStatus> {
+    auth_status_with_binary_timeout("claude", timeout)
+}
+
+/// [`auth_status_with_binary`] bounded by `timeout`.
+pub fn auth_status_with_binary_timeout(binary: &str, timeout: Duration) -> Result<AuthStatus> {
+    let mut child = std::process::Command::new(binary)
+        .args(["auth", "status", "--json"])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => Error::BinaryNotFound {
+                name: binary.to_string(),
+            },
+            _ => Error::Io(e),
+        })?;
+    // Drain stdout on a thread so a large reply can't fill the pipe and
+    // block the child while we poll for its exit.
+    let mut stdout = child.stdout.take().expect("piped stdout");
+    let reader = std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        stdout.read_to_end(&mut buf).map(|_| buf)
+    });
+    let deadline = Instant::now() + timeout;
+    loop {
+        if child.try_wait().map_err(Error::Io)?.is_some() {
+            break;
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(Error::Timeout);
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let out = reader
+        .join()
+        .map_err(|_| Error::Unknown("auth status reader panicked".to_string()))?
+        .map_err(Error::Io)?;
+    serde_json::from_slice(&out).map_err(Error::Json)
+}
+
 /// Which login flow to drive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LoginMode {
@@ -106,6 +152,17 @@ pub enum LoginMode {
 }
 
 impl LoginMode {
+    /// The `auth status` `authMethod` a successful login of this mode
+    /// produces; `None` for [`SetupToken`](Self::SetupToken), which persists
+    /// nothing.
+    fn expected_auth_method(self) -> Option<&'static str> {
+        match self {
+            LoginMode::SetupToken => None,
+            LoginMode::ClaudeAi => Some("claude.ai"),
+            LoginMode::Console => Some("console"),
+        }
+    }
+
     fn args(self) -> &'static [&'static str] {
         match self {
             LoginMode::SetupToken => &["setup-token"],
@@ -163,6 +220,13 @@ pub struct LoginOutcome {
     /// code submission — the authoritative success signal, independent of
     /// anything rendered on screen.
     pub credentials_updated: bool,
+    /// Set when completion was established by `claude auth status` instead
+    /// of a credentials-file write: the CLI exited cleanly without an
+    /// observed write (e.g. it stores credentials in an OS keychain), and
+    /// the status then showed a login of the flow's kind. `None` when
+    /// `credentials_updated` carried the success.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verified_status: Option<AuthStatus>,
     /// State of the OSC 52 clipboard channel when the flow settled.
     pub osc52: Osc52Status,
     /// True when the flow pressed the TUI's `c` copy affordance after
@@ -212,6 +276,12 @@ pub struct LoginFlow {
     /// Credentials store path + its state when the flow started, so
     /// create-or-update after submission is detectable as a success signal.
     creds: CredsWatch,
+    /// The CLI binary this flow runs, reused for `auth status` verification.
+    binary: String,
+    /// When [`poll_outcome`](Self::poll_outcome) first saw the credentials
+    /// write. Kept across calls so the token grace window elapses even when
+    /// each poll waits less than the window.
+    poll_creds_seen_at: Option<Instant>,
 }
 
 /// Snapshot-based watcher for the CLI's credentials file.
@@ -363,6 +433,8 @@ impl LoginFlow {
             finished: false,
             rejected: false,
             creds,
+            binary: binary.to_string(),
+            poll_creds_seen_at: None,
         })
     }
 
@@ -592,6 +664,7 @@ impl LoginFlow {
                             token: Some(token),
                             token_source: Some(TokenSource::Osc52),
                             credentials_updated: creds_updated,
+                            verified_status: None,
                             osc52: Osc52Status::TokenRecovered,
                             copy_nudge_sent: nudged,
                             transcript: stripped,
@@ -608,6 +681,7 @@ impl LoginFlow {
                     token: Some(token),
                     token_source: Some(TokenSource::Screen),
                     credentials_updated: creds_updated,
+                    verified_status: None,
                     osc52: Osc52Status::from(&osc52),
                     copy_nudge_sent: nudged,
                     transcript: stripped,
@@ -619,6 +693,7 @@ impl LoginFlow {
                     token: Some(token.clone()),
                     token_source: Some(TokenSource::Osc52),
                     credentials_updated: creds_updated,
+                    verified_status: None,
                     osc52: Osc52Status::TokenRecovered,
                     copy_nudge_sent: nudged,
                     transcript: stripped,
@@ -659,6 +734,7 @@ impl LoginFlow {
                         token: None,
                         token_source: None,
                         credentials_updated: true,
+                        verified_status: None,
                         osc52: Osc52Status::from(&osc52),
                         copy_nudge_sent: nudged,
                         transcript: stripped,
@@ -693,6 +769,7 @@ impl LoginFlow {
                         token: None,
                         token_source: None,
                         credentials_updated: true,
+                        verified_status: None,
                         osc52: Osc52Status::from(&osc52),
                         copy_nudge_sent: nudged,
                         transcript,
@@ -701,6 +778,11 @@ impl LoginFlow {
                 let code = child_exit
                     .map(|(c, _)| c)
                     .or_else(|| reap_exit_code(&mut self.child));
+                if let Some(verdict) =
+                    self.verify_clean_exit(code, &transcript, Osc52Status::from(&osc52), nudged)
+                {
+                    return verdict;
+                }
                 let tail = strip_ansi(&guard.0[offset.min(guard.0.len())..]);
                 // CLI >= 2.1.25x no longer parks on the retry screen after a
                 // failed token exchange — it prints "Login failed: <reason>"
@@ -768,16 +850,25 @@ impl LoginFlow {
     ///   [`submit_code_and_wait`](Self::submit_code_and_wait)); the child
     ///   is left for the caller to drop.
     /// - `Ok(None)` — still pending; call again.
-    /// - `Err(Error::LoginChildExited)` — the child died without success.
+    /// - `Err(Error::LoginChildExited)` — the child exited non-zero (or, for
+    ///   [`LoginMode::SetupToken`], exited at all) before any credentials
+    ///   write.
+    ///
+    /// A login-mode child that exits **0** without an observed credentials
+    /// write (the CLI may store credentials in an OS keychain, or write
+    /// nothing this flow can see) is neither trusted nor failed on the exit
+    /// code alone: the flow runs a bounded `claude auth status` with the same
+    /// binary. A login of the flow's kind yields `Ok(Some(outcome))` with
+    /// [`LoginOutcome::verified_status`] set; anything else yields
+    /// `Err(Error::LoginExitUnverified)` carrying what the status showed.
     pub fn poll_outcome(&mut self, wait: Duration) -> Result<Option<LoginOutcome>> {
         const CREDS_TOKEN_GRACE: Duration = Duration::from_secs(3);
         let deadline = Instant::now() + wait;
-        let mut creds_seen_at: Option<Instant> = None;
         loop {
-            if creds_seen_at.is_none() && self.creds.updated() {
-                creds_seen_at = Some(Instant::now());
+            if self.poll_creds_seen_at.is_none() && self.creds.updated() {
+                self.poll_creds_seen_at = Some(Instant::now());
             }
-            if let Some(seen) = creds_seen_at {
+            if let Some(seen) = self.poll_creds_seen_at {
                 let (transcript, osc52) = {
                     let (lock, _) = &*self.buf;
                     let g = lock.lock().unwrap();
@@ -794,23 +885,37 @@ impl LoginFlow {
                         token,
                         token_source,
                         credentials_updated: true,
+                        verified_status: None,
                         osc52: osc52_status,
                         copy_nudge_sent: false,
                         transcript,
                     }));
                 }
             } else if let Ok(Some(status)) = self.child.try_wait() {
-                // Child gone before any credential write — a failure, with
-                // the transcript as forensics (matching finish()'s shape).
+                // A write that raced the exit is still a credentials success.
+                if self.creds.updated() {
+                    continue;
+                }
                 self.finished = true;
-                let transcript = {
-                    let (lock, _) = &*self.buf;
-                    strip_ansi(&lock.lock().unwrap().0)
+                let (transcript, osc52) = {
+                    // The child can exit before the reader thread drains its
+                    // last bytes; wait briefly for EOF, as finish() does.
+                    let (lock, cv) = &*self.buf;
+                    let mut g = lock.lock().unwrap();
+                    let drain_deadline = Instant::now() + Duration::from_secs(2);
+                    while !g.1 && Instant::now() < drain_deadline {
+                        g = cv.wait_timeout(g, Duration::from_millis(100)).unwrap().0;
+                    }
+                    (
+                        strip_ansi(&g.0),
+                        Osc52Status::from(&extract_osc52_token(&g.0)),
+                    )
                 };
-                return Err(Error::LoginChildExited {
-                    code: Some(status.exit_code()),
-                    transcript,
-                });
+                let code = Some(status.exit_code());
+                if let Some(verdict) = self.verify_clean_exit(code, &transcript, osc52, false) {
+                    return verdict.map(Some);
+                }
+                return Err(Error::LoginChildExited { code, transcript });
             }
             if Instant::now() >= deadline {
                 return Ok(None);
@@ -819,12 +924,59 @@ impl LoginFlow {
         }
     }
 
+    /// Settle a child exit that came without an observed credentials write.
+    ///
+    /// `None` when the exit isn't a clean (code 0) exit of a login mode — the
+    /// caller reports it as [`Error::LoginChildExited`] as before. Otherwise
+    /// the exit code alone proves nothing, so a bounded `auth status` decides:
+    /// a login of the flow's kind is a verified outcome, anything else is
+    /// [`Error::LoginExitUnverified`].
+    fn verify_clean_exit(
+        &self,
+        code: Option<u32>,
+        transcript: &str,
+        osc52: Osc52Status,
+        copy_nudge_sent: bool,
+    ) -> Option<Result<LoginOutcome>> {
+        const STATUS_TIMEOUT: Duration = Duration::from_secs(15);
+        if code != Some(0) {
+            return None;
+        }
+        let expected = self.mode.expected_auth_method()?;
+        let unverified = |logged_in, auth_method, status_error| Error::LoginExitUnverified {
+            logged_in,
+            auth_method,
+            status_error,
+            transcript: transcript.to_string(),
+        };
+        Some(
+            match auth_status_with_binary_timeout(&self.binary, STATUS_TIMEOUT) {
+                Ok(status)
+                    if status.logged_in && status.auth_method.as_deref() == Some(expected) =>
+                {
+                    Ok(LoginOutcome {
+                        token: None,
+                        token_source: None,
+                        credentials_updated: false,
+                        verified_status: Some(status),
+                        osc52,
+                        copy_nudge_sent,
+                        transcript: transcript.to_string(),
+                    })
+                }
+                Ok(status) => Err(unverified(Some(status.logged_in), status.auth_method, None)),
+                Err(e) => Err(unverified(None, None, Some(e.to_string()))),
+            },
+        )
+    }
+
     /// Wait for the flow to complete and collect the outcome.
     ///
     /// For [`LoginMode::SetupToken`] the minted token is extracted from the
     /// output; a missing token is an error carrying the CLI's transcript.
-    /// For the login modes, verify success with [`auth_status`] — the CLI
-    /// persists credentials itself and its exit text varies across versions.
+    /// For the login modes, verify success with [`auth_status`] (or the
+    /// bounded [`auth_status_timeout`]) — the CLI persists credentials itself
+    /// and its exit text varies across versions.
     pub fn finish(mut self, timeout: Duration) -> Result<LoginOutcome> {
         let deadline = Instant::now() + timeout;
         loop {
@@ -874,6 +1026,7 @@ impl LoginFlow {
             token,
             token_source,
             credentials_updated,
+            verified_status: None,
             osc52: osc52_status,
             copy_nudge_sent: false,
             transcript,
@@ -1218,6 +1371,173 @@ fn strip_ansi(raw: &[u8]) -> String {
         }
     }
     out
+}
+
+#[cfg(all(test, unix))]
+mod clean_exit_tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::{Path, PathBuf};
+
+    const SIGNED_IN: &str = r#"printf '%s\n' '{"loggedIn":true,"authMethod":"claude.ai"}'"#;
+
+    /// A fresh scratch dir holding a fake `claude`: `auth status` runs
+    /// `status_body`, anything else (the login flow) runs `login_body`.
+    fn fake_cli(name: &str, login_body: &str, status_body: &str) -> (PathBuf, PathBuf) {
+        let dir = std::env::temp_dir().join(format!("login-flow-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let script = dir.join("claude");
+        std::fs::write(
+            &script,
+            format!(
+                "#!/bin/sh\ncase \"$1 $2\" in\n  \"auth status\") {status_body} ;;\n  *) {login_body} ;;\nesac\n"
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        (dir, script)
+    }
+
+    /// Start a flow on the fake CLI, watching a scratch credentials path
+    /// instead of the real one, and poll until it settles.
+    fn run(dir: &Path, script: &Path, mode: LoginMode) -> Result<LoginOutcome> {
+        let mut flow = LoginFlow::start_with_binary(script.to_str().unwrap(), mode)?;
+        flow.creds = CredsWatch {
+            path: Some(dir.join(".credentials.json")),
+            baseline: None,
+        };
+        let deadline = Instant::now() + Duration::from_secs(30);
+        loop {
+            if let Some(outcome) = flow.poll_outcome(Duration::from_millis(500))? {
+                return Ok(outcome);
+            }
+            assert!(Instant::now() < deadline, "flow never settled");
+        }
+    }
+
+    #[test]
+    fn clean_exit_without_write_is_verified_by_status() {
+        // Keychain-style storage: the CLI succeeds but writes no file.
+        let (dir, script) = fake_cli("verified", "echo 'Login successful.'; exit 0", SIGNED_IN);
+        let outcome = run(&dir, &script, LoginMode::ClaudeAi).expect("verified outcome");
+        assert!(!outcome.credentials_updated);
+        let status = outcome.verified_status.expect("verified_status");
+        assert!(status.logged_in);
+        assert_eq!(status.auth_method.as_deref(), Some("claude.ai"));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn clean_exit_signed_out_is_unverified() {
+        let (dir, script) = fake_cli(
+            "signed-out",
+            "echo 'Login successful.'; exit 0",
+            r#"printf '%s\n' '{"loggedIn":false}'; exit 1"#,
+        );
+        let err = run(&dir, &script, LoginMode::ClaudeAi).unwrap_err();
+        assert!(
+            matches!(
+                &err,
+                Error::LoginExitUnverified { logged_in: Some(false), auth_method: None, status_error: None, transcript }
+                    if transcript.contains("Login successful.")
+            ),
+            "got {err:?}"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn clean_exit_with_other_credential_kind_is_unverified() {
+        let (dir, script) = fake_cli(
+            "other-kind",
+            "exit 0",
+            r#"printf '%s\n' '{"loggedIn":true,"authMethod":"console"}'"#,
+        );
+        let err = run(&dir, &script, LoginMode::ClaudeAi).unwrap_err();
+        assert!(
+            matches!(&err, Error::LoginExitUnverified { logged_in: Some(true), auth_method: Some(m), .. } if m == "console"),
+            "got {err:?}"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn clean_exit_with_unavailable_status_is_unverified() {
+        let (dir, script) = fake_cli("no-status", "exit 0", "echo 'not json'; exit 2");
+        let err = run(&dir, &script, LoginMode::ClaudeAi).unwrap_err();
+        assert!(
+            matches!(
+                &err,
+                Error::LoginExitUnverified {
+                    logged_in: None,
+                    status_error: Some(_),
+                    ..
+                }
+            ),
+            "got {err:?}"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn nonzero_exit_with_existing_login_still_fails() {
+        // A pre-existing login must not turn a failed flow into a success.
+        let (dir, script) = fake_cli("nonzero", "echo 'boom'; exit 1", SIGNED_IN);
+        let err = run(&dir, &script, LoginMode::ClaudeAi).unwrap_err();
+        assert!(
+            matches!(&err, Error::LoginChildExited { code: Some(1), .. }),
+            "got {err:?}"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn credentials_write_succeeds_without_status() {
+        let creds_path = std::env::temp_dir()
+            .join(format!("login-flow-write-{}", std::process::id()))
+            .join(".credentials.json");
+        let (dir, script) = fake_cli(
+            "write",
+            &format!("printf '{{}}' > '{}'; exit 0", creds_path.display()),
+            "exit 99",
+        );
+        let outcome = run(&dir, &script, LoginMode::ClaudeAi).expect("credentials outcome");
+        assert!(outcome.credentials_updated);
+        assert!(outcome.verified_status.is_none());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn setup_token_clean_exit_keeps_child_exited() {
+        // setup-token persists nothing, so auth status can't vouch for it.
+        let (dir, script) = fake_cli("setup-token", "exit 0", SIGNED_IN);
+        let err = run(&dir, &script, LoginMode::SetupToken).unwrap_err();
+        assert!(
+            matches!(&err, Error::LoginChildExited { code: Some(0), .. }),
+            "got {err:?}"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn auth_status_timeout_kills_a_hung_status() {
+        let (dir, script) = fake_cli("status-timeout", "exit 0", "sleep 10");
+        let start = Instant::now();
+        let err =
+            auth_status_with_binary_timeout(script.to_str().unwrap(), Duration::from_millis(300))
+                .unwrap_err();
+        assert!(matches!(err, Error::Timeout), "got {err:?}");
+        assert!(start.elapsed() < Duration::from_secs(5));
+
+        let (dir2, script2) = fake_cli("status-ok", "exit 0", SIGNED_IN);
+        let status =
+            auth_status_with_binary_timeout(script2.to_str().unwrap(), Duration::from_secs(10))
+                .unwrap();
+        assert!(status.logged_in);
+        std::fs::remove_dir_all(&dir).unwrap();
+        std::fs::remove_dir_all(&dir2).unwrap();
+    }
 }
 
 #[cfg(test)]
