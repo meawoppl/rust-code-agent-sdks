@@ -11,8 +11,6 @@ task.lifecycle.completed: command_id, event, kind, run_stream, task_id, task_str
 task.lifecycle.completed::event[completed]: kind, task_id
 task.lifecycle.proposed: command_id, event, kind, run_stream, task_id, task_stream
 task.lifecycle.proposed::event[proposed]: kind, task_id, task_kind
-task.lifecycle.scheduled: command_id, event, kind, run_stream, task_id, task_stream
-task.lifecycle.scheduled::event[scheduled]: idempotency_key, kind, task_id
 task.lifecycle.side_effect_intent: command_id, event, kind, run_stream, task_id, task_stream
 task.lifecycle.side_effect_intent::event[side_effect_intent]: cancellation_handle, idempotency_key, kind, operation, parent_task_id, policy_decision, task_id
 task.lifecycle.started: command_id, event, kind, run_stream, task_id, task_stream

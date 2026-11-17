@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Stream fingerprint refreshed for Muse Code 1.4.23 (`1.4.23-R8977.1`):
+  the echo `native-basic` run no longer emits `task.lifecycle.scheduled`.
+  This is a behavior change, not a wire change. The 1.4.20 binary still
+  emits four `scheduled` events for the same run, and 1.4.23 still lists
+  the payload type, so `TaskLifecycleEvent::Scheduled` stays.
+  `side_effect_intent` now arrives before `started`. The
+  `TaskLifecycleEvent` docs describe both orderings.
+
 ## [1.4.20] - 2026-11-14
 
 Re-pin to Muse Code **1.4.20** (`1.4.20-R8619.1`, from 1.4.15-R8339.1).
