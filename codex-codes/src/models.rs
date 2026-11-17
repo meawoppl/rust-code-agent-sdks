@@ -10,7 +10,8 @@
 //! faster than this crate; GPT-6.1 Sol was verified against the live Codex
 //! catalog and official model documentation (2026-10-04); GPT-6-Sol and
 //! GPT-6-Luna were added from the bundled catalog at `openai/codex@d63a9b83`
-//! (2026-10-06); GPT-6.1 Terra from `openai/codex@126a0ee9` (2026-10-27).
+//! (2026-10-06); GPT-6.1 Terra from `openai/codex@126a0ee9` (2026-10-27);
+//! GPT-6.2-Sol and GPT-6.2-Astra from `openai/codex@6c0cee50` (2026-11-17).
 //! Unknown slugs round-trip through [`CodexModel::Custom`].
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -19,6 +20,13 @@ use std::fmt;
 /// A model slug accepted by the Codex CLI and app-server.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CodexModel {
+    /// GPT-6.2-Sol (`gpt-6.2-sol`) — the catalog's fast, go-to model for
+    /// coding and everyday work. Availability depends on the server/account.
+    Gpt62Sol,
+    /// GPT-6.2-Astra (`gpt-6.2-astra`) — the catalog's most capable model for
+    /// complex coding and professional work. Availability depends on the
+    /// server/account.
+    Gpt62Astra,
     /// GPT-6.1 Sol (`gpt-6.1-sol`). Availability depends on the server/account.
     Gpt61Sol,
     /// GPT-6.1 Terra (`gpt-6.1-terra`). Availability depends on the
@@ -65,6 +73,8 @@ impl CodexModel {
     /// The slug to pass to `codex -m` / `ThreadStartParams.model`.
     pub fn cli_arg(&self) -> &str {
         match self {
+            Self::Gpt62Sol => "gpt-6.2-sol",
+            Self::Gpt62Astra => "gpt-6.2-astra",
             Self::Gpt61Sol => "gpt-6.1-sol",
             Self::Gpt61Terra => "gpt-6.1-terra",
             Self::Gpt6Astra => "gpt-6-astra",
@@ -93,6 +103,8 @@ impl CodexModel {
     /// Human-friendly display name, matching the catalog's `display_name`.
     pub fn display_name(&self) -> &str {
         match self {
+            Self::Gpt62Sol => "GPT-6.2-Sol",
+            Self::Gpt62Astra => "GPT-6.2-Astra",
             Self::Gpt61Sol => "GPT-6.1-Sol",
             Self::Gpt61Terra => "GPT-6.1 Terra",
             Self::Gpt6Astra => "GPT-6-Astra",
@@ -115,6 +127,8 @@ impl CodexModel {
     /// Every model known to this version of the crate.
     pub fn known() -> &'static [CodexModel] {
         &[
+            Self::Gpt62Sol,
+            Self::Gpt62Astra,
             Self::Gpt61Sol,
             Self::Gpt61Terra,
             Self::Gpt6Astra,
@@ -143,6 +157,8 @@ impl fmt::Display for CodexModel {
 impl From<&str> for CodexModel {
     fn from(s: &str) -> Self {
         match s {
+            "gpt-6.2-sol" => Self::Gpt62Sol,
+            "gpt-6.2-astra" => Self::Gpt62Astra,
             "gpt-6.1-sol" => Self::Gpt61Sol,
             "gpt-6.1-terra" => Self::Gpt61Terra,
             "gpt-6-astra" => Self::Gpt6Astra,
@@ -206,6 +222,8 @@ mod tests {
             ("gpt-6-sol", CodexModel::Gpt6Sol, "GPT-6-Sol"),
             ("gpt-6-luna", CodexModel::Gpt6Luna, "GPT-6-Luna"),
             ("gpt-6.1-terra", CodexModel::Gpt61Terra, "GPT-6.1 Terra"),
+            ("gpt-6.2-sol", CodexModel::Gpt62Sol, "GPT-6.2-Sol"),
+            ("gpt-6.2-astra", CodexModel::Gpt62Astra, "GPT-6.2-Astra"),
         ] {
             assert_eq!(CodexModel::from(slug), model);
             assert!(CodexModel::known().contains(&model));

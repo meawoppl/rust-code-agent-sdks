@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.169.2] - 2026-11-17
+
+Tracks `openai/codex@main` schema drift (snapshot pinned at `8fca6ffb92`).
+Still tested against Codex CLI 0.169.0.
+
+### Added
+
+- `OtelRequirements::headers_helper` (`Option<String>`) and
+  `OtelRequirements::headers_helper_refresh_interval_ms`
+  (`Option<NonZeroU64>`): managed OTLP HTTP header helpers set by local
+  system/MDM requirements (openai/codex#62110).
+- `CodexModel::Gpt62Sol` (`gpt-6.2-sol`) and `CodexModel::Gpt62Astra`
+  (`gpt-6.2-astra`), from the bundled model catalog (openai/codex#62106).
+  **Breaking** for exhaustive `match`es on `CodexModel`; these slugs
+  previously decoded as `CodexModel::Custom`.
+
 ## [0.169.1] - 2026-11-16
 
 Tracks `openai/codex@main` schema drift (snapshot pinned at `75fc67e8f4`).

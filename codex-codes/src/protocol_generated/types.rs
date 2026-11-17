@@ -5651,6 +5651,15 @@ pub enum OtelHttpProtocol {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub struct OtelRequirements {
+    /// Absolute path of a managed executable whose output supplies OTLP HTTP
+    /// export headers. Only honored from local system/MDM requirements, never
+    /// from cloud requirements.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub headers_helper: Option<String>,
+    /// How often, in milliseconds, `headers_helper` is re-run to refresh the
+    /// export headers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub headers_helper_refresh_interval_ms: Option<std::num::NonZeroU64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_result: Option<OtelToolResultLogConfig>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

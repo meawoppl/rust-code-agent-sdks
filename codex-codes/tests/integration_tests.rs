@@ -1602,6 +1602,37 @@ fn config_requirements_reads_otel() {
     assert!(wire.get("otel").is_none());
 }
 
+/// `OtelRequirements` reads the managed headers-helper settings, and a zero
+/// refresh interval is rejected like upstream's `NonZeroU64`.
+#[test]
+fn otel_requirements_reads_headers_helper() {
+    use codex_codes::protocol::OtelRequirements;
+
+    let original = serde_json::json!({
+        "headers_helper": "/opt/acme/bin/otel-headers",
+        "headers_helper_refresh_interval_ms": 300000
+    });
+    let otel: OtelRequirements = serde_json::from_value(original.clone()).unwrap();
+    assert_eq!(
+        otel.headers_helper.as_deref(),
+        Some("/opt/acme/bin/otel-headers")
+    );
+    assert_eq!(
+        otel.headers_helper_refresh_interval_ms.map(|n| n.get()),
+        Some(300000)
+    );
+    assert_eq!(serde_json::to_value(&otel).unwrap(), original);
+
+    let wire = serde_json::to_value(OtelRequirements::default()).unwrap();
+    assert!(wire.get("headers_helper").is_none());
+    assert!(wire.get("headers_helper_refresh_interval_ms").is_none());
+
+    assert!(serde_json::from_value::<OtelRequirements>(
+        serde_json::json!({ "headers_helper_refresh_interval_ms": 0 })
+    )
+    .is_err());
+}
+
 /// `process/exited` reads the new `outputDrainTimedOut` flag, and older
 /// servers that omit it still parse.
 #[test]
