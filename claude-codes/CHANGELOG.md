@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.326] - 2026-11-16
+
+Tested against Claude CLI **2.1.326**. Models the 2.1.325 → 2.1.326
+stream-json drift: one new system subtype and optional fields. The model
+registry (31 ids) and alias table are unchanged from 2.1.325.
+
+### Added
+
+- `system/late_allow_not_run` (`SystemSubtype::LateAllowNotRun`,
+  `KnownSystemEvent::LateAllowNotRun`, `LateAllowNotRunMessage`,
+  `LateAllowNotRunReason`): a cloud worker's report that a kept-up
+  permission card's call will not run on a late Allow.
+- `ResultMessage::memory_check_detail` (`MemoryCheckDetail`,
+  `MemoryCheckHold`, `MemoryCheckWait`): how a cloud turn went about its
+  memory check — the hold's flag, how the hold and the wait ended, and how
+  many checks the process started.
+- `HookStartedMessage::origin` / `label` / `plugin_name`: who configured a
+  desktop `SessionStart` hook and what to show for it.
+- `HookProgressMessage::backgrounded`: the hook went to the background.
+- `TaskNotificationMessage::summary_is_report`: `summary` is the subagent's
+  final report.
+- `UserMessage::keeps_request_id` (input only): the permission card the
+  sender keeps up behind this message.
+- `api_error` docs: the new `tls_cert_signature_failure` and
+  `message_over_context_limit` kinds.
+
+### Changed
+
+- `tests/schemas/claude_stream_json_snapshot.txt` re-snapshotted against
+  CLI 2.1.326.
+
 ## [2.1.325] - 2026-11-14
 
 Tested against Claude CLI **2.1.325**. Rolls up the 2.1.322 → 2.1.323 and
