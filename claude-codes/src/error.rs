@@ -48,6 +48,27 @@ pub enum Error {
         transcript: String,
     },
 
+    /// The login CLI exited cleanly (code 0) without an observed credentials
+    /// write, and `claude auth status` did not confirm a login of the flow's
+    /// kind. Not proof the login failed — completion just couldn't be
+    /// verified.
+    ///
+    /// - `logged_in` / `auth_method` — what the status reported; `None` when
+    ///   the status check itself failed (see `status_error`). `logged_in:
+    ///   Some(false)` means signed out; `Some(true)` with another
+    ///   `auth_method` means a different credential kind is active.
+    /// - `status_error` — why the status check failed (spawn error, timeout,
+    ///   unparseable output).
+    #[error(
+        "Login CLI exited cleanly but the login could not be verified (logged_in: {logged_in:?}, auth_method: {auth_method:?}, status_error: {status_error:?}); output:\n{transcript}"
+    )]
+    LoginExitUnverified {
+        logged_in: Option<bool>,
+        auth_method: Option<String>,
+        status_error: Option<String>,
+        transcript: String,
+    },
+
     #[error("Timeout occurred")]
     Timeout,
 
