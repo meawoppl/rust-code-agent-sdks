@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.169.6] - 2026-11-18
+
+Tracks `openai/codex@main` schema drift (snapshot pinned at `333ea31947`).
+Still tested against Codex CLI 0.170.0. Bundled model catalog re-checked
+(`models-manager/models.json` @ `333ea31947`): no new slugs.
+
+### Added
+
+- `CodexErrorInfo::ApiKeySpendLimitExceeded`, `ProjectSpendLimitExceeded`
+  and `OrganizationSpendLimitExceeded` (wire `apiKeySpendLimitExceeded`,
+  `projectSpendLimitExceeded`, `organizationSpendLimitExceeded`): API spend
+  limit errors are now reported by scope (openai/codex#62329). These codes
+  previously decoded as `CodexErrorInfo::Other`. **Breaking** for exhaustive
+  matches on `CodexErrorInfo`.
+
+### Notes
+
+- Snapshot-only: `AppToolConfig.approvals_reviewer` (openai/codex#62360,
+  per-tool approval reviewers for Codex apps). The crate does not model
+  the app-tool config tree.
+
 ## [0.169.5] - 2026-11-18
 
 Tracks `openai/codex@main` schema drift (snapshot pinned at `29cb67623c`).

@@ -1468,6 +1468,24 @@ mod tests {
             serde_json::from_value::<CodexErrorInfo>(serde_json::json!("bioPolicy")).unwrap(),
             CodexErrorInfo::BioPolicy
         );
+        for (code, expected) in [
+            (
+                "apiKeySpendLimitExceeded",
+                CodexErrorInfo::ApiKeySpendLimitExceeded,
+            ),
+            (
+                "projectSpendLimitExceeded",
+                CodexErrorInfo::ProjectSpendLimitExceeded,
+            ),
+            (
+                "organizationSpendLimitExceeded",
+                CodexErrorInfo::OrganizationSpendLimitExceeded,
+            ),
+        ] {
+            let decoded: CodexErrorInfo = serde_json::from_value(serde_json::json!(code)).unwrap();
+            assert_eq!(decoded, expected);
+            assert_eq!(serde_json::to_value(&decoded).unwrap(), code);
+        }
         assert_eq!(
             serde_json::from_value::<CodexErrorInfo>(
                 serde_json::json!({"httpConnectionFailed": {"httpStatusCode": 502}})
