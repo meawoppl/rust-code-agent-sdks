@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.169.5] - 2026-11-18
+
+Tracks `openai/codex@main` schema drift (snapshot pinned at `29cb67623c`).
+Still tested against Codex CLI 0.170.0. Bundled model catalog re-checked
+(`models-manager/models.json` @ `6c0cee502d`): no new slugs.
+
+### Added
+
+- `ThreadRealtimeSessionInputReason` (`chunk` | `sessionEnd`), carried by
+  the new `ThreadRealtimeItemDetail::SessionInputSaved` variant
+  (openai/codex#62251).
+
+### Changed
+
+- **Breaking (experimental realtime API):**
+  `ThreadRealtimeItemDetail::SessionEndInputSaved` (wire
+  `sessionEndInputSaved`) is replaced by `SessionInputSaved` (wire
+  `sessionInputSaved`) with a required `reason` field, matching upstream.
+  Saved transcript chunks now produce this item too, not only input that was
+  still pending at session end.
+
 ## [0.169.4] - 2026-11-18
 
 Tracks `openai/codex@main` schema drift (snapshot pinned at `ca21fe65d1`).
