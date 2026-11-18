@@ -837,6 +837,15 @@ pub enum CodexErrorInfo {
     SessionBudgetExceeded,
     #[serde(rename = "usageLimitExceeded")]
     UsageLimitExceeded,
+    /// The API key's spend limit was reached.
+    #[serde(rename = "apiKeySpendLimitExceeded")]
+    ApiKeySpendLimitExceeded,
+    /// The project's spend limit was reached.
+    #[serde(rename = "projectSpendLimitExceeded")]
+    ProjectSpendLimitExceeded,
+    /// The organization's spend limit was reached.
+    #[serde(rename = "organizationSpendLimitExceeded")]
+    OrganizationSpendLimitExceeded,
     #[serde(rename = "rateLimitExceeded")]
     RateLimitExceeded,
     #[serde(rename = "flexUnavailable")]
