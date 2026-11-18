@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.328] - 2026-11-17
+
+Tested against Claude CLI **2.1.327**. Models the 2.1.326 → 2.1.327
+stream-json drift: one new system subtype, optional fields and enum values.
+The model registry (31 ids) and alias table are unchanged from 2.1.326.
+
+### Added
+
+- `system/shell_cwd` (`SystemSubtype::ShellCwd`, `KnownSystemEvent::ShellCwd`,
+  `ShellCwdMessage`, `SystemMessage::is_shell_cwd` / `as_shell_cwd`): the
+  folder a main-thread Bash or PowerShell call left its shell in, sent to
+  hosts that opted in with `replacedByFrame: 'shell_cwd'`.
+- `InitMessage::host_dropped_env` (`HostDroppedEnv`): the managed-settings
+  provider/gateway variables a Claude Desktop-started session dropped.
+- `TurnHandoffAvailableMessage::comparison_fork`: the worker answers the
+  `comparison_fork` control request.
+- `HandbackReport::tool_use_id` (wire `toolUseId`): the subagent's own
+  `SubagentHandback` call that sent the report. The drift script labels this
+  change `ephemeral`; the extractor block for the hand-back report schema
+  runs into the `cache_control` schema, whose literal names it. A hand-back
+  message's `origin` carries the same id as `handbackToolUseId`, which
+  `MessageOrigin::extra` already keeps.
+- `ToolPermissionDecision::plugin_approval` (`PluginApproval`): how a
+  plugin's permission hook figured in a `claude plugin eval` call.
+- `MemoryCheckDetail::boot_age_ms` and `MemoryCheckWait::GraceAnswered` /
+  `GraceCut` / `GraceUnanswered`: the boot-grace memory-check wait.
+- `StartupFailureReason::InitializeFieldsNotDelivered`.
+
+### Changed
+
+- Docs: `task_started.prompt` absence on resumed runs, the
+  `restore_if_safeguards_refused` path of `restored_rewind`, the non-UTF-8
+  path case of `cwd_unavailable`, and the boot-grace case of
+  `MemoryCheckHold::NothingToSend`.
+- `tests/schemas/claude_stream_json_snapshot.txt` re-snapshotted against
+  CLI 2.1.327.
+
 ## [2.1.327] - 2026-11-16
 
 Crate-side release; still tested against Claude CLI **2.1.326**. Fixes

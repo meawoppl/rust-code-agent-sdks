@@ -720,11 +720,13 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stopped_by_permission_check: Option<bool>,
 
-    /// The usage limit refused this turn, and the session service has
-    /// confirmed that the messages removed by a `rewind_conversation`
-    /// request with `restore_if_usage_limited` are back. This turn's prompt
-    /// and its error message are no longer part of the conversation. Marked
-    /// `@internal` upstream (CLI 2.1.325+).
+    /// A `rewind_conversation` request with `restore_if_usage_limited`
+    /// removed messages, and the session service has confirmed that they are
+    /// back, because the usage limit refused this turn — or (CLI 2.1.327+)
+    /// the API's safeguards did and the request also had
+    /// `restore_if_safeguards_refused`. This turn's prompt and its error
+    /// message are no longer part of the conversation. Marked `@internal`
+    /// upstream (CLI 2.1.325+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub restored_rewind: Option<RestoredRewind>,
 
@@ -1278,7 +1280,10 @@ pub enum StartupFailureReason {
     ProxyInvalid,
     /// The per-user temp directory is unsafe or could not be created.
     TempDirUnusable,
-    /// The working directory was deleted, moved or cannot be read.
+    /// The working directory was deleted, moved or cannot be read, or (not
+    /// on Windows, CLI 2.1.327+) a folder name in its path is not valid
+    /// UTF-8 and a different entry stands at the name Claude Code reads it
+    /// as.
     CwdUnavailable,
     /// Windows has no shell tool: Git Bash is missing, and PowerShell is
     /// missing or turned off by `CLAUDE_CODE_USE_POWERSHELL_TOOL`.
@@ -1333,6 +1338,12 @@ pub enum StartupFailureReason {
     /// `--managed-settings`. `errors` says which. The fix is in the host or a
     /// wrapper script, not a retry (CLI 2.1.323+).
     ManagedSettingsNotDelivered,
+    /// `initialize_fields_not_delivered` — as
+    /// [`ManagedSettingsNotDelivered`](Self::ManagedSettingsNotDelivered),
+    /// for `--initialize-fields` and the settings or `disallowedTools` it
+    /// names; also when a named field's own flag (`--settings`,
+    /// `--disallowedTools`) is passed too (CLI 2.1.327+).
+    InitializeFieldsNotDelivered,
     /// A cause not yet known to this version of the crate.
     Unknown(String),
 }
@@ -1363,6 +1374,7 @@ impl StartupFailureReason {
             Self::InitializeNotFirst => "initialize_not_first",
             Self::ConfigFileInvalid => "config_file_invalid",
             Self::ManagedSettingsNotDelivered => "managed_settings_not_delivered",
+            Self::InitializeFieldsNotDelivered => "initialize_fields_not_delivered",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -1400,6 +1412,7 @@ impl From<&str> for StartupFailureReason {
             "initialize_not_first" => Self::InitializeNotFirst,
             "config_file_invalid" => Self::ConfigFileInvalid,
             "managed_settings_not_delivered" => Self::ManagedSettingsNotDelivered,
+            "initialize_fields_not_delivered" => Self::InitializeFieldsNotDelivered,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -1693,6 +1706,14 @@ pub struct MemoryCheckDetail {
     /// sent; `9` means 9 or more. Present with `wait`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub requests: Option<u64>,
+    /// How long, in ms, before the turn came to its memory check the last
+    /// answered check was sent, while that check is still the worker's
+    /// start-up read (normally on a worker's first turn only). The age the
+    /// boot grace is compared with. Absent once a later check has answered,
+    /// before any check has answered, and where the server had stopped the
+    /// checks or says that no turn waits (CLI 2.1.327+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub boot_age_ms: Option<u64>,
 }
 
 /// [`MemoryCheckDetail::hold`] — whether a turn was held until its memory
@@ -1705,7 +1726,9 @@ pub enum MemoryCheckHold {
     /// told.
     NotDue,
     /// `nothing_to_send` — the request had already been sent or answered,
-    /// none was due, or it is one the server may hold (the wait replaces it).
+    /// none was due, or it is one the server may hold (the wait replaces it,
+    /// or, since CLI 2.1.327, joins it where only the boot grace holds the
+    /// turn back while the server picks memory files for its message).
     NothingToSend,
     /// `sent` — the hold ended when the request was sent.
     Sent,
@@ -1781,6 +1804,17 @@ pub enum MemoryCheckWait {
     Cut,
     /// `unanswered` — the request was refused or failed.
     Unanswered,
+    /// `grace_answered` — as [`Answered`](Self::Answered), for a turn that
+    /// waited only because the last answer was still the worker's start-up
+    /// read and older than the boot grace (CLI 2.1.327+; behind a flag that
+    /// is off by default).
+    GraceAnswered,
+    /// `grace_cut` — as [`Cut`](Self::Cut), for a boot-grace wait
+    /// (CLI 2.1.327+).
+    GraceCut,
+    /// `grace_unanswered` — as [`Unanswered`](Self::Unanswered), for a
+    /// boot-grace wait (CLI 2.1.327+).
+    GraceUnanswered,
     /// A value not yet known to this version of the crate.
     Unknown(String),
 }
@@ -1792,6 +1826,9 @@ impl MemoryCheckWait {
             Self::Answered => "answered",
             Self::Cut => "cut",
             Self::Unanswered => "unanswered",
+            Self::GraceAnswered => "grace_answered",
+            Self::GraceCut => "grace_cut",
+            Self::GraceUnanswered => "grace_unanswered",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -1810,6 +1847,9 @@ impl From<&str> for MemoryCheckWait {
             "answered" => Self::Answered,
             "cut" => Self::Cut,
             "unanswered" => Self::Unanswered,
+            "grace_answered" => Self::GraceAnswered,
+            "grace_cut" => Self::GraceCut,
+            "grace_unanswered" => Self::GraceUnanswered,
             other => Self::Unknown(other.to_string()),
         }
     }
