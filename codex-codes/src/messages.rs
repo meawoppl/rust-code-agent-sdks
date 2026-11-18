@@ -58,11 +58,11 @@ use crate::protocol::{
     ThreadRealtimeOutputAudioDeltaNotification, ThreadRealtimeSdpNotification,
     ThreadRealtimeStartedNotification, ThreadRealtimeTranscriptDeltaNotification,
     ThreadRealtimeTranscriptDoneNotification, ThreadRevertedNotification,
-    ThreadSectionChangedNotification, ThreadSettingsUpdatedNotification, ThreadStartedNotification,
-    ThreadStatusChangedNotification, ThreadTokenUsageUpdatedNotification,
-    ThreadUnarchivedNotification, TurnCompletedNotification, TurnDiffUpdatedNotification,
-    TurnModerationMetadataNotification, TurnPlanUpdatedNotification, TurnStartedNotification,
-    WarningNotification, WindowsSandboxSetupCompletedNotification,
+    ThreadSearchPartialNotification, ThreadSectionChangedNotification,
+    ThreadSettingsUpdatedNotification, ThreadStartedNotification, ThreadStatusChangedNotification,
+    ThreadTokenUsageUpdatedNotification, ThreadUnarchivedNotification, TurnCompletedNotification,
+    TurnDiffUpdatedNotification, TurnModerationMetadataNotification, TurnPlanUpdatedNotification,
+    TurnStartedNotification, WarningNotification, WindowsSandboxSetupCompletedNotification,
     WindowsWorldWritableWarningNotification,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -190,6 +190,8 @@ pub enum Notification {
     ProcessOutputDelta(ProcessOutputDeltaNotification),
     /// `serverRequest/resolved`
     ServerRequestResolved(ServerRequestResolvedNotification),
+    /// `thread/search/partial` (experimental)
+    ThreadSearchPartial(ThreadSearchPartialNotification),
     /// `thread/compacted`
     ContextCompacted(ContextCompactedNotification),
     /// `thread/goal/updated`
@@ -345,6 +347,7 @@ impl Notification {
             Self::ProcessExited(_) => methods::PROCESS_EXITED,
             Self::ProcessOutputDelta(_) => methods::PROCESS_OUTPUT_DELTA,
             Self::ServerRequestResolved(_) => methods::SERVER_REQUEST_RESOLVED,
+            Self::ThreadSearchPartial(_) => methods::THREAD_SEARCH_PARTIAL,
             Self::ContextCompacted(_) => methods::THREAD_COMPACTED,
             Self::ThreadGoalUpdated(_) => methods::THREAD_GOAL_UPDATED,
             Self::ThreadRealtimeClosed(_) => methods::THREAD_REALTIME_CLOSED,
@@ -626,6 +629,9 @@ impl Notification {
             methods::SERVER_REQUEST_RESOLVED => {
                 serde_json::from_value(params_value).map(Self::ServerRequestResolved)
             }
+            methods::THREAD_SEARCH_PARTIAL => {
+                serde_json::from_value(params_value).map(Self::ThreadSearchPartial)
+            }
             methods::THREAD_COMPACTED => {
                 serde_json::from_value(params_value).map(Self::ContextCompacted)
             }
@@ -788,6 +794,7 @@ impl Notification {
             Self::ProcessExited(v) => pack(methods::PROCESS_EXITED, v),
             Self::ProcessOutputDelta(v) => pack(methods::PROCESS_OUTPUT_DELTA, v),
             Self::ServerRequestResolved(v) => pack(methods::SERVER_REQUEST_RESOLVED, v),
+            Self::ThreadSearchPartial(v) => pack(methods::THREAD_SEARCH_PARTIAL, v),
             Self::ContextCompacted(v) => pack(methods::THREAD_COMPACTED, v),
             Self::ThreadGoalUpdated(v) => pack(methods::THREAD_GOAL_UPDATED, v),
             Self::ThreadRealtimeClosed(v) => pack(methods::THREAD_REALTIME_CLOSED, v),
@@ -1405,6 +1412,10 @@ mod tests {
             CodexErrorInfo::InferenceHookDenied
         );
         assert_eq!(
+            serde_json::from_value::<CodexErrorInfo>(serde_json::json!("bioPolicy")).unwrap(),
+            CodexErrorInfo::BioPolicy
+        );
+        assert_eq!(
             serde_json::from_value::<CodexErrorInfo>(
                 serde_json::json!({"httpConnectionFailed": {"httpStatusCode": 502}})
             )
@@ -1417,7 +1428,7 @@ mod tests {
         // Unknown strings and objects fall through to `Other` instead of erroring.
         for unknown in [
             serde_json::json!("other"),
-            serde_json::json!("bioPolicy"),
+            serde_json::json!("someFuturePolicy"),
             serde_json::json!({"someFutureVariant": {"detail": 1}}),
         ] {
             assert_eq!(
@@ -1433,6 +1444,59 @@ mod tests {
             serde_json::to_value(CodexErrorInfo::Other).unwrap(),
             serde_json::json!("other")
         );
+    }
+
+    #[test]
+    fn test_account_updated_reason_tolerates_unknown_values() {
+        use crate::protocol_generated::types::AccountUpdateReason;
+
+        let n = Notification::from_envelope(
+            methods::ACCOUNT_UPDATED,
+            Some(serde_json::json!({"authMode": "chatgpt", "reason": "workspaceRoutingReady"})),
+        )
+        .unwrap();
+        let Notification::AccountUpdated(updated) = &n else {
+            panic!("expected AccountUpdated, got {n:?}");
+        };
+        assert_eq!(
+            updated.reason,
+            Some(AccountUpdateReason::WorkspaceRoutingReady)
+        );
+
+        assert_eq!(
+            serde_json::from_value::<AccountUpdateReason>(serde_json::json!("somethingNew"))
+                .unwrap(),
+            AccountUpdateReason::Unknown
+        );
+        assert_eq!(
+            serde_json::to_value(AccountUpdateReason::Unknown).unwrap(),
+            serde_json::json!("unknown")
+        );
+    }
+
+    #[test]
+    fn test_thread_search_partial_round_trips() {
+        let params = serde_json::json!({
+            "requestId": 7,
+            "data": [{
+                "snippet": "needle",
+                "thread": {
+                    "cliVersion": "0.170.0", "createdAt": 0, "cwd": "/tmp",
+                    "ephemeral": false, "id": "t1", "modelProvider": "openai",
+                    "preview": "p", "sessionId": "s1", "source": "cli",
+                    "status": {"type": "idle"}, "turns": [], "updatedAt": 0
+                }
+            }]
+        });
+        let n = Notification::from_envelope(methods::THREAD_SEARCH_PARTIAL, Some(params)).unwrap();
+        let Notification::ThreadSearchPartial(partial) = &n else {
+            panic!("expected ThreadSearchPartial, got {n:?}");
+        };
+        assert_eq!(partial.data.len(), 1);
+        assert_eq!(partial.data[0].snippet, "needle");
+        assert_eq!(partial.data[0].thread.id, "t1");
+        let (method, _) = n.into_envelope().unwrap();
+        assert_eq!(method, methods::THREAD_SEARCH_PARTIAL);
     }
 
     #[test]

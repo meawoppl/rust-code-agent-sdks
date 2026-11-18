@@ -451,6 +451,7 @@ mod samples {
             methods::PROCESS_EXITED,
             methods::PROCESS_OUTPUT_DELTA,
             methods::SERVER_REQUEST_RESOLVED,
+            methods::THREAD_SEARCH_PARTIAL,
             methods::THREAD_COMPACTED,
             methods::THREAD_GOAL_UPDATED,
             methods::THREAD_REALTIME_CLOSED,

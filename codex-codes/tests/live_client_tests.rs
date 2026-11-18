@@ -655,6 +655,7 @@ async fn test_typed_message_audit_strict() {
                     Notification::ProcessExited(_) => "ProcessExited",
                     Notification::ProcessOutputDelta(_) => "ProcessOutputDelta",
                     Notification::ServerRequestResolved(_) => "ServerRequestResolved",
+                    Notification::ThreadSearchPartial(_) => "ThreadSearchPartial",
                     Notification::ContextCompacted(_) => "ContextCompacted",
                     Notification::ThreadGoalUpdated(_) => "ThreadGoalUpdated",
                     Notification::ThreadEnvironmentConnected(_) => "ThreadEnvironmentConnected",

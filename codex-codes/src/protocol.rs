@@ -206,6 +206,7 @@ pub mod methods {
     pub const PROCESS_EXITED: &str = "process/exited";
     pub const PROCESS_OUTPUT_DELTA: &str = "process/outputDelta";
     pub const SERVER_REQUEST_RESOLVED: &str = "serverRequest/resolved";
+    pub const THREAD_SEARCH_PARTIAL: &str = "thread/search/partial";
     pub const THREAD_COMPACTED: &str = "thread/compacted";
     pub const THREAD_GOAL_UPDATED: &str = "thread/goal/updated";
     pub const THREAD_REALTIME_CLOSED: &str = "thread/realtime/closed";

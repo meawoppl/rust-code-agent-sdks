@@ -130,6 +130,20 @@ pub struct AccountUpdatedNotification {
     pub auth_mode: Option<AuthMode>,
     #[serde(rename = "planType", default, skip_serializing_if = "Option::is_none")]
     pub plan_type: Option<PlanType>,
+    /// Set when initial routing discovery completes for the same
+    /// authenticated owner.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<AccountUpdateReason>,
+}
+
+/// Why an `account/updated` notification was emitted.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum AccountUpdateReason {
+    #[serde(rename = "workspaceRoutingReady")]
+    WorkspaceRoutingReady,
+    /// Catch-all for reasons this crate does not know about yet.
+    #[serde(rename = "unknown", other)]
+    Unknown,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -843,6 +857,8 @@ pub enum CodexErrorInfo {
     InferenceHookDenied,
     #[serde(rename = "cyberPolicy")]
     CyberPolicy,
+    #[serde(rename = "bioPolicy")]
+    BioPolicy,
     #[serde(rename = "misalignmentPolicyViolation")]
     MisalignmentPolicyViolation,
     /// Guardian interrupted the turn after hitting its denial limit. Only
@@ -9808,6 +9824,30 @@ pub struct ThreadRevertResponse {
         skip_serializing_if = "Option::is_none"
     )]
     pub turns_backwards_cursor: Option<String>,
+}
+
+/// One thread matched by a `thread/search` query.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadSearchResult {
+    pub thread: Thread,
+    #[serde(default)]
+    pub snippet: String,
+}
+
+/// `thread/search/partial` — a best-effort incremental batch for
+/// `thread/search/stream` (experimental). Match `request_id` to the request on
+/// this connection. Only a small subset of verified matches may be emitted;
+/// rows are unique and arrive in discovery order, but may be dropped under
+/// load or fall outside the final sorted page. Replace provisional rows with
+/// the authoritative final response. No partials follow it or an error.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadSearchPartialNotification {
+    #[serde(rename = "requestId")]
+    pub request_id: RequestId,
+    #[serde(default)]
+    pub data: Vec<ThreadSearchResult>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
