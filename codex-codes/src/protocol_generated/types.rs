@@ -9679,18 +9679,30 @@ pub enum ThreadRealtimeItemDetail {
         source_event_ids: Vec<String>,
         turn_id: String,
     },
-    /// Input pending at session end was saved for a later turn.
-    #[serde(rename = "sessionEndInputSaved")]
-    SessionEndInputSaved {
+    /// Realtime input was saved for a later turn, either as a transcript
+    /// chunk or because it was still pending at session end (see
+    /// [`ThreadRealtimeSessionInputReason`]).
+    #[serde(rename = "sessionInputSaved")]
+    SessionInputSaved {
         input: String,
         input_item_id: String,
+        reason: ThreadRealtimeSessionInputReason,
         source_event_ids: Vec<String>,
     },
 }
 
+/// EXPERIMENTAL upstream — why a realtime `sessionInputSaved` item was
+/// recorded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ThreadRealtimeSessionInputReason {
+    Chunk,
+    SessionEnd,
+}
+
 /// EXPERIMENTAL upstream — channel payloads of a realtime `frame` item. A
-/// frame holds at most one payload per channel; V1 requires its only
-/// channel, `voice_transcript`.
+/// frame holds at most one payload per channel; currently `voice_transcript`
+/// is required.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ThreadRealtimeFrameChannels {
     pub voice_transcript: ThreadRealtimeVoiceTranscript,

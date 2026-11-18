@@ -1311,7 +1311,7 @@ mod tests {
         use crate::protocol_generated::types::{
             ThreadRealtimeCoverage, ThreadRealtimeEntry, ThreadRealtimeHandoffMode,
             ThreadRealtimeItem, ThreadRealtimeItemDetail, ThreadRealtimeOrder,
-            ThreadRealtimeTranscriptRole,
+            ThreadRealtimeSessionInputReason, ThreadRealtimeTranscriptRole,
         };
 
         let frame = serde_json::json!({
@@ -1366,15 +1366,34 @@ mod tests {
         assert_eq!(serde_json::to_value(&entry.item).unwrap(), accepted);
 
         let saved = serde_json::json!({
-            "id": "s1", "realtimeSessionId": "voice", "type": "sessionEndInputSaved",
-            "source_event_ids": [], "input_item_id": "in2", "input": "later"
+            "id": "s1", "realtimeSessionId": "voice", "type": "sessionInputSaved",
+            "reason": "sessionEnd", "source_event_ids": [], "input_item_id": "in2",
+            "input": "later"
         });
         let item: ThreadRealtimeItem = serde_json::from_value(saved.clone()).unwrap();
         assert!(matches!(
             item.detail,
-            ThreadRealtimeItemDetail::SessionEndInputSaved { .. }
+            ThreadRealtimeItemDetail::SessionInputSaved {
+                reason: ThreadRealtimeSessionInputReason::SessionEnd,
+                ..
+            }
         ));
         assert_eq!(serde_json::to_value(&item).unwrap(), saved);
+
+        let chunk = serde_json::json!({
+            "id": "s2", "realtimeSessionId": "voice", "type": "sessionInputSaved",
+            "reason": "chunk", "source_event_ids": ["e1"], "input_item_id": "in3",
+            "input": "partial"
+        });
+        let item: ThreadRealtimeItem = serde_json::from_value(chunk.clone()).unwrap();
+        assert!(matches!(
+            item.detail,
+            ThreadRealtimeItemDetail::SessionInputSaved {
+                reason: ThreadRealtimeSessionInputReason::Chunk,
+                ..
+            }
+        ));
+        assert_eq!(serde_json::to_value(&item).unwrap(), chunk);
 
         assert_eq!(
             ThreadRealtimeOrder::default(),
