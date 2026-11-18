@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.169.4] - 2026-11-18
+
+Tracks `openai/codex@main` schema drift (snapshot pinned at `ca21fe65d1`).
+Still tested against Codex CLI 0.170.0. Bundled model catalog re-checked
+(`models-manager/models.json` @ `6c0cee502d`): no new slugs.
+
+### Added
+
+- `provider_id` (`Option<BedrockProviderId>`, wire `providerId`) on
+  `LoginAccountParams::AmazonBedrock` and
+  `LoginAccountParams::AmazonBedrockAccessKeys`, selecting Bedrock Runtime
+  vs. Bedrock Mantle (the default when omitted) at login
+  (openai/codex#62222). **Breaking** for code that constructs these
+  variants with struct literals.
+
 ## [0.169.3] - 2026-11-17
 
 Tracks `openai/codex@main` schema drift (snapshot pinned at `1b84166252`).

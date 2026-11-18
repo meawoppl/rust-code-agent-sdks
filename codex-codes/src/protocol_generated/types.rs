@@ -4048,12 +4048,26 @@ pub enum LoginAccountParams {
     AmazonBedrock {
         #[serde(rename = "apiKey")]
         api_key: String,
+        /// Defaults to Amazon Bedrock Mantle when omitted.
+        #[serde(
+            rename = "providerId",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        provider_id: Option<BedrockProviderId>,
         region: String,
     },
     #[serde(rename = "amazonBedrockAccessKeys")]
     AmazonBedrockAccessKeys {
         #[serde(rename = "accessKeyId")]
         access_key_id: String,
+        /// Defaults to Amazon Bedrock Mantle when omitted.
+        #[serde(
+            rename = "providerId",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        provider_id: Option<BedrockProviderId>,
         region: String,
         #[serde(rename = "secretAccessKey")]
         secret_access_key: String,

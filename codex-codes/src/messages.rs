@@ -1242,6 +1242,40 @@ mod tests {
     }
 
     #[test]
+    fn test_login_account_bedrock_provider_id_round_trips() {
+        use crate::protocol_generated::types::{BedrockProviderId, LoginAccountParams};
+
+        let wire = serde_json::json!({
+            "type": "amazonBedrock", "apiKey": "k", "region": "us-east-1",
+            "providerId": "amazon-bedrock-runtime"
+        });
+        let params: LoginAccountParams = serde_json::from_value(wire.clone()).unwrap();
+        assert_eq!(
+            params,
+            LoginAccountParams::AmazonBedrock {
+                api_key: "k".to_string(),
+                provider_id: Some(BedrockProviderId::AmazonBedrockRuntime),
+                region: "us-east-1".to_string(),
+            }
+        );
+        assert_eq!(serde_json::to_value(&params).unwrap(), wire);
+
+        // Omitted defaults to Bedrock Mantle and stays omitted on the wire.
+        let keys = LoginAccountParams::AmazonBedrockAccessKeys {
+            access_key_id: "AKIA".to_string(),
+            provider_id: None,
+            region: "us-west-2".to_string(),
+            secret_access_key: "s".to_string(),
+            session_token: None,
+        };
+        assert_eq!(
+            serde_json::to_value(&keys).unwrap(),
+            serde_json::json!({"type": "amazonBedrockAccessKeys", "accessKeyId": "AKIA",
+                               "region": "us-west-2", "secretAccessKey": "s"})
+        );
+    }
+
+    #[test]
     fn test_model_provider_default_set_round_trips() {
         use crate::protocol_generated::types::ModelProviderDefaultSetParams;
 
