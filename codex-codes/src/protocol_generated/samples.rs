@@ -233,6 +233,10 @@ pub fn server_notification_samples() -> Vec<(&'static str, Value)> {
         ),
         ("thread/reverted", json!({"threadId": "x"})),
         (
+            "thread/search/partial",
+            json!({"data": [{"snippet": "x", "thread": {"cliVersion": "x", "createdAt": 0, "cwd": null, "ephemeral": false, "id": "x", "modelProvider": "x", "preview": "x", "sessionId": "x", "source": null, "status": null, "turns": [], "updatedAt": 0}}], "requestId": 1}),
+        ),
+        (
             "thread/settings/updated",
             json!({"threadId": "x", "threadSettings": {"approvalPolicy": "untrusted", "approvalsReviewer": "user", "collaborationMode": {"mode": "plan", "settings": {"model": "x"}}, "cwd": "x", "model": "x", "modelProvider": "x", "sandboxPolicy": {"type": "dangerFullAccess"}}}),
         ),
