@@ -58,6 +58,7 @@ pub enum SystemSubtype {
     PermissionCheckStatus,
     InheritedAsksSettled,
     LateAllowNotRun,
+    ShellCwd,
     UiFocus,
     UiInvalidate,
     UiLog,
@@ -119,6 +120,7 @@ impl SystemSubtype {
             Self::PermissionCheckStatus => "permission_check_status",
             Self::InheritedAsksSettled => "inherited_asks_settled",
             Self::LateAllowNotRun => "late_allow_not_run",
+            Self::ShellCwd => "shell_cwd",
             Self::UiFocus => "ui_focus",
             Self::UiInvalidate => "ui_invalidate",
             Self::UiLog => "ui_log",
@@ -187,6 +189,7 @@ impl From<&str> for SystemSubtype {
             "permission_check_status" => Self::PermissionCheckStatus,
             "inherited_asks_settled" => Self::InheritedAsksSettled,
             "late_allow_not_run" => Self::LateAllowNotRun,
+            "shell_cwd" => Self::ShellCwd,
             "ui_focus" => Self::UiFocus,
             "ui_invalidate" => Self::UiInvalidate,
             "ui_log" => Self::UiLog,
@@ -739,6 +742,13 @@ pub struct ToolPermissionDecision {
     /// `user_abort` and the last three sources above.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason_type: Option<PermissionDecisionReasonType>,
+    /// Set only in a `claude plugin eval` run: `applied` when the call was
+    /// allowed because a plugin's permission hook allowed it where the
+    /// eval's own check did not, `refused` when a deny rule blocked the call
+    /// (or it could not be checked against the deny rules) even though a
+    /// plugin's hook allowed it (CLI 2.1.327+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugin_approval: Option<PluginApproval>,
     /// Beside a `classifier` [`reason_type`](Self::reason_type): the
     /// server-side auto-mode classifier named an entry in the session's
     /// auto-mode settings — an `allow` exception for an accept, a
@@ -746,6 +756,57 @@ pub struct ToolPermissionDecision {
     /// (CLI 2.1.319+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auto_mode_rule: Option<AutoModeRule>,
+}
+
+/// [`ToolPermissionDecision::plugin_approval`] — how a plugin's permission
+/// hook figured in a `claude plugin eval` call (CLI 2.1.327+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PluginApproval {
+    /// The call ran because a plugin's hook allowed it.
+    Applied,
+    /// A deny rule blocked the call despite a plugin's hook allowing it.
+    Refused,
+    /// A value not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl PluginApproval {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Applied => "applied",
+            Self::Refused => "refused",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for PluginApproval {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for PluginApproval {
+    fn from(s: &str) -> Self {
+        match s {
+            "applied" => Self::Applied,
+            "refused" => Self::Refused,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for PluginApproval {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PluginApproval {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// [`ToolPermissionDecision::auto_mode_rule`] — the auto-mode settings entry
@@ -2002,6 +2063,19 @@ impl SystemMessage {
         serde_json::from_value(self.data.clone()).ok()
     }
 
+    /// Check if this is a shell_cwd message.
+    pub fn is_shell_cwd(&self) -> bool {
+        self.subtype == SystemSubtype::ShellCwd
+    }
+
+    /// Try to parse as a shell_cwd message.
+    pub fn as_shell_cwd(&self) -> Option<ShellCwdMessage> {
+        if self.subtype != SystemSubtype::ShellCwd {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
     /// Check if this is a file_attachments_missing message.
     pub fn is_file_attachments_missing(&self) -> bool {
         self.subtype == SystemSubtype::FileAttachmentsMissing
@@ -2238,6 +2312,7 @@ impl SystemMessage {
                 parse!(InheritedAsksSettled, InheritedAsksSettledMessage)
             }
             SystemSubtype::LateAllowNotRun => parse!(LateAllowNotRun, LateAllowNotRunMessage),
+            SystemSubtype::ShellCwd => parse!(ShellCwd, ShellCwdMessage),
             SystemSubtype::UiFocus => parse!(UiFocus, UiFocusMessage),
             SystemSubtype::UiInvalidate => parse!(UiInvalidate, UiInvalidateMessage),
             SystemSubtype::UiLog => parse!(UiLog, UiLogMessage),
@@ -2359,6 +2434,7 @@ impl SystemMessage {
             SystemSubtype::LateAllowNotRun => {
                 reserialize(parse_system::<LateAllowNotRunMessage>(self))
             }
+            SystemSubtype::ShellCwd => reserialize(parse_system::<ShellCwdMessage>(self)),
             SystemSubtype::UiFocus => reserialize(parse_system::<UiFocusMessage>(self)),
             SystemSubtype::UiInvalidate => reserialize(parse_system::<UiInvalidateMessage>(self)),
             SystemSubtype::UiLog => reserialize(parse_system::<UiLogMessage>(self)),
@@ -2432,6 +2508,7 @@ pub enum KnownSystemEvent {
     PermissionCheckStatus(PermissionCheckStatusMessage),
     InheritedAsksSettled(InheritedAsksSettledMessage),
     LateAllowNotRun(LateAllowNotRunMessage),
+    ShellCwd(ShellCwdMessage),
     UiFocus(UiFocusMessage),
     UiInvalidate(UiInvalidateMessage),
     UiLog(UiLogMessage),
@@ -3455,6 +3532,25 @@ pub struct InitMessage {
     /// and on CLIs before 2.1.301.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub additional_directories: Option<Vec<String>>,
+
+    /// Only in a session that Claude Desktop itself started: the variables
+    /// by which an administrator's managed settings choose a provider or a
+    /// gateway, where this start dropped them and requests go straight to
+    /// Anthropic instead. Worked out anew for every init. Omitted when there
+    /// is nothing to list, on any transport that stores its frames, from the
+    /// Remote Control bridge's init, and on CLIs before 2.1.327.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub host_dropped_env: Option<Vec<HostDroppedEnv>>,
+}
+
+/// One entry of [`InitMessage::host_dropped_env`] (CLI 2.1.327+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HostDroppedEnv {
+    /// Where the dropped variables came from: `policySettings`. Ignore an
+    /// entry with any other value.
+    pub source: String,
+    /// Upper-case variable names, never values.
+    pub names: Vec<String>,
 }
 
 /// [`InitMessage::client_thinking`]: the thinking a Cowork cloud worker's
@@ -3850,6 +3946,10 @@ pub struct TaskStartedMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spawn_depth: Option<u32>,
     /// The prompt handed to the subagent. Present for `local_agent` tasks.
+    /// Absent on a subagent run that Claude Code resumed with text of its own
+    /// (such as a background task's notice): keep the prompt an earlier
+    /// `task_started` gave. On a run that continues an interrupted turn, this
+    /// is the task's description (CLI 2.1.327+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4068,6 +4168,13 @@ pub struct HandbackReport {
     /// note that the review could not run.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub warning: Option<String>,
+    /// Id of the subagent's own `SubagentHandback` `tool_use` block that sent
+    /// the report, not of the call that started the agent. Copies of one
+    /// report repeat it; show the report even when no such block is loaded.
+    /// A hand-back user message's `origin` carries the same id as
+    /// `handbackToolUseId` (CLI 2.1.327+).
+    #[serde(default, rename = "toolUseId", skip_serializing_if = "Option::is_none")]
+    pub tool_use_id: Option<String>,
 }
 
 /// API error category attached to assistant wrapper frames.
@@ -4629,6 +4736,11 @@ pub struct TurnHandoffAvailableMessage {
     /// whether or not the rewind was made (CLI 2.1.311+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub requires_rewind_request_id: Option<bool>,
+    /// Present, and true, only on a worker that answers the
+    /// `comparison_fork` control request; a client sends that request to no
+    /// other worker (CLI 2.1.327+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub comparison_fork: Option<bool>,
     pub uuid: String,
     pub session_id: String,
     #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
@@ -5065,6 +5177,23 @@ pub struct LateAllowNotRunMessage {
     pub tool_use_id: String,
     /// Why no late Allow runs the call. Treat any value as "did not run".
     pub reason: LateAllowNotRunReason,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// `system/shell_cwd` — the folder that a main-thread Bash or PowerShell call
+/// that did not fail left its shell in, whether or not it moved. Sent only to
+/// a host that marked a hook matcher `replacedByFrame: 'shell_cwd'`, before
+/// the call's result and before its PostToolUse hooks; Claude Code does not
+/// wait for the host. Not sent for a subagent's call or a call served for
+/// another machine's session (CLI 2.1.327+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ShellCwdMessage {
+    /// The `cwd` a PostToolUse hook on this call is given. A call that
+    /// overlapped another reports its own folder, so the last frame need not
+    /// say where the next command starts. The model's own `cd` moves it, so
+    /// treat it as data.
+    pub cwd: String,
     pub uuid: String,
     pub session_id: String,
 }
