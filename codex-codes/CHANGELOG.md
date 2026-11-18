@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.169.3] - 2026-11-17
+
+Tracks `openai/codex@main` schema drift (snapshot pinned at `1b84166252`).
+Re-pinned to Codex CLI **0.170.0** (from 0.169.0); the live integration
+suite passes against it. The 0.170.0 release's `generate-json-schema` output
+is a subset of the `main` snapshot (the only release-only field is the
+already-removed `Project.position`).
+
+### Added
+
+- `Notification::ThreadSearchPartial` (`thread/search/partial`, experimental)
+  with `ThreadSearchPartialNotification` and `ThreadSearchResult`, plus the
+  `methods::THREAD_SEARCH_PARTIAL` constant: best-effort incremental result
+  batches for `thread/search/stream`, matched by `requestId`
+  (openai/codex#62132). The `thread/search/stream` and
+  `thread/search/stream/cancel` client requests are `#[experimental]` and
+  absent from the published schema, so they are not modeled.
+  **Breaking** for exhaustive `match`es on `Notification`.
+- `AccountUpdatedNotification::reason` (`Option<AccountUpdateReason>`) and
+  the `AccountUpdateReason` enum (`workspaceRoutingReady`, with unknown
+  values decoding to `Unknown`), set when initial workspace routing
+  discovery completes (openai/codex#62145).
+- `CodexErrorInfo::BioPolicy` (`bioPolicy`); previously decoded as
+  `CodexErrorInfo::Other` (openai/codex#62176). **Breaking** for exhaustive
+  `match`es on `CodexErrorInfo`.
+
 ## [0.169.2] - 2026-11-17
 
 Tracks `openai/codex@main` schema drift (snapshot pinned at `8fca6ffb92`).
