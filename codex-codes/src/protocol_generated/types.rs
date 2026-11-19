@@ -1898,6 +1898,23 @@ pub struct CreditsSnapshot {
     pub unlimited: bool,
 }
 
+/// Server-resolved Daybreak availability for this caller and model.
+///
+/// Unrecognized wire values decode as [`DaybreakAvailability::Default`],
+/// matching upstream.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum DaybreakAvailability {
+    #[serde(rename = "available")]
+    Available,
+    #[serde(rename = "enrollmentRequired")]
+    EnrollmentRequired,
+    #[serde(rename = "unavailableForModel")]
+    UnavailableForModel,
+    #[default]
+    #[serde(rename = "default", other)]
+    Default,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DeprecationNoticeNotification {
@@ -5148,13 +5165,16 @@ pub struct Model {
     pub upgrade_info: Option<ModelUpgradeInfo>,
 }
 
-/// Caller-specific explicit access programs advertised by model discovery.
+/// Caller-specific access programs and Daybreak availability from model discovery.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelAccessPrograms {
     /// Accepted explicit selections.
     #[serde(default)]
     pub cyber: Vec<CyberAccessProgram>,
+    /// Server-resolved Daybreak availability for this caller and model.
+    #[serde(default)]
+    pub daybreak_availability: DaybreakAvailability,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]

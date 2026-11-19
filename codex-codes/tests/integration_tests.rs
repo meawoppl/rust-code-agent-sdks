@@ -153,6 +153,35 @@ fn provider_scoped_params_write_model_provider() {
     assert_eq!(serde_json::to_value(&list).unwrap(), expected);
 }
 
+/// Model discovery reports Daybreak availability; missing or unrecognized
+/// statuses fall back to `default` (openai/codex#62499).
+#[test]
+fn model_access_programs_daybreak_availability() {
+    use codex_codes::protocol::{CyberAccessProgram, DaybreakAvailability, ModelAccessPrograms};
+
+    let json = serde_json::json!({
+        "cyber": ["daybreakBlue"],
+        "daybreakAvailability": "enrollmentRequired"
+    });
+    let programs: ModelAccessPrograms = serde_json::from_value(json.clone()).unwrap();
+    assert_eq!(
+        programs,
+        ModelAccessPrograms {
+            cyber: vec![CyberAccessProgram::DaybreakBlue],
+            daybreak_availability: DaybreakAvailability::EnrollmentRequired,
+        }
+    );
+    assert_eq!(serde_json::to_value(&programs).unwrap(), json);
+
+    let legacy: ModelAccessPrograms =
+        serde_json::from_value(serde_json::json!({ "cyber": [] })).unwrap();
+    assert_eq!(legacy.daybreak_availability, DaybreakAvailability::Default);
+
+    let unknown: DaybreakAvailability =
+        serde_json::from_value(serde_json::json!("somethingNew")).unwrap();
+    assert_eq!(unknown, DaybreakAvailability::Default);
+}
+
 /// Gateway OAuth device authorization: read advertises support, login returns a prompt,
 /// and the changed notification echoes the prompt's `loginId`.
 #[test]
