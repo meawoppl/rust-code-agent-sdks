@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.169.7] - 2026-11-19
+
+Tracks `openai/codex@main` schema drift (snapshot pinned at `dabe0643a4`).
+Still tested against Codex CLI 0.170.0. Bundled model catalog re-checked
+(`models-manager/models.json` @ `dabe0643a4`): no new slugs.
+
+### Added
+
+- `ModelAccessPrograms.daybreak_availability` (wire `daybreakAvailability`)
+  and the `DaybreakAvailability` enum (`available`, `enrollmentRequired`,
+  `unavailableForModel`, `default`): `model/list` now reports whether a
+  caller must enroll in Daybreak or the model does not support it
+  (openai/codex#62499). Missing or unrecognized values decode as
+  `DaybreakAvailability::Default`, matching upstream. **Breaking** for code
+  constructing `ModelAccessPrograms` with a struct literal.
+
 ## [0.169.6] - 2026-11-18
 
 Tracks `openai/codex@main` schema drift (snapshot pinned at `333ea31947`).
