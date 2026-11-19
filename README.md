@@ -40,7 +40,7 @@ the least-bad scheme.)
 - **`claude-codes`** — currently `claude-codes 2.1.329`, tested against Claude CLI `2.1.328`.
 - **`codex-codes`** — currently `codex-codes 0.169.6`, tested against Codex CLI `0.170.0`.
 - **`opencode-codes`** — currently `opencode-codes 1.19.6`, tested against opencode `1.19.6`.
-- **`muse-codes`** — currently `muse-codes 1.4.23`, tested against Muse Code `1.4.23` (build `1.4.23-R8977.1`).
+- **`muse-codes`** — currently `muse-codes 1.4.24`, tested against Muse Code `1.4.24` (build `1.4.24-R9131.1`).
 - **`antigravity-codes`** — currently `antigravity-codes 0.1.23`, tested against google-antigravity `0.1.23` (the wheel its bundled harness was generated from).
 - **`pi-codes`** — currently `pi-codes 1.5.2`, tested against pi `1.5.2` (`@earendil-works/pi-coding-agent`; live tier: credential-free RPC surface + model turns and tool conformance when a provider key is present).
 

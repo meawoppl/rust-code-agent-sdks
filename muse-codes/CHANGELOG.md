@@ -5,7 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.4.24] - 2026-11-19
+
+Re-pin to Muse Code **1.4.24** (`1.4.24-R9131.1`, from 1.4.23-R8977.1).
+Top-level `muse --help` and the MSP schema are unchanged. `muse exec
+--help` adds `--list-models`, which prints the selected provider's model
+ids and exits without running a turn, so it isn't part of the `exec --json`
+stream. Its meta output matches `MuseModel::known()`. The live suite and
+the wirecheck pass against 1.4.24.
 
 ### Changed
 
