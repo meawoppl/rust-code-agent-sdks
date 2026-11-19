@@ -5,6 +5,47 @@ All notable changes to `antigravity-codes` are documented here.
 The version tracks the `google-antigravity` release whose harness the crate was
 generated from and tested against.
 
+## [0.1.24] - 2026-11-19
+
+Re-baseline against `google-antigravity` 0.1.24: types regenerated from the
+0.1.24 wheel's descriptors (191 messages, 38 enums). Regen against the
+committed 0.1.23 descriptors was verified as a byte-identical no-op first.
+This release removes one field, so it is a breaking change for code that sets
+`InputConfig.use_interactions_api`. The new fields are public, so code that
+builds the touched structs with exhaustive struct literals (no
+`..Default::default()`) has to add them.
+
+### Added
+
+- `SubagentsConfig.disable_manage_subagents_tool: Option<bool>`.
+- `AudioContent`: `processing_type: Option<AudioContentProcessing>` and
+  `processing_config: Option<AudioContentMediaProcessing>` (a oneof, viewed
+  through `AudioContentProcessingOneof`). New types:
+  `AudioContentMediaProcessing` and `AudioContentStaticMediaProcessing`
+  (`start_offset`, `end_offset`).
+- `DocumentContent`: `resolution: Option<MediaResolution>`,
+  `processing_type: Option<DocumentContentProcessing>` and
+  `processing_config: Option<DocumentContentMediaProcessing>` (a oneof, viewed
+  through `DocumentContentProcessingOneof`). New types:
+  `DocumentContentMediaProcessing`, `DocumentContentStaticMediaProcessing`
+  (page or spreadsheet options), `DocumentContentPageProcessingOptions` and
+  `DocumentContentSpreadsheetProcessingOptions`.
+- `DocumentContentMimeType`: `TypePptx`, `TypePpt`, `TypeOdp`, `TypeDocx`,
+  `TypeDoc`, `TypeDotx`, `TypeOdt`, `TypeXlsx`, `TypeXls` and `TypeOds` (wire
+  values 3–12).
+- `VideoContentStaticMediaProcessing.content_layers:
+  Vec<VideoContentStaticMediaProcessingContentLayer>` (`Frames` / `Audio` /
+  `Transcript`).
+- Content-layer enums for page (`PageImage` / `PageText`) and spreadsheet
+  (`Visual` / `Data` / `Formulas`) processing options.
+
+The upstream `localharness.ThinkingEffort` enum is new in 0.1.24, but no
+harness message refers to it yet, so codegen does not emit it.
+
+### Removed
+
+- `InputConfig.use_interactions_api` (dropped upstream).
+
 ## [0.1.23] - 2026-10-28
 
 Re-baseline against `google-antigravity` 0.1.23: types regenerated from the
