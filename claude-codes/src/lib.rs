@@ -78,7 +78,7 @@
 //! ⚠️ **Important**: The Claude CLI protocol is unstable and evolving. This crate
 //! automatically checks your Claude CLI version and warns if it's newer than tested.
 //!
-//! Current tested version: **2.1.327**
+//! Current tested version: **2.1.328**
 //!
 //! Report compatibility issues at: <https://github.com/meawoppl/rust-claude-codes/pulls>
 //!
@@ -181,16 +181,17 @@ pub use io::{
     LostSessionWrite, McpMeta, McpServerError, MemoryPaths, MemoryRecallItem, MemoryRecallMessage,
     MessageOrigin, MessageRole, MirrorErrorKey, MirrorErrorMessage, MissingFileAttachment,
     ModelRefusalFallbackMessage, ModelRefusalNoFallbackMessage, ModelRestriction,
-    NotificationMessage, OutputStyle, PeerMessageHoldCause, PeerMessageHoldMessage,
-    PeerMessageHoldOutcome, PeerMessageHoldState, PeerMessageLane, PerTurnEffortChangedMessage,
-    PermissionCheckStatus, PermissionCheckStatusMessage, PermissionDecisionOutcome,
-    PermissionDecisionReasonType, PermissionDeniedMessage, PermissionDeniedReasonCode,
-    PersistedFile, PluginApproval, PluginDiagnostic, PluginInfo, PluginInstallMessage,
-    PluginManagedLock, PluginPrompt, PreservedMessages, PreservedSegment, PromptSubmitOutcome,
-    PromptSubmitOutcomeKind, RefusalFallbackScope, RemedyFeature, RemedyFeatureCause,
-    RemedyLoginProvider, RemedyPolicyKind, SessionTitleChangedMessage, SessionWriteErrorCode,
-    SessionWritesLostMessage, ShellCwdMessage, StatusMessage, StatusMessageStatus, StopReason,
-    SummarizeMetadata, SystemMessage, SystemSubtype, TaskEndReason, TaskHandback,
+    NotificationMessage, OutputStyle, PeerMessageDropReason, PeerMessageHoldCause,
+    PeerMessageHoldMessage, PeerMessageHoldOutcome, PeerMessageHoldState, PeerMessageLane,
+    PerTurnEffortChangedMessage, PermissionCheckStatus, PermissionCheckStatusMessage,
+    PermissionDecisionOutcome, PermissionDecisionReasonType, PermissionDeniedMessage,
+    PermissionDeniedReasonCode, PersistedFile, PluginApproval, PluginDiagnostic, PluginInfo,
+    PluginInstallMessage, PluginManagedLock, PluginPrompt, PreservedMessages, PreservedSegment,
+    PromptSubmitOutcome, PromptSubmitOutcomeKind, RefusalFallbackScope, RemedyFeature,
+    RemedyFeatureCause, RemedyLoginProvider, RemedyPolicyKind, SavedConnectorFile,
+    SessionTitleChangedMessage, SessionWriteErrorCode, SessionWritesLostMessage, ShellCwdMessage,
+    StatusMessage, StatusMessageStatus, StopReason, SummarizeMetadata, SystemMessage,
+    SystemSubtype, TaskEndReason, TaskHandback, TaskListStatus, TaskListStatusesMessage,
     TaskNotificationMessage, TaskPatch, TaskProgressMessage, TaskStartedMessage, TaskStatus,
     TaskType, TaskUpdatedMessage, TaskUsage, ThinkingTokensMessage, ToolPermissionDecision,
     ToolResultMeta, ToolResultRemedy, ToolResultRemedyKind, ToolUseMeta,
@@ -215,9 +216,10 @@ pub use io::{assert_fully_wrapped, audit_frame, FrameAudit};
 
 // Rate limit types
 pub use io::{
-    AdminRequestOffer, AdminRequestOfferState, OverageDisabledReason, OveragePeriodUtilization,
-    OverageStatus, RateLimitErrorCode, RateLimitEvent, RateLimitInfo, RateLimitScope,
-    RateLimitStatus, RateLimitWindow, UsageCreditOffer, UsageCreditOfferKind,
+    AdminRequestOffer, AdminRequestOfferState, MemberSpendLimit, OverageDisabledReason,
+    OveragePeriodUtilization, OverageStatus, RateLimitErrorCode, RateLimitEvent, RateLimitInfo,
+    RateLimitScope, RateLimitStatus, RateLimitWindow, SpendLimitPeriod, UsageCreditOffer,
+    UsageCreditOfferKind,
 };
 
 // Usage types
@@ -225,11 +227,11 @@ pub use io::{
     AssistantUsage, CacheCreationDetails, DeferredToolUse, DiffersFilesCounts,
     FastModeDisabledReason, GarbageCollectionCounts, InputAttachmentsDetail, InvalidConfigFile,
     MemoryCheckDetail, MemoryCheckHold, MemoryCheckWait, MessageNormalizationDetail,
-    ProcessGarbageCollections, ProcessStateTime, ProcessTurnStates, RequestBuildDetail,
-    RestoredRewind, ResumeStoreConfirmDetail, RunnerExit, RunnerExitPhase, ServerToolUse,
-    StartupFailureReason, StreamPostQueuedBehind, SubagentKillCounts, SubagentRefusalCounts,
-    SubagentResult, SubagentSpawnRequests, SubagentStats, SubagentToolStats, SubagentUsageRollup,
-    ToolSchemaBuildDetail, TouchCompareCounts, TurnStartResumeKind, UsageInfo,
+    MessageUndelivered, ProcessGarbageCollections, ProcessStateTime, ProcessTurnStates,
+    RequestBuildDetail, RestoredRewind, ResumeStoreConfirmDetail, RunnerExit, RunnerExitPhase,
+    ServerToolUse, StartupFailureReason, StreamPostQueuedBehind, SubagentKillCounts,
+    SubagentRefusalCounts, SubagentResult, SubagentSpawnRequests, SubagentStats, SubagentToolStats,
+    SubagentUsageRollup, ToolSchemaBuildDetail, TouchCompareCounts, TurnStartResumeKind, UsageInfo,
 };
 
 // Typed tool input types

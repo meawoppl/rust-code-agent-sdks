@@ -175,6 +175,66 @@ impl<'de> Deserialize<'de> for OverageStatus {
     }
 }
 
+/// [`RateLimitInfo::member_spend_limit`]: the member's own spend limit was
+/// reached (CLI 2.1.328+).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MemberSpendLimit {
+    /// The limit's period. `None` means the monthly limit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub period: Option<SpendLimitPeriod>,
+}
+
+/// [`MemberSpendLimit::period`] (CLI 2.1.328+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum SpendLimitPeriod {
+    Daily,
+    Weekly,
+    Monthly,
+    /// A period not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl SpendLimitPeriod {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Daily => "daily",
+            Self::Weekly => "weekly",
+            Self::Monthly => "monthly",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for SpendLimitPeriod {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for SpendLimitPeriod {
+    fn from(s: &str) -> Self {
+        match s {
+            "daily" => Self::Daily,
+            "weekly" => Self::Weekly,
+            "monthly" => Self::Monthly,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for SpendLimitPeriod {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for SpendLimitPeriod {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
 /// Which spend limit blocked a request when it is not the member's own cap
 /// ([`RateLimitInfo::limit_scope`]).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -449,6 +509,17 @@ pub struct RateLimitInfo {
     /// cap. Absent on a plain member denial and from older CLIs.
     #[serde(rename = "limitScope", skip_serializing_if = "Option::is_none")]
     pub limit_scope: Option<RateLimitScope>,
+    /// Present when the API reports the member's own spend limit as reached,
+    /// which `overageDisabledReason` cannot show. Absent at other limits, at
+    /// a limit this CLI does not know, and from older CLIs, so absence does
+    /// not prove the organization's cap. Marked `@internal` upstream (CLI
+    /// 2.1.328+).
+    #[serde(
+        rename = "memberSpendLimit",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub member_spend_limit: Option<MemberSpendLimit>,
     /// Error code attached when a request was refused outright
     #[serde(rename = "errorCode", skip_serializing_if = "Option::is_none")]
     pub error_code: Option<RateLimitErrorCode>,
