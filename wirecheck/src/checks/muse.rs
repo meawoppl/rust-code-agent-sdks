@@ -21,7 +21,7 @@ pub async fn run_suite(reporter: Reporter) {
         envelope_invariants(&reporter, records).await;
         session_id_adoption(&reporter, records).await;
     }
-    record_id_counter_trap(&reporter).await;
+    record_id_uniqueness(&reporter).await;
     continuity_across_turns(&reporter).await;
     interrupt_is_a_safe_kill(&reporter).await;
     flag_surface_accepted(&reporter).await;
@@ -206,15 +206,13 @@ async fn session_id_adoption(reporter: &Reporter, prior: &[MuseRecord]) {
     }
 }
 
-/// Record ids are UUID-shaped COUNTERS: two fresh sessions must emit
-/// byte-identical id sequences. If this ever fails, Meta fixed the counter
-/// and the composite-key documentation should be revisited.
-async fn record_id_counter_trap(reporter: &Reporter) {
+/// Record ids are UUIDv7s from Muse Code 1.4.24 on: two fresh sessions must
+/// share no ids. Builds up to 1.4.23 emitted UUID-shaped counters that
+/// repeated byte-identically across sessions; a failure here means that
+/// behavior is back.
+async fn record_id_uniqueness(reporter: &Reporter) {
     let started = reporter
-        .start(
-            "id_counter_trap",
-            "record ids repeat byte-identical across sessions",
-        )
+        .start("id_uniqueness", "record ids never repeat across sessions")
         .await;
     let a = capture(MuseExecBuilder::new("ids a").provider(Provider::Echo), 60).await;
     let b = capture(MuseExecBuilder::new("ids b").provider(Provider::Echo), 60).await;
@@ -223,15 +221,14 @@ async fn record_id_counter_trap(reporter: &Reporter) {
             let ids_a: Vec<&str> = a.iter().map(|r| r.id.as_str()).collect();
             let ids_b: Vec<&str> = b.iter().map(|r| r.id.as_str()).collect();
             let overlap = ids_a.iter().filter(|id| ids_b.contains(id)).count();
-            if overlap > 0 {
+            if overlap == 0 {
                 reporter
                     .finish(
-                        "id_counter_trap",
+                        "id_uniqueness",
                         started,
                         CheckStatus::Pass,
                         format!(
-                            "{overlap}/{} ids collide across sessions — ids are counters; \
-                             composite (stream_id, id) keying remains required",
+                            "0/{} ids collide across sessions (UUIDv7 since 1.4.24)",
                             ids_a.len()
                         ),
                     )
@@ -239,12 +236,14 @@ async fn record_id_counter_trap(reporter: &Reporter) {
             } else {
                 reporter
                     .finish(
-                        "id_counter_trap",
+                        "id_uniqueness",
                         started,
                         CheckStatus::Fail,
-                        "no cross-session id collisions: Meta may have fixed the counter — \
-                         re-measure before relaxing any keying rules"
-                            .into(),
+                        format!(
+                            "{overlap}/{} ids collide across sessions: the pre-1.4.24 \
+                             per-session counters are back",
+                            ids_a.len()
+                        ),
                     )
                     .await;
             }
@@ -252,7 +251,7 @@ async fn record_id_counter_trap(reporter: &Reporter) {
         (a, b) => {
             reporter
                 .finish(
-                    "id_counter_trap",
+                    "id_uniqueness",
                     started,
                     CheckStatus::Fail,
                     format!("capture failed: a={:?} b={:?}", a.is_ok(), b.is_ok()),
