@@ -834,6 +834,13 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub startup_failure_reason: Option<StartupFailureReason>,
 
+    /// On the result the `claude --cloud` client writes for a message it
+    /// took and could not deliver. Absent on every other result, on the
+    /// refusal of a frame with a bad uuid or content, and from CLIs before
+    /// 2.1.328. Marked `@internal` upstream.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message_undelivered: Option<MessageUndelivered>,
+
     /// Set when [`Self::startup_failure_reason`] is `config_file_invalid`:
     /// the config file that did not parse and its backup, as separate
     /// fields. Read paths from here, never from the text of `errors`. Each
@@ -842,6 +849,58 @@ pub struct ResultMessage {
     /// before 2.1.325.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub invalid_config_file: Option<InvalidConfigFile>,
+}
+
+/// [`ResultMessage::message_undelivered`]: why a `claude --cloud` client
+/// could not deliver a message (CLI 2.1.328+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum MessageUndelivered {
+    /// The session was not opened, so nothing was sent.
+    SessionNotOpened,
+    /// The send failed; the session may have the message all the same.
+    SendFailed,
+    /// A value not yet known to this version of the crate. Read it like
+    /// [`SendFailed`](Self::SendFailed): the session may have the message.
+    Unknown(String),
+}
+
+impl MessageUndelivered {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::SessionNotOpened => "session_not_opened",
+            Self::SendFailed => "send_failed",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for MessageUndelivered {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for MessageUndelivered {
+    fn from(s: &str) -> Self {
+        match s {
+            "session_not_opened" => Self::SessionNotOpened,
+            "send_failed" => Self::SendFailed,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for MessageUndelivered {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for MessageUndelivered {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// [`ResultMessage::restored_rewind`]: the rewind a usage-limited turn

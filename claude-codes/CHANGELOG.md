@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.329] - 2026-11-18
+
+Tested against Claude CLI **2.1.328**. Models the 2.1.327 → 2.1.328
+stream-json drift: one new system subtype, optional fields and enum values.
+The model registry (31 ids) and alias table are unchanged from 2.1.327.
+
+### Added
+
+- `system/task_list_statuses` (`SystemSubtype::TaskListStatuses`,
+  `KnownSystemEvent::TaskListStatuses`, `TaskListStatusesMessage`,
+  `TaskListStatus`, `SystemMessage::is_task_list_statuses` /
+  `as_task_list_statuses`): task-list statuses Claude Code set itself, with
+  no `TaskUpdate` call to show the change. Statuses reuse `TodoStatus`.
+- `ResultMessage::message_undelivered` (`MessageUndelivered`): on the result
+  the `claude --cloud` client writes for a message it could not deliver
+  (`session_not_opened` / `send_failed`).
+- `InformationalMessage::saved_files` (`SavedConnectorFile`): the files a
+  connector saved on this computer, on the line tagged `connector_files`.
+- `PeerMessageHoldMessage::reason` (`PeerMessageDropReason`): which check
+  discarded a `dropped` peer message (`rate-limited`, `duplicate`,
+  `hop-loop`, `hop-runaway`, `queue-full`, `unverified`).
+- `PeerMessageHoldOutcome::Denied`: the person declined the peer message.
+- `RateLimitInfo::member_spend_limit` (wire `memberSpendLimit`,
+  `MemberSpendLimit`, `SpendLimitPeriod`): the member's own spend limit was
+  reached; no period means the monthly limit.
+- `ToolResultRemedyKind::ContainerLimit`: a `claude-code-server` session's
+  cloud environment was refused at the limit on running containers.
+
+### Changed
+
+- Docs: `MissingFileAttachment::reason` lists `no_space`;
+  `ToolUseMeta::artifact_publish` mentions the result's `type.url`;
+  `PeerMessageHoldMessage::state` describes service-delivered frames.
+- Re-snapshotted the drift fingerprint against CLI 2.1.328 (68 union
+  members, 82 labels).
+
 ## [2.1.328] - 2026-11-17
 
 Tested against Claude CLI **2.1.327**. Models the 2.1.326 → 2.1.327

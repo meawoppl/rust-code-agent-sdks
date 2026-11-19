@@ -6,6 +6,7 @@ use uuid::Uuid;
 use super::claude_output::ClaudeOutput;
 use super::content_blocks::{deserialize_content_blocks, ContentBlock};
 use super::rate_limit::RateLimitInfo;
+use crate::tool_inputs::TodoStatus;
 
 /// Known system message subtypes.
 ///
@@ -59,6 +60,7 @@ pub enum SystemSubtype {
     InheritedAsksSettled,
     LateAllowNotRun,
     ShellCwd,
+    TaskListStatuses,
     UiFocus,
     UiInvalidate,
     UiLog,
@@ -121,6 +123,7 @@ impl SystemSubtype {
             Self::InheritedAsksSettled => "inherited_asks_settled",
             Self::LateAllowNotRun => "late_allow_not_run",
             Self::ShellCwd => "shell_cwd",
+            Self::TaskListStatuses => "task_list_statuses",
             Self::UiFocus => "ui_focus",
             Self::UiInvalidate => "ui_invalidate",
             Self::UiLog => "ui_log",
@@ -190,6 +193,7 @@ impl From<&str> for SystemSubtype {
             "inherited_asks_settled" => Self::InheritedAsksSettled,
             "late_allow_not_run" => Self::LateAllowNotRun,
             "shell_cwd" => Self::ShellCwd,
+            "task_list_statuses" => Self::TaskListStatuses,
             "ui_focus" => Self::UiFocus,
             "ui_invalidate" => Self::UiInvalidate,
             "ui_log" => Self::UiLog,
@@ -1082,6 +1086,10 @@ pub enum ToolResultRemedyKind {
     SpawnArgLimit,
     /// A settings-file write was held for the machine owner's review.
     StagedForReview,
+    /// The call did not run: a `claude-code-server` session's cloud
+    /// environment was refused at the limit on containers running at once
+    /// (CLI 2.1.328+).
+    ContainerLimit,
     /// A remedy kind not yet known to this version of the crate.
     Unknown(String),
 }
@@ -1103,6 +1111,7 @@ impl ToolResultRemedyKind {
             Self::PolicyDenied => "policy_denied",
             Self::SpawnArgLimit => "spawn_arg_limit",
             Self::StagedForReview => "staged_for_review",
+            Self::ContainerLimit => "container_limit",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -1131,6 +1140,7 @@ impl From<&str> for ToolResultRemedyKind {
             "policy_denied" => Self::PolicyDenied,
             "spawn_arg_limit" => Self::SpawnArgLimit,
             "staged_for_review" => Self::StagedForReview,
+            "container_limit" => Self::ContainerLimit,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -2076,6 +2086,19 @@ impl SystemMessage {
         serde_json::from_value(self.data.clone()).ok()
     }
 
+    /// Check if this is a task_list_statuses message.
+    pub fn is_task_list_statuses(&self) -> bool {
+        self.subtype == SystemSubtype::TaskListStatuses
+    }
+
+    /// Try to parse as a task_list_statuses message.
+    pub fn as_task_list_statuses(&self) -> Option<TaskListStatusesMessage> {
+        if self.subtype != SystemSubtype::TaskListStatuses {
+            return None;
+        }
+        serde_json::from_value(self.data.clone()).ok()
+    }
+
     /// Check if this is a file_attachments_missing message.
     pub fn is_file_attachments_missing(&self) -> bool {
         self.subtype == SystemSubtype::FileAttachmentsMissing
@@ -2313,6 +2336,9 @@ impl SystemMessage {
             }
             SystemSubtype::LateAllowNotRun => parse!(LateAllowNotRun, LateAllowNotRunMessage),
             SystemSubtype::ShellCwd => parse!(ShellCwd, ShellCwdMessage),
+            SystemSubtype::TaskListStatuses => {
+                parse!(TaskListStatuses, TaskListStatusesMessage)
+            }
             SystemSubtype::UiFocus => parse!(UiFocus, UiFocusMessage),
             SystemSubtype::UiInvalidate => parse!(UiInvalidate, UiInvalidateMessage),
             SystemSubtype::UiLog => parse!(UiLog, UiLogMessage),
@@ -2435,6 +2461,9 @@ impl SystemMessage {
                 reserialize(parse_system::<LateAllowNotRunMessage>(self))
             }
             SystemSubtype::ShellCwd => reserialize(parse_system::<ShellCwdMessage>(self)),
+            SystemSubtype::TaskListStatuses => {
+                reserialize(parse_system::<TaskListStatusesMessage>(self))
+            }
             SystemSubtype::UiFocus => reserialize(parse_system::<UiFocusMessage>(self)),
             SystemSubtype::UiInvalidate => reserialize(parse_system::<UiInvalidateMessage>(self)),
             SystemSubtype::UiLog => reserialize(parse_system::<UiLogMessage>(self)),
@@ -2509,6 +2538,7 @@ pub enum KnownSystemEvent {
     InheritedAsksSettled(InheritedAsksSettledMessage),
     LateAllowNotRun(LateAllowNotRunMessage),
     ShellCwd(ShellCwdMessage),
+    TaskListStatuses(TaskListStatusesMessage),
     UiFocus(UiFocusMessage),
     UiInvalidate(UiInvalidateMessage),
     UiLog(UiLogMessage),
@@ -3089,10 +3119,30 @@ pub struct InformationalMessage {
     /// Marked `@internal` upstream (CLI 2.1.325+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hook_no_verdict: Option<HookNoVerdict>,
+    /// Present on the line tagged `connector_files` when a connector's files
+    /// were saved on this computer, so a host can link each path. Marked
+    /// `@internal` upstream (CLI 2.1.328+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub saved_files: Option<Vec<SavedConnectorFile>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_id: Option<String>,
+}
+
+/// One entry of [`InformationalMessage::saved_files`]: a connector's file
+/// saved on this computer (CLI 2.1.328+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SavedConnectorFile {
+    /// The line of `content`, counted from 0, that ends with
+    /// [`shown`](Self::shown).
+    pub line: u64,
+    /// The absolute path of the saved file. A connector can have chosen the
+    /// file's name.
+    pub path: String,
+    /// The absolute path as a person reads it, as written at the end of
+    /// [`line`](Self::line).
+    pub shown: String,
 }
 
 /// [`InformationalMessage::hook_no_verdict`]: a PreToolUse hook gave no
@@ -4790,8 +4840,12 @@ pub struct PeerMessageHoldMessage {
     /// `held` once per message per hold cause (a re-announcement under a
     /// different cause emits again); then at most one of `released` (it
     /// enters the queue — its `command_lifecycle` `queued` and user replay
-    /// echo follow under `message_uuid`) or `dropped` (it will never reach
-    /// the model in this session; see `outcome`).
+    /// echo follow under `message_uuid`) or `dropped` (this process will not
+    /// give it to the model; see `outcome`). A frame for a message the
+    /// session service delivered is only uploaded to it: it has an empty
+    /// `from` and no `message_uuid`, a `dropped` one need not follow a
+    /// `held`, and its `expired` also covers an exit or a full hold buffer
+    /// (CLI 2.1.328+).
     pub state: PeerMessageHoldState,
     /// The parked command's uuid — the value its later `command_lifecycle`
     /// frames and user replay echo carry. For lane `bridge`/`stdin` it is
@@ -4818,6 +4872,10 @@ pub struct PeerMessageHoldMessage {
     /// State `dropped` only: how the hold ended.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub outcome: Option<PeerMessageHoldOutcome>,
+    /// Outcome `dropped` only: which check discarded the message, where the
+    /// frame says (CLI 2.1.328+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<PeerMessageDropReason>,
     pub uuid: String,
     pub session_id: String,
     #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
@@ -5011,13 +5069,15 @@ pub enum PeerMessageHoldOutcome {
     /// no approval surface, so every parity hold ends this way unless the
     /// mode changes first).
     Expired,
-    /// The policy turned to refuse while it waited.
+    /// The policy refuses it, on arrival or after it waited.
     Refused,
-    /// Released or approved, but the ingress guard (rate limit, duplicate,
-    /// queue cap) discarded it.
+    /// The ingress guard (rate limit, duplicate, queue cap) or the device
+    /// check discarded it; [`PeerMessageHoldMessage::reason`] says which.
     Dropped,
     /// The session ended with it still parked.
     Discarded,
+    /// The person declined it (CLI 2.1.328+).
+    Denied,
     /// An outcome not yet known to this version of the crate.
     Unknown(String),
 }
@@ -5029,6 +5089,7 @@ impl PeerMessageHoldOutcome {
             Self::Refused => "refused",
             Self::Dropped => "dropped",
             Self::Discarded => "discarded",
+            Self::Denied => "denied",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -5047,6 +5108,7 @@ impl From<&str> for PeerMessageHoldOutcome {
             "refused" => Self::Refused,
             "dropped" => Self::Dropped,
             "discarded" => Self::Discarded,
+            "denied" => Self::Denied,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -5059,6 +5121,67 @@ impl Serialize for PeerMessageHoldOutcome {
 }
 
 impl<'de> Deserialize<'de> for PeerMessageHoldOutcome {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// Which check discarded a peer message
+/// ([`PeerMessageHoldMessage::reason`], outcome `dropped` only; CLI 2.1.328+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PeerMessageDropReason {
+    RateLimited,
+    Duplicate,
+    HopLoop,
+    HopRunaway,
+    QueueFull,
+    Unverified,
+    /// A reason not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl PeerMessageDropReason {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::RateLimited => "rate-limited",
+            Self::Duplicate => "duplicate",
+            Self::HopLoop => "hop-loop",
+            Self::HopRunaway => "hop-runaway",
+            Self::QueueFull => "queue-full",
+            Self::Unverified => "unverified",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for PeerMessageDropReason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for PeerMessageDropReason {
+    fn from(s: &str) -> Self {
+        match s {
+            "rate-limited" => Self::RateLimited,
+            "duplicate" => Self::Duplicate,
+            "hop-loop" => Self::HopLoop,
+            "hop-runaway" => Self::HopRunaway,
+            "queue-full" => Self::QueueFull,
+            "unverified" => Self::Unverified,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for PeerMessageDropReason {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PeerMessageDropReason {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let s = String::deserialize(deserializer)?;
         Ok(Self::from(s.as_str()))
@@ -5198,6 +5321,27 @@ pub struct ShellCwdMessage {
     pub session_id: String,
 }
 
+/// `system/task_list_statuses` — the statuses of tasks on the task list, in
+/// a session where Claude Code sets them itself and no `TaskUpdate` call
+/// shows the change. Sent during turns and after their results, when a
+/// status changes. It sets the tasks it names; a task it leaves out keeps its
+/// last status. A later `TaskUpdate` result that changes a status wins.
+/// Marked `@internal` upstream (CLI 2.1.328+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TaskListStatusesMessage {
+    pub statuses: Vec<TaskListStatus>,
+    pub uuid: String,
+    pub session_id: String,
+}
+
+/// One entry of [`TaskListStatusesMessage::statuses`] (CLI 2.1.328+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TaskListStatus {
+    /// The task-list task id.
+    pub id: String,
+    pub status: TodoStatus,
+}
+
 /// [`LateAllowNotRunMessage::reason`]. Every value, including unknown ones,
 /// means the call did not run (CLI 2.1.326+).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5332,7 +5476,9 @@ pub struct MissingFileAttachment {
     pub file_uuid: String,
     /// Why, as a short code: `download`, `too_large`, `not_found` (the
     /// files route answered 404 or 410, so sending it again rarely helps;
-    /// CLI 2.1.293+), `write`, `no_token`, `not_finished` or `count_cap`.
+    /// CLI 2.1.293+), `write`, `no_space` (as `write`, and the disk was
+    /// full, so sending it again helps only once there is room; CLI
+    /// 2.1.328+), `no_token`, `not_finished` or `count_cap`.
     /// More codes may be added; read an unknown one as "did not arrive".
     pub reason: String,
 }
@@ -6176,11 +6322,13 @@ pub struct ToolUseMeta {
     /// `Some(true)` on a call to a publishing tool of an Artifacts MCP entry
     /// that reaches only Anthropic's server, which the CLI tells from the
     /// entry itself, never its name. The finished call's `tool_use_result`
-    /// usually carries the artifact's url at its top level (and its title
-    /// where the server's answer has one), but the mark promises neither,
-    /// and the url can come on an unmarked call; all are the worker's word,
-    /// not proof. Sent only on the main loop's own frames: never for a
-    /// subagent's call or over Remote Control (CLI 2.1.321+).
+    /// usually carries the artifact's url at its top level, its title where
+    /// the server's answer has one, and (CLI 2.1.328+) `type.url`, the link
+    /// of the Artifact type it was made from, where the CLI knows it. The
+    /// mark promises none of these, and any of them can come on an unmarked
+    /// call; all are the worker's word, not proof. Sent only on the main
+    /// loop's own frames: never for a subagent's call or over Remote Control
+    /// (CLI 2.1.321+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub artifact_publish: Option<bool>,
 }
@@ -6526,6 +6674,9 @@ pub struct ApiErrorParams {
     ///
     /// On CLI 2.1.319+ the `usage_limit_reached` record also carries
     /// `dailyCapPaused` when usage is paused for the organization.
+    ///
+    /// On CLI 2.1.328+ both records carry `memberSpendLimit` when the API
+    /// reports the member's own spend limit as reached.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rate_limit_info: Option<RateLimitInfo>,
     /// Which API stop reason cut the reply short (`max_output_tokens`),
