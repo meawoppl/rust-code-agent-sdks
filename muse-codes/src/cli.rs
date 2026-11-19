@@ -229,8 +229,9 @@ impl MuseExecBuilder {
     ///
     /// Supplying your own id is also what makes
     /// [`MuseRecord`](crate::MuseRecord) identity safe to key on: record
-    /// `id`s are UUID-shaped counters that repeat across sessions, so the
-    /// only unique handle is the composite `(stream.id, id)` — and that is
+    /// `id`s were UUID-shaped counters that repeat across sessions up to
+    /// Muse Code 1.4.23 (1.4.24 emits real UUIDv7s), so the handle that is
+    /// unique on every build is the composite `(stream.id, id)`, and that is
     /// trustworthy precisely because `stream.id` is yours. (When omitted,
     /// the CLI mints a random v4 of its own.)
     pub fn session_id(mut self, session_id: impl Into<String>) -> Self {

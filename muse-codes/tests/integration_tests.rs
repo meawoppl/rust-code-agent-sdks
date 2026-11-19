@@ -48,8 +48,9 @@ async fn echo_run_streams_to_terminal() {
     assert!(saw_prompt, "turn.input.user should carry the prompt");
     assert!(saw_delta, "run.output.delta should stream text");
     assert!(saw_usage, "run.usage should report the run's model calls");
+    // 1.4.24 schedules two echo tasks instead of four (31 records -> 19).
     assert!(
-        records >= 20,
+        records >= 15,
         "expected a full journal, saw {records} records"
     );
 }
@@ -203,12 +204,13 @@ async fn session_id_continuity_and_sequence_reuse() {
     let _ = Duration::from_secs(0);
 }
 
-/// The identity trap, pinned: record ids are UUID-*shaped counters* that
-/// restart per session, so two DIFFERENT sessions emit the same ids. Keying
-/// on `id` alone would collide across every session; only the composite
-/// `(stream.id, id)` is safe.
+/// Record identity, pinned: up to Muse Code 1.4.23 record ids were
+/// UUID-*shaped counters* (`018f0000-…`) that restarted per session, so two
+/// different sessions emitted the same ids. 1.4.24 emits real UUIDv7s that
+/// never collide across sessions. The composite `(stream.id, id)` key stays
+/// the documented rule because journals from older builds still collide.
 #[tokio::test]
-async fn record_ids_repeat_across_sessions() {
+async fn record_ids_are_unique_uuidv7_across_sessions() {
     use muse_codes::{ExecRun, MuseExecBuilder, Provider};
 
     let mut runs: Vec<Vec<String>> = Vec::new();
@@ -228,17 +230,22 @@ async fn record_ids_repeat_across_sessions() {
         runs.push(ids);
     }
     let overlap = runs[0].iter().filter(|i| runs[1].contains(i)).count();
-    assert!(
-        overlap > 0,
-        "record ids are expected to REPEAT across sessions (UUID-shaped counters). \
-         If this ever fails they may have become globally unique — re-check before \
-         relaxing any (stream_id, id) composite key."
+    assert_eq!(
+        overlap, 0,
+        "record ids collide across sessions again; the CLI may have gone back to \
+         per-session counters"
     );
-    assert!(
-        runs[0][0].starts_with("018f0000-"),
-        "the counter shape is load-bearing context for the composite-key rule: {}",
-        runs[0][0]
-    );
+    for id in runs.iter().flatten() {
+        assert_eq!(
+            id.as_bytes().get(14),
+            Some(&b'7'),
+            "record id is not a UUIDv7: {id}"
+        );
+        assert!(
+            !id.starts_with("018f0000-"),
+            "record id has the pre-1.4.24 counter shape: {id}"
+        );
+    }
 }
 
 /// Interrupt-as-kill: SIGKILL a run before it emits anything, then run the

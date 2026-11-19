@@ -85,20 +85,22 @@ assert!(credentials_present());
 
 ## Record identity — read this before persisting or rendering
 
-Journal record `id`s are **UUID-shaped counters, not UUIDs**. They restart
-at the same value for every session, so two sessions emit byte-identical id
-lists; and `sequence` restarts on every turn. Neither is a safe handle
-alone.
+From Muse Code 1.4.24 on, journal record `id`s are real time-ordered
+UUIDv7s, unique across sessions. Builds up to 1.4.23 emitted
+**UUID-shaped counters** (`018f0000-0000-7000-8000-00000000c350`, …) that
+restart at the same value for every session, so two sessions emitted
+byte-identical id lists. `sequence` still restarts on every turn.
 
-- Unique key: the composite **`(stream.id, id)`**
+- Unique key: the composite **`(stream.id, id)`**, which is safe on every
+  build, including journals recorded by older CLIs
 - Turn grouping: `causation_id`
 - Ordering **within** a turn: `sequence`
 
-Treat `id` as stream-local *everywhere* — dedup, correlation maps, and
-frontend list keys included (a render key of `id` alone would alias rows
-across sessions). `stream.id` is the only cross-session-unique handle;
-supply your own via [`MuseExecBuilder::session_id`] and it is adopted
-verbatim.
+If you persist or replay journals from more than one CLI version, treat `id`
+as stream-local *everywhere*: dedup, correlation maps, and frontend list
+keys included (a render key of `id` alone aliases rows across pre-1.4.24
+sessions). Supply your own `stream.id` via [`MuseExecBuilder::session_id`];
+it is adopted verbatim.
 
 ## Known wire gaps (Muse Code 0.1.0)
 

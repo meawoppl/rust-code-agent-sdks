@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Muse Code 1.4.24 (`1.4.24-R9131.1`) emits real time-ordered UUIDv7
+  record `id`s, unique across sessions. Builds up to 1.4.23 emitted
+  UUID-shaped per-session counters (`018f0000-…-00000000c350`, …) that
+  repeated byte-identically in every session. The README's record-identity
+  section and the `MuseExecBuilder::session_id` docs now describe both. The
+  composite `(stream.id, id)` key is still the recommended handle because
+  journals recorded by older builds still collide on `id`. The live test is
+  now `record_ids_are_unique_uuidv7_across_sessions`, and wirecheck's
+  `id_counter_trap` check is now `id_uniqueness`. Both assert the new
+  behavior.
+- The echo provider's run now schedules two tasks instead of four (31
+  records to 19), with the same set of payload types, so the stream
+  fingerprint is unchanged. The live test's "full journal" floor dropped
+  from 20 records to 15.
+
 ## [1.4.23] - 2026-11-17
 
 Re-pin to Muse Code **1.4.23** (`1.4.23-R8977.1`, from 1.4.20-R8619.1).
