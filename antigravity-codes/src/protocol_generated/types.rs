@@ -303,6 +303,56 @@ impl<'de> Deserialize<'de> for AudioContentMimeType {
     }
 }
 
+/// `genai.AudioContent.Processing`
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub enum AudioContentProcessing {
+    #[default]
+    Unspecified,
+    Static,
+    /// A value this crate does not know about yet.
+    ///
+    /// The harness is versioned independently of this crate, so an
+    /// unrecognised enum value is treated as forward compatibility rather
+    /// than as a decode error.
+    Unknown(String),
+}
+
+impl AudioContentProcessing {
+    /// The protobuf-JSON spelling of this value.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Unspecified => "PROCESSING_UNSPECIFIED",
+            Self::Static => "STATIC",
+            Self::Unknown(s) => s,
+        }
+    }
+}
+
+impl std::fmt::Display for AudioContentProcessing {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Serialize for AudioContentProcessing {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for AudioContentProcessing {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(match crate::wire::EnumRepr::deserialize(d)? {
+            crate::wire::EnumRepr::Name(n) if n == "PROCESSING_UNSPECIFIED" => Self::Unspecified,
+            crate::wire::EnumRepr::Name(n) if n == "STATIC" => Self::Static,
+            crate::wire::EnumRepr::Number(0) => Self::Unspecified,
+            crate::wire::EnumRepr::Number(1) => Self::Static,
+            crate::wire::EnumRepr::Name(n) => Self::Unknown(n),
+            crate::wire::EnumRepr::Number(n) => Self::Unknown(n.to_string()),
+        })
+    }
+}
+
 /// `antigravity.localharness.BudgetConfig.BudgetScope`
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum BudgetConfigBudgetScope {
@@ -420,6 +470,16 @@ pub enum DocumentContentMimeType {
     TypeUnspecified,
     TypePdf,
     TypeCsv,
+    TypePptx,
+    TypePpt,
+    TypeOdp,
+    TypeDocx,
+    TypeDoc,
+    TypeDotx,
+    TypeOdt,
+    TypeXlsx,
+    TypeXls,
+    TypeOds,
     /// A value this crate does not know about yet.
     ///
     /// The harness is versioned independently of this crate, so an
@@ -435,6 +495,16 @@ impl DocumentContentMimeType {
             Self::TypeUnspecified => "TYPE_UNSPECIFIED",
             Self::TypePdf => "TYPE_PDF",
             Self::TypeCsv => "TYPE_CSV",
+            Self::TypePptx => "TYPE_PPTX",
+            Self::TypePpt => "TYPE_PPT",
+            Self::TypeOdp => "TYPE_ODP",
+            Self::TypeDocx => "TYPE_DOCX",
+            Self::TypeDoc => "TYPE_DOC",
+            Self::TypeDotx => "TYPE_DOTX",
+            Self::TypeOdt => "TYPE_ODT",
+            Self::TypeXlsx => "TYPE_XLSX",
+            Self::TypeXls => "TYPE_XLS",
+            Self::TypeOds => "TYPE_ODS",
             Self::Unknown(s) => s,
         }
     }
@@ -458,9 +528,191 @@ impl<'de> Deserialize<'de> for DocumentContentMimeType {
             crate::wire::EnumRepr::Name(n) if n == "TYPE_UNSPECIFIED" => Self::TypeUnspecified,
             crate::wire::EnumRepr::Name(n) if n == "TYPE_PDF" => Self::TypePdf,
             crate::wire::EnumRepr::Name(n) if n == "TYPE_CSV" => Self::TypeCsv,
+            crate::wire::EnumRepr::Name(n) if n == "TYPE_PPTX" => Self::TypePptx,
+            crate::wire::EnumRepr::Name(n) if n == "TYPE_PPT" => Self::TypePpt,
+            crate::wire::EnumRepr::Name(n) if n == "TYPE_ODP" => Self::TypeOdp,
+            crate::wire::EnumRepr::Name(n) if n == "TYPE_DOCX" => Self::TypeDocx,
+            crate::wire::EnumRepr::Name(n) if n == "TYPE_DOC" => Self::TypeDoc,
+            crate::wire::EnumRepr::Name(n) if n == "TYPE_DOTX" => Self::TypeDotx,
+            crate::wire::EnumRepr::Name(n) if n == "TYPE_ODT" => Self::TypeOdt,
+            crate::wire::EnumRepr::Name(n) if n == "TYPE_XLSX" => Self::TypeXlsx,
+            crate::wire::EnumRepr::Name(n) if n == "TYPE_XLS" => Self::TypeXls,
+            crate::wire::EnumRepr::Name(n) if n == "TYPE_ODS" => Self::TypeOds,
             crate::wire::EnumRepr::Number(0) => Self::TypeUnspecified,
             crate::wire::EnumRepr::Number(1) => Self::TypePdf,
             crate::wire::EnumRepr::Number(2) => Self::TypeCsv,
+            crate::wire::EnumRepr::Number(3) => Self::TypePptx,
+            crate::wire::EnumRepr::Number(4) => Self::TypePpt,
+            crate::wire::EnumRepr::Number(5) => Self::TypeOdp,
+            crate::wire::EnumRepr::Number(6) => Self::TypeDocx,
+            crate::wire::EnumRepr::Number(7) => Self::TypeDoc,
+            crate::wire::EnumRepr::Number(8) => Self::TypeDotx,
+            crate::wire::EnumRepr::Number(9) => Self::TypeOdt,
+            crate::wire::EnumRepr::Number(10) => Self::TypeXlsx,
+            crate::wire::EnumRepr::Number(11) => Self::TypeXls,
+            crate::wire::EnumRepr::Number(12) => Self::TypeOds,
+            crate::wire::EnumRepr::Name(n) => Self::Unknown(n),
+            crate::wire::EnumRepr::Number(n) => Self::Unknown(n.to_string()),
+        })
+    }
+}
+
+/// `genai.DocumentContent.PageProcessingOptions.ContentLayer`
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub enum DocumentContentPageProcessingOptionsContentLayer {
+    #[default]
+    Unspecified,
+    PageImage,
+    PageText,
+    /// A value this crate does not know about yet.
+    ///
+    /// The harness is versioned independently of this crate, so an
+    /// unrecognised enum value is treated as forward compatibility rather
+    /// than as a decode error.
+    Unknown(String),
+}
+
+impl DocumentContentPageProcessingOptionsContentLayer {
+    /// The protobuf-JSON spelling of this value.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Unspecified => "CONTENT_LAYER_UNSPECIFIED",
+            Self::PageImage => "PAGE_IMAGE",
+            Self::PageText => "PAGE_TEXT",
+            Self::Unknown(s) => s,
+        }
+    }
+}
+
+impl std::fmt::Display for DocumentContentPageProcessingOptionsContentLayer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Serialize for DocumentContentPageProcessingOptionsContentLayer {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for DocumentContentPageProcessingOptionsContentLayer {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(match crate::wire::EnumRepr::deserialize(d)? {
+            crate::wire::EnumRepr::Name(n) if n == "CONTENT_LAYER_UNSPECIFIED" => Self::Unspecified,
+            crate::wire::EnumRepr::Name(n) if n == "PAGE_IMAGE" => Self::PageImage,
+            crate::wire::EnumRepr::Name(n) if n == "PAGE_TEXT" => Self::PageText,
+            crate::wire::EnumRepr::Number(0) => Self::Unspecified,
+            crate::wire::EnumRepr::Number(1) => Self::PageImage,
+            crate::wire::EnumRepr::Number(2) => Self::PageText,
+            crate::wire::EnumRepr::Name(n) => Self::Unknown(n),
+            crate::wire::EnumRepr::Number(n) => Self::Unknown(n.to_string()),
+        })
+    }
+}
+
+/// `genai.DocumentContent.Processing`
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub enum DocumentContentProcessing {
+    #[default]
+    Unspecified,
+    Static,
+    /// A value this crate does not know about yet.
+    ///
+    /// The harness is versioned independently of this crate, so an
+    /// unrecognised enum value is treated as forward compatibility rather
+    /// than as a decode error.
+    Unknown(String),
+}
+
+impl DocumentContentProcessing {
+    /// The protobuf-JSON spelling of this value.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Unspecified => "PROCESSING_UNSPECIFIED",
+            Self::Static => "STATIC",
+            Self::Unknown(s) => s,
+        }
+    }
+}
+
+impl std::fmt::Display for DocumentContentProcessing {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Serialize for DocumentContentProcessing {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for DocumentContentProcessing {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(match crate::wire::EnumRepr::deserialize(d)? {
+            crate::wire::EnumRepr::Name(n) if n == "PROCESSING_UNSPECIFIED" => Self::Unspecified,
+            crate::wire::EnumRepr::Name(n) if n == "STATIC" => Self::Static,
+            crate::wire::EnumRepr::Number(0) => Self::Unspecified,
+            crate::wire::EnumRepr::Number(1) => Self::Static,
+            crate::wire::EnumRepr::Name(n) => Self::Unknown(n),
+            crate::wire::EnumRepr::Number(n) => Self::Unknown(n.to_string()),
+        })
+    }
+}
+
+/// `genai.DocumentContent.SpreadsheetProcessingOptions.ContentLayer`
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub enum DocumentContentSpreadsheetProcessingOptionsContentLayer {
+    #[default]
+    Unspecified,
+    Visual,
+    Data,
+    Formulas,
+    /// A value this crate does not know about yet.
+    ///
+    /// The harness is versioned independently of this crate, so an
+    /// unrecognised enum value is treated as forward compatibility rather
+    /// than as a decode error.
+    Unknown(String),
+}
+
+impl DocumentContentSpreadsheetProcessingOptionsContentLayer {
+    /// The protobuf-JSON spelling of this value.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Unspecified => "CONTENT_LAYER_UNSPECIFIED",
+            Self::Visual => "VISUAL",
+            Self::Data => "DATA",
+            Self::Formulas => "FORMULAS",
+            Self::Unknown(s) => s,
+        }
+    }
+}
+
+impl std::fmt::Display for DocumentContentSpreadsheetProcessingOptionsContentLayer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Serialize for DocumentContentSpreadsheetProcessingOptionsContentLayer {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for DocumentContentSpreadsheetProcessingOptionsContentLayer {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(match crate::wire::EnumRepr::deserialize(d)? {
+            crate::wire::EnumRepr::Name(n) if n == "CONTENT_LAYER_UNSPECIFIED" => Self::Unspecified,
+            crate::wire::EnumRepr::Name(n) if n == "VISUAL" => Self::Visual,
+            crate::wire::EnumRepr::Name(n) if n == "DATA" => Self::Data,
+            crate::wire::EnumRepr::Name(n) if n == "FORMULAS" => Self::Formulas,
+            crate::wire::EnumRepr::Number(0) => Self::Unspecified,
+            crate::wire::EnumRepr::Number(1) => Self::Visual,
+            crate::wire::EnumRepr::Number(2) => Self::Data,
+            crate::wire::EnumRepr::Number(3) => Self::Formulas,
             crate::wire::EnumRepr::Name(n) => Self::Unknown(n),
             crate::wire::EnumRepr::Number(n) => Self::Unknown(n.to_string()),
         })
@@ -2091,6 +2343,64 @@ impl<'de> Deserialize<'de> for VideoContentProcessing {
     }
 }
 
+/// `genai.VideoContent.StaticMediaProcessing.ContentLayer`
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub enum VideoContentStaticMediaProcessingContentLayer {
+    #[default]
+    Unspecified,
+    Frames,
+    Audio,
+    Transcript,
+    /// A value this crate does not know about yet.
+    ///
+    /// The harness is versioned independently of this crate, so an
+    /// unrecognised enum value is treated as forward compatibility rather
+    /// than as a decode error.
+    Unknown(String),
+}
+
+impl VideoContentStaticMediaProcessingContentLayer {
+    /// The protobuf-JSON spelling of this value.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Unspecified => "CONTENT_LAYER_UNSPECIFIED",
+            Self::Frames => "FRAMES",
+            Self::Audio => "AUDIO",
+            Self::Transcript => "TRANSCRIPT",
+            Self::Unknown(s) => s,
+        }
+    }
+}
+
+impl std::fmt::Display for VideoContentStaticMediaProcessingContentLayer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Serialize for VideoContentStaticMediaProcessingContentLayer {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for VideoContentStaticMediaProcessingContentLayer {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(match crate::wire::EnumRepr::deserialize(d)? {
+            crate::wire::EnumRepr::Name(n) if n == "CONTENT_LAYER_UNSPECIFIED" => Self::Unspecified,
+            crate::wire::EnumRepr::Name(n) if n == "FRAMES" => Self::Frames,
+            crate::wire::EnumRepr::Name(n) if n == "AUDIO" => Self::Audio,
+            crate::wire::EnumRepr::Name(n) if n == "TRANSCRIPT" => Self::Transcript,
+            crate::wire::EnumRepr::Number(0) => Self::Unspecified,
+            crate::wire::EnumRepr::Number(1) => Self::Frames,
+            crate::wire::EnumRepr::Number(2) => Self::Audio,
+            crate::wire::EnumRepr::Number(3) => Self::Transcript,
+            crate::wire::EnumRepr::Name(n) => Self::Unknown(n),
+            crate::wire::EnumRepr::Number(n) => Self::Unknown(n.to_string()),
+        })
+    }
+}
+
 /// `antigravity.localharness.ActionCompaction`
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -2502,6 +2812,18 @@ pub struct AudioContent {
         skip_serializing_if = "Option::is_none"
     )]
     pub sample_rate: Option<i32>,
+    #[serde(
+        alias = "processing_type",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub processing_type: Option<AudioContentProcessing>,
+    #[serde(
+        alias = "processing_config",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub processing_config: Option<AudioContentMediaProcessing>,
 }
 
 /// The `data_or_uri` oneof of [`AudioContent`], as an owned value.
@@ -2527,6 +2849,74 @@ impl AudioContent {
     pub fn has_data_or_uri(&self) -> bool {
         self.data.is_some() || self.uri.is_some()
     }
+}
+
+/// The `processing` oneof of [`AudioContent`], as an owned value.
+#[derive(Debug, Clone, PartialEq)]
+pub enum AudioContentProcessingOneof {
+    ProcessingType(AudioContentProcessing),
+    ProcessingConfig(AudioContentMediaProcessing),
+}
+
+impl AudioContent {
+    /// Takes the set arm of the `processing` oneof, if any.
+    pub fn into_processing(self) -> Option<AudioContentProcessingOneof> {
+        if let Some(v) = self.processing_type {
+            return Some(AudioContentProcessingOneof::ProcessingType(v));
+        }
+        if let Some(v) = self.processing_config {
+            return Some(AudioContentProcessingOneof::ProcessingConfig(v));
+        }
+        None
+    }
+
+    /// True when any arm of the `processing` oneof is set.
+    pub fn has_processing(&self) -> bool {
+        self.processing_type.is_some() || self.processing_config.is_some()
+    }
+}
+
+/// `genai.AudioContent.MediaProcessing`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioContentMediaProcessing {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#static: Option<AudioContentStaticMediaProcessing>,
+}
+
+/// The `type` oneof of [`AudioContentMediaProcessing`], as an owned value.
+#[derive(Debug, Clone, PartialEq)]
+pub enum AudioContentMediaProcessingType {
+    Static(AudioContentStaticMediaProcessing),
+}
+
+impl AudioContentMediaProcessing {
+    /// Takes the set arm of the `type` oneof, if any.
+    pub fn into_type(self) -> Option<AudioContentMediaProcessingType> {
+        if let Some(v) = self.r#static {
+            return Some(AudioContentMediaProcessingType::Static(v));
+        }
+        None
+    }
+
+    /// True when any arm of the `type` oneof is set.
+    pub fn has_type(&self) -> bool {
+        self.r#static.is_some()
+    }
+}
+
+/// `genai.AudioContent.StaticMediaProcessing`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioContentStaticMediaProcessing {
+    #[serde(
+        alias = "start_offset",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub start_offset: Option<String>,
+    #[serde(alias = "end_offset", default, skip_serializing_if = "Option::is_none")]
+    pub end_offset: Option<String>,
 }
 
 /// `antigravity.localharness.AutoPolicyConfig`
@@ -3081,6 +3471,20 @@ pub struct DocumentContent {
     pub data: Option<Vec<u8>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub uri: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolution: Option<MediaResolution>,
+    #[serde(
+        alias = "processing_type",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub processing_type: Option<DocumentContentProcessing>,
+    #[serde(
+        alias = "processing_config",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub processing_config: Option<DocumentContentMediaProcessing>,
 }
 
 /// The `data_or_uri` oneof of [`DocumentContent`], as an owned value.
@@ -3105,6 +3509,143 @@ impl DocumentContent {
     /// True when any arm of the `data_or_uri` oneof is set.
     pub fn has_data_or_uri(&self) -> bool {
         self.data.is_some() || self.uri.is_some()
+    }
+}
+
+/// The `processing` oneof of [`DocumentContent`], as an owned value.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DocumentContentProcessingOneof {
+    ProcessingType(DocumentContentProcessing),
+    ProcessingConfig(DocumentContentMediaProcessing),
+}
+
+impl DocumentContent {
+    /// Takes the set arm of the `processing` oneof, if any.
+    pub fn into_processing(self) -> Option<DocumentContentProcessingOneof> {
+        if let Some(v) = self.processing_type {
+            return Some(DocumentContentProcessingOneof::ProcessingType(v));
+        }
+        if let Some(v) = self.processing_config {
+            return Some(DocumentContentProcessingOneof::ProcessingConfig(v));
+        }
+        None
+    }
+
+    /// True when any arm of the `processing` oneof is set.
+    pub fn has_processing(&self) -> bool {
+        self.processing_type.is_some() || self.processing_config.is_some()
+    }
+}
+
+/// `genai.DocumentContent.MediaProcessing`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocumentContentMediaProcessing {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#static: Option<DocumentContentStaticMediaProcessing>,
+}
+
+/// The `type` oneof of [`DocumentContentMediaProcessing`], as an owned value.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DocumentContentMediaProcessingType {
+    Static(DocumentContentStaticMediaProcessing),
+}
+
+impl DocumentContentMediaProcessing {
+    /// Takes the set arm of the `type` oneof, if any.
+    pub fn into_type(self) -> Option<DocumentContentMediaProcessingType> {
+        if let Some(v) = self.r#static {
+            return Some(DocumentContentMediaProcessingType::Static(v));
+        }
+        None
+    }
+
+    /// True when any arm of the `type` oneof is set.
+    pub fn has_type(&self) -> bool {
+        self.r#static.is_some()
+    }
+}
+
+/// `genai.DocumentContent.PageProcessingOptions`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocumentContentPageProcessingOptions {
+    #[serde(alias = "start_page", default, skip_serializing_if = "Option::is_none")]
+    pub start_page: Option<i32>,
+    #[serde(alias = "end_page", default, skip_serializing_if = "Option::is_none")]
+    pub end_page: Option<i32>,
+    #[serde(
+        alias = "content_layers",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub content_layers: Vec<DocumentContentPageProcessingOptionsContentLayer>,
+}
+
+/// `genai.DocumentContent.SpreadsheetProcessingOptions`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocumentContentSpreadsheetProcessingOptions {
+    #[serde(
+        alias = "visible_cells",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub visible_cells: Option<String>,
+    #[serde(
+        alias = "sheet_index",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub sheet_index: Option<i32>,
+    #[serde(
+        alias = "content_layers",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub content_layers: Vec<DocumentContentSpreadsheetProcessingOptionsContentLayer>,
+}
+
+/// `genai.DocumentContent.StaticMediaProcessing`
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocumentContentStaticMediaProcessing {
+    #[serde(
+        alias = "page_options",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub page_options: Option<DocumentContentPageProcessingOptions>,
+    #[serde(
+        alias = "spreadsheet_options",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub spreadsheet_options: Option<DocumentContentSpreadsheetProcessingOptions>,
+}
+
+/// The `format_options` oneof of [`DocumentContentStaticMediaProcessing`], as an owned value.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DocumentContentStaticMediaProcessingFormatOptions {
+    PageOptions(DocumentContentPageProcessingOptions),
+    SpreadsheetOptions(DocumentContentSpreadsheetProcessingOptions),
+}
+
+impl DocumentContentStaticMediaProcessing {
+    /// Takes the set arm of the `format_options` oneof, if any.
+    pub fn into_format_options(self) -> Option<DocumentContentStaticMediaProcessingFormatOptions> {
+        if let Some(v) = self.page_options {
+            return Some(DocumentContentStaticMediaProcessingFormatOptions::PageOptions(v));
+        }
+        if let Some(v) = self.spreadsheet_options {
+            return Some(DocumentContentStaticMediaProcessingFormatOptions::SpreadsheetOptions(v));
+        }
+        None
+    }
+
+    /// True when any arm of the `format_options` oneof is set.
+    pub fn has_format_options(&self) -> bool {
+        self.page_options.is_some() || self.spreadsheet_options.is_some()
     }
 }
 
@@ -3823,12 +4364,6 @@ pub struct InputConfig {
     pub client_info: Option<ClientInfo>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub env: HashMap<String, String>,
-    #[serde(
-        alias = "use_interactions_api",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub use_interactions_api: Option<bool>,
 }
 
 /// `antigravity.localharness.InputEvent`
@@ -5348,6 +5883,12 @@ pub struct SubagentsConfig {
         skip_serializing_if = "Option::is_none"
     )]
     pub disable_define_subagent_tool: Option<bool>,
+    #[serde(
+        alias = "disable_manage_subagents_tool",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub disable_manage_subagents_tool: Option<bool>,
 }
 
 /// `antigravity.localharness.SystemInstructionTemplate`
@@ -6604,6 +7145,12 @@ pub struct VideoContentStaticMediaProcessing {
     pub end_offset: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fps: Option<f64>,
+    #[serde(
+        alias = "content_layers",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub content_layers: Vec<VideoContentStaticMediaProcessingContentLayer>,
 }
 
 /// `antigravity.localharness.ViewFileToolConfig`
