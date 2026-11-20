@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.330] - 2026-11-19
+
+Tested against Claude CLI **2.1.329**. Models the 2.1.328 → 2.1.329
+stream-json drift: three optional top-level fields and one `api_error`
+kind, all additive. The CLI's model ids and alias table are unchanged from
+2.1.328.
+
+### Added
+
+- `ConversationResetMessage::user_message_from_human`: set beside
+  `user_message_uuid` when a person sent the `/clear` (for example from a
+  Remote Control client), so a host that did not send it can follow the
+  reset as the person's.
+- `InitMessage::served_by_anthropic`: whether the session's model requests
+  go to Anthropic's own first-party API. Describes routing only; hosts must
+  still check ZDR, HIPAA and `analytics_disabled`.
+- `UserMessage::client_content_width`: the chat-column width, in CSS
+  pixels, of the client that sent the message. **Breaking** for code
+  constructing `UserMessage` with a struct literal.
+- Documented the `oauth_refresh_store_refused` `api_error` kind: the macOS
+  Keychain refused a write, so the login's refresh token was not sent.
+
 ## [2.1.329] - 2026-11-18
 
 Tested against Claude CLI **2.1.328**. Models the 2.1.327 → 2.1.328
