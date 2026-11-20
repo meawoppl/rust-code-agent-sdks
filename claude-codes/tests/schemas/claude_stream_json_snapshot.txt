@@ -9,7 +9,7 @@ assistant: aborted, advisor_model, agent_id, api_error, api_error_code, api_erro
 auth_status: error, isAuthenticating, output, session_id, type, uuid
 command_lifecycle: command_uuid, ran_ahead, scheduled_for, session_id, state, type, uuid, wakeup_source
 content: content, type
-conversation_reset: new_conversation_id, session_id, timestamp, trigger, type, user_message_uuid, uuid
+conversation_reset: new_conversation_id, session_id, timestamp, trigger, type, user_message_from_human, user_message_uuid, uuid
 document: cache_control, citations, context, source, title, type
 ephemeral: text, toolUseId, warning
 file: file_id, type
@@ -39,7 +39,7 @@ system/hook_response: exit_code, hook_event, hook_id, hook_name, outcome, output
 system/hook_started: hook_event, hook_id, hook_name, label, origin, plugin_name, session_id, subtype, type, uuid
 system/informational: content, hook_no_verdict, level, model_restriction, prevent_continuation, prompt_submit_outcome, saved_files, session_id, subtype, tag, tool_use_id, type, uuid
 system/inherited_asks_settled: kept_request_ids, session_id, subtype, type, uuid
-system/init: additional_directories, agents, analytics_disabled, apiKeySource, betas, capabilities, claude_code_version, client_thinking, cloud_session, cwd, effort, fast_mode_disabled_reason, fast_mode_state, flag_restate_noop, footer_indicator, host_dropped_env, mcp_server_errors, mcp_servers, memory_paths, model, original_cwd, output_style, per_turn_effort_active, permissionMode, plugin_errors, plugin_warnings, plugins, powershell_path, product_feedback_disabled, scratchpad_path, session_id, skills, slash_commands, startup_timing, subtype, synced_skills_path, terminal_slash_commands, tools, type, ultrathink_available, ultrathink_typed_raises, uuid, view_mode, worker_epoch
+system/init: additional_directories, agents, analytics_disabled, apiKeySource, betas, capabilities, claude_code_version, client_thinking, cloud_session, cwd, effort, fast_mode_disabled_reason, fast_mode_state, flag_restate_noop, footer_indicator, host_dropped_env, mcp_server_errors, mcp_servers, memory_paths, model, original_cwd, output_style, per_turn_effort_active, permissionMode, plugin_errors, plugin_warnings, plugins, powershell_path, product_feedback_disabled, scratchpad_path, served_by_anthropic, session_id, skills, slash_commands, startup_timing, subtype, synced_skills_path, terminal_slash_commands, tools, type, ultrathink_available, ultrathink_typed_raises, uuid, view_mode, worker_epoch
 system/instruction_size_warning: file_count, largest_chars, session_id, subtype, total_chars, total_limit_chars, type, uuid
 system/late_allow_not_run: reason, request_id, session_id, subtype, tool_use_id, type, uuid
 system/local_command_output: content, session_id, subtype, type, uuid
@@ -86,4 +86,4 @@ tool_result: cache_control, content, is_error, tool_use_id, type
 tool_use: caller, id, input, name, type
 tool_use_summary: preceding_tool_use_ids, session_id, summary, timestamp, type, uuid
 url: type, url
-user: client_composed, client_platform, historical, image_paste_ids, inbound_origin, initiator, interrupted_message_id, isSynthetic, is_compact_summary, is_meta, is_virtual, is_visible_in_transcript_only, keeps_request_id, mcp_meta, message, origin, parent_tool_use_id, permission_mode, plan_content, plugin_prompt, priority, refused_message_id, requeue_if_interrupted_within_ms, retracted_message_uuids, seeded_summon, server_received_wall_ms, shouldQuery, source_tool_assistant_uuid, source_tool_use_id, summarize_metadata, text_not_typed, timestamp, tool_result_meta, tool_use_result, type
+user: client_composed, client_content_width, client_platform, historical, image_paste_ids, inbound_origin, initiator, interrupted_message_id, isSynthetic, is_compact_summary, is_meta, is_virtual, is_visible_in_transcript_only, keeps_request_id, mcp_meta, message, origin, parent_tool_use_id, permission_mode, plan_content, plugin_prompt, priority, refused_message_id, requeue_if_interrupted_within_ms, retracted_message_uuids, seeded_summon, server_received_wall_ms, shouldQuery, source_tool_assistant_uuid, source_tool_use_id, summarize_metadata, text_not_typed, timestamp, tool_result_meta, tool_use_result, type

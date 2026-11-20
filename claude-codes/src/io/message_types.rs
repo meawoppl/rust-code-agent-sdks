@@ -1449,6 +1449,10 @@ pub struct UserMessage {
     pub image_paste_ids: Option<Vec<u64>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub client_platform: Option<String>,
+    /// The width, in CSS pixels, of the chat column of the client that sent
+    /// this message. Marked `@internal` upstream (CLI 2.1.329+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_content_width: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub inbound_origin: Option<String>,
     /// Input only: the `request_id` of an unanswered permission card that the
@@ -3441,6 +3445,18 @@ pub struct InitMessage {
     /// Whether product-feedback prompts are disabled for this session.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub product_feedback_disabled: Option<bool>,
+
+    /// True when this session's model requests go to Anthropic's own API:
+    /// the first-party provider, with no other base URL or socket, and the
+    /// organization is not set up to use Claude through another provider.
+    /// Absent where the process can't tell (an SSH child, a server tenant,
+    /// workload identity, a mod that hooks `http.fetch`) and from CLIs before
+    /// 2.1.329. It describes routing alone: a host that sends the session's
+    /// content to Anthropic must also check ZDR, HIPAA and
+    /// [`analytics_disabled`](Self::analytics_disabled). Marked `@internal`
+    /// upstream.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub served_by_anthropic: Option<bool>,
 
     /// API beta flags active for the session.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -6573,7 +6589,10 @@ pub struct AssistantMessage {
     /// certificates after a renewal, or tampering; a host should not offer a
     /// way around the check) — and `message_over_context_limit` — the turn's
     /// own text exceeds the model's largest context window, so no request
-    /// was sent and the text did not join the conversation.
+    /// was sent and the text did not join the conversation — and (CLI
+    /// 2.1.329+) `oauth_refresh_store_refused` — the macOS Keychain did not
+    /// take a write, so the login's refresh token was not sent; the stored
+    /// login is intact and the message text says what to do.
     /// Kinds with parameters carry them in [`Self::api_error_params`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_error: Option<String>,

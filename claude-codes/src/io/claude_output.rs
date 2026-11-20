@@ -465,6 +465,14 @@ pub struct ConversationResetMessage {
     /// canonical UUID, and from CLIs before 2.1.281.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub user_message_uuid: Option<String>,
+    /// Only beside [`user_message_uuid`](Self::user_message_uuid): `true`
+    /// when a person sent that message (origin `human`), for example from a
+    /// Remote Control client, so a host that did not send it can follow the
+    /// reset as the person's. Absence does not mean that no person did:
+    /// CLIs before 2.1.329 and cloud sessions never send it. Upstream types
+    /// it as the literal `true`. Marked `@internal` upstream.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_message_from_human: Option<bool>,
     /// When the reset happened, as an ISO 8601 string in UTC from the clock
     /// of the process that performed it. Meant for display, not for ordering
     /// frames. Absent from CLIs before 2.1.281; fall back to the time the
