@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-11-20
+
+Re-pin to pi **1.6.0**. No RPC wire changes: `dist/modes/json-event.d.ts`,
+`dist/modes/rpc/*.d.ts`, `dist/cli/args.d.ts` and pi-ai's `dist/types.d.ts`
+are byte-identical to 1.5.2.
+
+- Upstream now subscribes the RPC event stream before binding extensions, so
+  events emitted by extension `session_start` handlers (such as
+  `entry_appended`) now reach RPC clients, and `new_session`,
+  `switch_session`, `fork` and `clone` no longer run those handlers twice.
+  These arrive as ordinary `PiEvent`s.
+- Session-replacement diagnostics (extension load failures, unmatched
+  `enabledModels` patterns, `Could not restore model`) are now written to
+  stderr in RPC mode; stdout stays protocol-only.
+- New upstream `gpt-6.2-astra` and `gpt-6.2-sol` models (`gpt-6.2-sol` is the
+  new default for `openai`, `azure` and `openai-codex`). The crate passes
+  provider and model ids through as strings, so no type changes are needed.
+- `pi --help` only renames the Qwen Token Plan env vars
+  (`QWEN_TOKEN_PLAN_TEAM_*` / `QWEN_TOKEN_PLAN_INDIVIDUAL_*`).
+
 ## [1.5.2] - 2026-11-11
 
 Re-pin to pi **1.5.2**. No RPC wire changes: `dist/modes/json-event.d.ts`,
