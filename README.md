@@ -38,7 +38,7 @@ metadata can't distinguish published versions — so explicit offset notes are
 the least-bad scheme.)
 
 - **`claude-codes`** — currently `claude-codes 2.1.329`, tested against Claude CLI `2.1.328`.
-- **`codex-codes`** — currently `codex-codes 0.169.7`, tested against Codex CLI `0.170.0`.
+- **`codex-codes`** — currently `codex-codes 0.169.8`, tested against Codex CLI `0.171.0`.
 - **`opencode-codes`** — currently `opencode-codes 1.19.6`, tested against opencode `1.19.6`.
 - **`muse-codes`** — currently `muse-codes 1.4.24`, tested against Muse Code `1.4.24` (build `1.4.24-R9131.1`).
 - **`antigravity-codes`** — currently `antigravity-codes 0.1.24`, tested against google-antigravity `0.1.24` (the wheel its bundled harness was generated from).

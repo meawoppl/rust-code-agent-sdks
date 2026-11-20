@@ -182,6 +182,34 @@ fn model_access_programs_daybreak_availability() {
     assert_eq!(unknown, DaybreakAvailability::Default);
 }
 
+/// `fs/getMetadata` reports file sizes; older servers omit `sizeBytes`
+/// (openai/codex#62653).
+#[test]
+fn fs_get_metadata_size_bytes() {
+    use codex_codes::protocol::FsGetMetadataResponse;
+
+    let json = serde_json::json!({
+        "createdAtMs": 123, "isDirectory": false, "isFile": true,
+        "isSymlink": false, "modifiedAtMs": 456, "sizeBytes": 5
+    });
+    let meta: FsGetMetadataResponse = serde_json::from_value(json.clone()).unwrap();
+    assert_eq!(meta.size_bytes, Some(5));
+    assert_eq!(serde_json::to_value(&meta).unwrap(), json);
+
+    let legacy: FsGetMetadataResponse = serde_json::from_value(serde_json::json!({
+        "createdAtMs": 123, "isDirectory": true, "isFile": false,
+        "isSymlink": false, "modifiedAtMs": 456
+    }))
+    .unwrap();
+    assert_eq!(legacy.size_bytes, None);
+    let null: FsGetMetadataResponse = serde_json::from_value(serde_json::json!({
+        "createdAtMs": 0, "isDirectory": true, "isFile": false,
+        "isSymlink": false, "modifiedAtMs": 0, "sizeBytes": null
+    }))
+    .unwrap();
+    assert_eq!(null.size_bytes, None);
+}
+
 /// Gateway OAuth device authorization: read advertises support, login returns a prompt,
 /// and the changed notification echoes the prompt's `loginId`.
 #[test]
