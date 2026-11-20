@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.169.9] - 2026-11-20
+
+Tracks `openai/codex@main` schema drift (snapshot pinned at `df6064096a`).
+Still tested against Codex CLI 0.171.0. Bundled model catalog re-checked
+(`models-manager/models.json` @ `df6064096a`): no new slugs, all 14 modeled.
+
+### Removed
+
+- `Config.client_search_provider` and the `WebSearchProvider` enum: upstream
+  dropped model-selected Search MCP routing (openai/codex#62808). A server
+  that still sends the key now lands in `Config.additional`. **Breaking**
+  for code reading the field or naming the enum.
+
+### Changed
+
+- Schema snapshot only: `ConfiguredHookHandler` command and `mcp_tool`
+  handlers gained an optional `onFailure` (`ConfiguredHookFailurePolicy`:
+  `continue` | `block`) (openai/codex#62831). The crate does not model
+  `ConfiguredHookHandler`, so no type changes.
+
 ## [0.169.8] - 2026-11-19
 
 Tracks `openai/codex@main` schema drift (snapshot pinned at `a0a30c40e8`).

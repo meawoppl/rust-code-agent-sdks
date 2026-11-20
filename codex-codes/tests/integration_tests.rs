@@ -476,11 +476,13 @@ fn thread_originator_fields_round_trip() {
     );
 }
 
-/// `item/completed` carries an optional `contentTokenCount`, and `Config`
-/// an optional `client_search_provider` (openai/codex@main 16ddd538b, b26f68267).
+/// `item/completed` carries an optional `contentTokenCount`
+/// (openai/codex@main 16ddd538b). `Config.client_search_provider` was
+/// removed upstream (openai/codex#62808); a server that still sends it
+/// lands in `Config.additional`.
 #[test]
 fn item_completed_token_count_and_config_search_provider_round_trip() {
-    use codex_codes::protocol::{Config, ItemCompletedNotification, WebSearchProvider};
+    use codex_codes::protocol::{Config, ItemCompletedNotification};
 
     let raw = serde_json::json!({
         "completedAtMs": 1, "contentTokenCount": 42,
@@ -504,10 +506,9 @@ fn item_completed_token_count_and_config_search_provider_round_trip() {
         serde_json::from_value(serde_json::json!({"client_search_provider": "search_mcp"}))
             .unwrap();
     assert_eq!(
-        config.client_search_provider,
-        Some(WebSearchProvider::SearchMcp)
+        config.additional.get("client_search_provider"),
+        Some(&serde_json::json!("search_mcp"))
     );
-    assert!(config.additional.is_empty());
     assert_eq!(
         serde_json::to_value(&config).unwrap(),
         serde_json::json!({"client_search_provider": "search_mcp"})
