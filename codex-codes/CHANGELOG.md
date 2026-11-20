@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.169.8] - 2026-11-19
+
+Tracks `openai/codex@main` schema drift (snapshot pinned at `a0a30c40e8`).
+Now tested against Codex CLI 0.171.0. Bundled model catalog re-checked
+(`models-manager/models.json` @ `a0a30c40e8`): no new slugs.
+
+### Added
+
+- `FsGetMetadataResponse.size_bytes` (wire `sizeBytes`): `fs/getMetadata`
+  now reports the size of regular files, `None` for directories, other
+  non-regular paths, and older servers that omit it (openai/codex#62653).
+  **Breaking** for code constructing `FsGetMetadataResponse` with a struct
+  literal.
+
 ## [0.169.7] - 2026-11-19
 
 Tracks `openai/codex@main` schema drift (snapshot pinned at `dabe0643a4`).

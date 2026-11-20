@@ -2680,6 +2680,10 @@ pub struct FsGetMetadataResponse {
     pub is_symlink: bool,
     #[serde(rename = "modifiedAtMs", default)]
     pub modified_at_ms: i64,
+    /// Size in bytes if the path resolves to a regular file, otherwise null.
+    /// Older servers omit this field.
+    #[serde(rename = "sizeBytes", default, skip_serializing_if = "Option::is_none")]
+    pub size_bytes: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
