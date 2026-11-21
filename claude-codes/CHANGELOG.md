@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.331] - 2026-11-20
+
+Tested against Claude CLI **2.1.330**. Models the 2.1.329 → 2.1.330
+stream-json drift: four optional fields, one new struct and one
+`api_error` kind, all additive. The CLI's model ids, alias table and
+`--help` output are unchanged from 2.1.329.
+
+### Added
+
+- `ResultMessage::begun_message_ids`: the API `msg_*` ids, in order, of
+  the main conversation's responses that began to stream in the turn (only
+  with partial messages on). Sent on success and error results.
+- `InformationalMessage::saved_from` with the new `ConnectorFilesSaved`
+  struct (`files`, `file`, `app`): on a `connector_files` line that only
+  reports saved files, so a host can word it without reading `content`.
+- `UiInvalidateMessage::unhooked`: on a push with no `instances`, the
+  current `unhooked` list from the `ui_attach` answer.
+- `BackgroundTaskInfo::tool_use_id`: the task's `task_notification` id,
+  set only beside `off_host`.
+- Documented the `named_profile_unusable` `api_error` kind:
+  `ANTHROPIC_PROFILE` names a profile that gives no credential, and the
+  `/login` sign-in is not used in its place.
+- The message `origin` `task-notification` subkind gained
+  `external-event` (a server notice of an outside event, such as a
+  webhook). `MessageOrigin` keeps subkinds in its untyped `extra` map, so
+  no type change.
+
+**Breaking** for code that builds `ResultMessage`, `InformationalMessage`,
+`UiInvalidateMessage` or `BackgroundTaskInfo` with a struct literal.
+
+### Changed
+
+- `auth`: CLI 2.1.330 prints a compact sign-in link
+  (`https://claude.ai/oauth/authorize?<scope bits><code_challenge>`, with
+  no `client_id`, `state` or `code_challenge=` key) unless
+  `CLAUDE_CODE_FULL_SIGN_IN_LINK` is set. `LoginFlow::auth_url` already
+  extracts it. The `retry_new_url` docs no longer promise a new PKCE
+  challenge. The retry keeps the challenge and rotates only `state`
+  (measured on 2.1.329 too), so with the compact link the retried URL can
+  be identical to the first. The live login tests now accept both shapes.
+
 ## [2.1.330] - 2026-11-19
 
 Tested against Claude CLI **2.1.329**. Models the 2.1.328 → 2.1.329
