@@ -685,6 +685,19 @@ pub struct ResultMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub terminal_reason: Option<String>,
 
+    /// The API `msg_*` ids, in the order they began, of the main
+    /// conversation's responses that began to stream in this turn under the
+    /// worker that wrote this result (a worker that took the turn over
+    /// doesn't know an earlier worker's). Only where partial messages are on.
+    /// An id with no assistant message died, or was cut or empty. Empty where
+    /// none began; a response requested without streaming, or with no id, is
+    /// not listed. Absent, with partial messages on, where the turn called no
+    /// model, threw or only ended a stopped permission card, on a result the
+    /// host wrote in a turn's place, and from CLIs before 2.1.330. Marked
+    /// `@internal` upstream.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub begun_message_ids: Option<Vec<String>>,
+
     /// What the process holds of its organization's policy limits: a value
     /// of `system/init`'s `startup_timing.policy_answer`, sent under the same
     /// conditions as that field. An open string, since new values can be

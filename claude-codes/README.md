@@ -173,13 +173,13 @@ let outcome = flow.submit_code_and_wait(&code, Duration::from_secs(90))?;
 ```
 
 Rejected codes keep the flow alive: call `retry_new_url()` for a fresh
-authorize URL (the CLI rotates the PKCE challenge; the old code is dead).
+authorize URL (a new sign-in attempt; the old code is dead).
 Every failure self-describes — timeouts and child exits carry a channel
 line naming what each detection source saw. `auth_status()` types
 `claude auth status --json` (email, org, plan). Enable with
 `features = ["auth"]`.
 
-**Tested against:** Claude CLI 2.1.329
+**Tested against:** Claude CLI 2.1.330
 
 The crate version tracks the Claude CLI version. If you're using a different CLI version, please report whether it works at:
 https://github.com/meawoppl/rust-code-agent-sdks/issues

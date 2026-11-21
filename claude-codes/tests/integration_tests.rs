@@ -2492,8 +2492,16 @@ fn test_login_flow_yields_auth_url_live() {
         url.starts_with("https://") && url.contains("oauth/authorize"),
         "unexpected authorize URL: {url}"
     );
+    // CLI 2.1.330+ prints a compact link whose bare query is scope bits
+    // followed by the 43-character challenge; older CLIs (and
+    // CLAUDE_CODE_FULL_SIGN_IN_LINK) print a `code_challenge=` parameter.
+    let query = url.split_once('?').map(|(_, q)| q).unwrap_or("");
+    let compact = query.len() >= 44
+        && query
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
     assert!(
-        url.contains("code_challenge="),
+        url.contains("code_challenge=") || compact,
         "authorize URL should carry a PKCE challenge: {url}"
     );
     // Dropping the flow cancels the login and kills the CLI.
@@ -2535,9 +2543,11 @@ fn test_production_length_code_submission_is_acknowledged_live() {
 }
 
 /// The CLI's retry state machine (binary-verified): the error screen has NO
-/// input component and re-entering the flow rotates the PKCE challenge. A
+/// input component and re-entering the flow starts a new sign-in attempt. A
 /// rejected flow must refuse further submissions until retry_new_url walks
-/// error -> Enter -> waiting_for_login and yields a DIFFERENT URL.
+/// error -> Enter -> waiting_for_login and yields a fresh URL render. The
+/// retry keeps the PKCE challenge and rotates only `state`, so the URLs
+/// differ only when they carry `state` (not in 2.1.330's compact link).
 #[cfg(feature = "auth")]
 #[test]
 fn test_rejected_flow_retries_with_new_url_live() {
@@ -2562,7 +2572,9 @@ fn test_rejected_flow_retries_with_new_url_live() {
         .retry_new_url(Duration::from_secs(20))
         .expect("retry yields new url");
     assert!(url2.contains("oauth/authorize"));
-    assert_ne!(url1, url2, "PKCE challenge must rotate on retry");
+    if url1.contains("state=") && url2.contains("state=") {
+        assert_ne!(url1, url2, "OAuth state must rotate on retry");
+    }
 
     match flow.submit_code_and_wait(&code, Duration::from_secs(20)) {
         Err(Error::CodeRejected { .. }) => {}

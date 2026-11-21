@@ -2859,6 +2859,12 @@ pub struct BackgroundTaskInfo {
     /// `@internal` upstream (CLI 2.1.323+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub off_host: Option<bool>,
+    /// The same id as on the task's `task_notification`. Set only beside
+    /// [`off_host`](Self::off_host), since such a task may have no
+    /// `task_started`. For a script's call it names no `tool_use` block.
+    /// Marked `@internal` upstream (CLI 2.1.330+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_use_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -3128,6 +3134,12 @@ pub struct InformationalMessage {
     /// `@internal` upstream (CLI 2.1.328+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub saved_files: Option<Vec<SavedConnectorFile>>,
+    /// Present on the line tagged `connector_files` when all that it says is
+    /// that a connector's files were saved, so a host can word that itself
+    /// instead of reading `content`. Marked `@internal` upstream
+    /// (CLI 2.1.330+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub saved_from: Option<ConnectorFilesSaved>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3147,6 +3159,23 @@ pub struct SavedConnectorFile {
     /// The absolute path as a person reads it, as written at the end of
     /// [`line`](Self::line).
     pub shown: String,
+}
+
+/// [`InformationalMessage::saved_from`]: what a `connector_files` line says
+/// when all it reports is that a connector's files were saved (CLI 2.1.330+).
+///
+/// Each name is cleaned as in `content` and absent where nothing is left of
+/// it. A connector can have chosen them: render them as plain text.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ConnectorFilesSaved {
+    /// How many files were saved.
+    pub files: u64,
+    /// The file's name, when one file was saved.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
+    /// The connector's name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app: Option<String>,
 }
 
 /// [`InformationalMessage::hook_no_verdict`]: a PreToolUse hook gave no
@@ -5806,6 +5835,12 @@ pub struct UiInvalidateMessage {
     /// (CLI 2.1.300+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prompts_screened: Option<bool>,
+    /// On a push with no [`instances`](Self::instances): the list the
+    /// `ui_attach` answer carries under this name, as it stands now,
+    /// replacing the last one sent. If absent, the surface asks as before.
+    /// Marked `@internal` upstream (CLI 2.1.330+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unhooked: Option<Vec<String>>,
     pub uuid: String,
     pub session_id: String,
 }
@@ -6592,7 +6627,11 @@ pub struct AssistantMessage {
     /// was sent and the text did not join the conversation — and (CLI
     /// 2.1.329+) `oauth_refresh_store_refused` — the macOS Keychain did not
     /// take a write, so the login's refresh token was not sent; the stored
-    /// login is intact and the message text says what to do.
+    /// login is intact and the message text says what to do — and (CLI
+    /// 2.1.330+) `named_profile_unusable` — `ANTHROPIC_PROFILE` names a
+    /// profile that gives no credential (missing, unusable or signed out),
+    /// and Claude Code does not fall back to the `/login` sign-in; no request
+    /// was sent, and the message text says what is wrong and what to do.
     /// Kinds with parameters carry them in [`Self::api_error_params`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_error: Option<String>,

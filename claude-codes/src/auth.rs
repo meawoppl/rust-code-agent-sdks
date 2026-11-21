@@ -271,7 +271,7 @@ pub struct LoginFlow {
     /// input component, so further writes land nowhere until
     /// [`retry_new_url`](Self::retry_new_url) walks the CLI's actual retry
     /// state machine (error → Enter → about_to_retry → waiting_for_login
-    /// with a NEW PKCE challenge).
+    /// with a new sign-in attempt).
     rejected: bool,
     /// Credentials store path + its state when the flow started, so
     /// create-or-update after submission is detectable as a success signal.
@@ -449,16 +449,24 @@ impl LoginFlow {
     }
 
     /// Restart the OAuth flow after a [`Error::CodeRejected`] and return the
-    /// NEW authorize URL.
+    /// authorize URL of the new sign-in attempt.
     ///
     /// The CLI's retry state machine (recovered from the 2.1.220 binary) is
     /// `error → (Enter) → about_to_retry → waiting_for_login`, and the
     /// error screen renders **no input component** — a corrected code
     /// written there lands nowhere, silently. Re-entering
-    /// `waiting_for_login` starts a fresh OAuth flow with a **new PKCE
-    /// challenge**, so the previous URL's code is dead: show the returned
-    /// URL to the user and have them authorize again. There is no
-    /// same-challenge retry; the CLI does not support one.
+    /// `waiting_for_login` starts a fresh sign-in attempt, so the previous
+    /// code is dead: show the returned URL to the user and have them
+    /// authorize again.
+    ///
+    /// The returned URL is not always different from the first one. The
+    /// retry keeps the PKCE `code_challenge` and rotates only the OAuth
+    /// `state` (measured on CLI 2.1.329 and 2.1.330). From CLI 2.1.330 the
+    /// CLI prints a compact link
+    /// (`https://claude.ai/oauth/authorize?<scope bits><code_challenge>`)
+    /// that carries no `state`, so the retried URL can be byte-identical.
+    /// Setting `CLAUDE_CODE_FULL_SIGN_IN_LINK` in the CLI's environment
+    /// restores the full query string.
     pub fn retry_new_url(&mut self, timeout: Duration) -> Result<String> {
         use std::io::Write;
         if !self.rejected {
@@ -549,7 +557,7 @@ impl LoginFlow {
             // into — the silent-doom mode of production attempts.
             return Err(Error::InvalidState(
                 "previous code was rejected; call retry_new_url() to restart the CLI's \
-                 OAuth flow (the old URL's PKCE challenge is dead), then submit the NEW code"
+                 OAuth flow (the old sign-in attempt is dead), then submit the NEW code"
                     .to_string(),
             ));
         }
@@ -597,10 +605,11 @@ impl LoginFlow {
     /// - Rejection printed after this submission (`OAuth error`, or the
     ///   stable `Press Enter to retry` prompt under any wording) →
     ///   [`Error::CodeRejected`]. The flow stays **alive**, but the error
-    ///   screen has no input field and the old URL's PKCE challenge is dead:
+    ///   screen has no input field and the old sign-in attempt is dead:
     ///   call [`retry_new_url`](Self::retry_new_url) to restart the OAuth
-    ///   flow and get the NEW URL for the user (binary-verified state
-    ///   machine — there is no same-challenge retry).
+    ///   flow and get the URL for the user to authorize again
+    ///   (binary-verified state machine — a code from before the retry is
+    ///   not accepted).
     /// - Child exit → outcome from the transcript, as [`finish`](Self::finish).
     /// - Timeout → [`Error::LoginTimeout`] carrying a per-channel status line
     ///   and the post-submission screen content, so a silent failure names
@@ -1567,6 +1576,19 @@ mod tests {
         assert_eq!(
             url,
             "https://console.anthropic.com/oauth/authorize?code=true&state=abc"
+        );
+    }
+
+    /// CLI 2.1.330+ prints a compact sign-in link: scope bits and the
+    /// 43-character PKCE challenge as a bare query, with no `state`.
+    #[test]
+    fn compact_sign_in_link_lifted_from_osc8() {
+        let raw = b"(c\x1b[55Gto\x1b[58Gcopy)\r\r\n\r\r\n\
+            \x1b]8;id=11enpfq;https://claude.ai/oauth/authorize?ICLquFoIPX3ueSwhAsK07w-yvqkVYXU4asGNwJxi5aE4\x07\
+            https://claude.ai/oauth/authorize?ICLquFoIPX3ueSwhAsK07w-yvqkVYXU4asGNwJxi5aE4\x1b]8;;\x07\r\r\n";
+        assert_eq!(
+            extract_auth_url(raw).as_deref(),
+            Some("https://claude.ai/oauth/authorize?ICLquFoIPX3ueSwhAsK07w-yvqkVYXU4asGNwJxi5aE4")
         );
     }
 
