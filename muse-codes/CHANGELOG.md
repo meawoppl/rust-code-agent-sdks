@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.25] - 2026-11-21
+
+Re-pin to Muse Code **1.4.25** (`1.4.25-R9361.1`, from 1.4.24-R9131.1).
+No wire drift. Top-level `muse --help` and `muse exec --help` are
+byte-identical. The stream fingerprint matches the snapshot. An echo run
+with the same prompt emits the same 19 records, with the same payload
+types and payload key sets, as 1.4.24. The meta model catalog is unchanged
+and matches `MuseModel::known()`. The MSP (`muse serve`) schema gained a
+`PrunedSubagent` definition (`subagentId`, `parentSubagentId`). The crate
+does not model MSP, so it needs no change. The live suite and the wirecheck
+pass against 1.4.25.
+
 ## [1.4.24] - 2026-11-19
 
 Re-pin to Muse Code **1.4.24** (`1.4.24-R9131.1`, from 1.4.23-R8977.1).
