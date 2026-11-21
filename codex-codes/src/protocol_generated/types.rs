@@ -2928,8 +2928,8 @@ pub struct GatewayOAuthChangedNotification {
     pub status: GatewayOAuthStatus,
 }
 
-/// Authorize a configured provider without changing the default or any
-/// thread's provider.
+/// Authorize a configured service without changing the selected model
+/// provider.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct GatewayOAuthLoginParams {
@@ -2948,6 +2948,10 @@ pub struct GatewayOAuthLoginParams {
         skip_serializing_if = "Option::is_none"
     )]
     pub model_provider: Option<String>,
+    /// Available only on `--startup-oauth`. Mutually exclusive with
+    /// `model_provider`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target: Option<GatewayOAuthTarget>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -3030,6 +3034,14 @@ pub enum GatewayOAuthStatus {
     Succeeded,
     #[serde(rename = "failed")]
     Failed,
+}
+
+/// An explicit service to authorize instead of the selected model provider.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(tag = "kind")]
+pub enum GatewayOAuthTarget {
+    #[serde(rename = "configServer")]
+    ConfigServer,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -7369,6 +7381,28 @@ pub struct QueuedSubmission {
     pub responsesapi_client_metadata: Option<std::collections::HashMap<String, String>>,
 }
 
+/// Browser handoff on the dedicated `codex app-server --startup-oauth`
+/// connection. Sent as the params of an `account/gatewayOAuth/changed`
+/// notification on that connection only; the regular app-server stream
+/// uses [`GatewayOAuthChangedNotification`] for the same method.
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartupGatewayOAuthChangedNotification {
+    pub auth_url: String,
+    pub status: GatewayOAuthStatus,
+    pub target: GatewayOAuthTarget,
+}
+
+/// Redacts `auth_url`, matching upstream.
+impl std::fmt::Debug for StartupGatewayOAuthChangedNotification {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StartupGatewayOAuthChangedNotification")
+            .field("target", &self.target)
+            .field("status", &self.status)
+            .finish_non_exhaustive()
+    }
+}
+
 /// `autoApprovalReview/strictReviewRequired` — a strict review gate opened.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StrictReviewRequiredNotification {
@@ -9015,6 +9049,13 @@ pub enum ThreadItemPayload {
         id: String,
         #[serde(flatten)]
         image: GeneratedImageRef,
+        /// Per-image metadata selected by the backend for the receiving surface.
+        #[serde(
+            rename = "imageMetadata",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        image_metadata: Option<serde_json::Map<String, Value>>,
         /// Observed local inputs for a completed generation, absent on older items.
         #[serde(
             rename = "inputImages",
