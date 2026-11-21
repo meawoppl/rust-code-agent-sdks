@@ -246,6 +246,39 @@ fn gateway_oauth_device_auth_round_trips() {
     assert_eq!(changed.login_id.as_deref(), Some("l-1"));
 }
 
+/// `--startup-oauth` login targets the config server and receives a browser
+/// handoff with the target echoed back (openai/codex#62859).
+#[test]
+fn startup_gateway_oauth_target_round_trips() {
+    use codex_codes::protocol::{
+        GatewayOAuthStatus, GatewayOAuthTarget, StartupGatewayOAuthChangedNotification,
+    };
+
+    let login = GatewayOAuthLoginParams {
+        target: Some(GatewayOAuthTarget::ConfigServer),
+        ..Default::default()
+    };
+    let wire = serde_json::json!({ "target": { "kind": "configServer" } });
+    assert_eq!(serde_json::to_value(&login).unwrap(), wire);
+    let back: GatewayOAuthLoginParams = serde_json::from_value(wire).unwrap();
+    assert_eq!(back, login);
+    let null_target: GatewayOAuthLoginParams =
+        serde_json::from_value(serde_json::json!({ "target": null })).unwrap();
+    assert_eq!(null_target, GatewayOAuthLoginParams::default());
+
+    let wire = serde_json::json!({
+        "target": { "kind": "configServer" },
+        "status": "started",
+        "authUrl": "https://example.test/authorize?state=secret"
+    });
+    let handoff: StartupGatewayOAuthChangedNotification =
+        serde_json::from_value(wire.clone()).unwrap();
+    assert_eq!(handoff.target, GatewayOAuthTarget::ConfigServer);
+    assert_eq!(handoff.status, GatewayOAuthStatus::Started);
+    assert!(!format!("{handoff:?}").contains("secret"));
+    assert_eq!(serde_json::to_value(&handoff).unwrap(), wire);
+}
+
 /// Agent message items carry optional `moderation`; queued submissions carry optional `responsesapiClientMetadata`.
 #[test]
 fn agent_message_moderation_and_queued_metadata_round_trip() {
@@ -1463,6 +1496,31 @@ fn image_generation_item_carries_input_images() {
         serde_json::to_value(&tagged).unwrap()["generationId"],
         "gen_abc"
     );
+
+    let metadata = serde_json::json!({
+        "entries": [{"name": "first", "value": 1.5}],
+        "futureKey": {"nestedKey": [0, false, null]}
+    });
+    let with_metadata: ProtocolThreadItem = serde_json::from_value(serde_json::json!({
+        "type": "imageGeneration",
+        "id": "ig_6",
+        "status": "completed",
+        "fileId": "file_11",
+        "imageMetadata": metadata
+    }))
+    .unwrap();
+    let ThreadItemPayload::ImageGeneration { image_metadata, .. } = &with_metadata.payload else {
+        panic!("expected ImageGeneration");
+    };
+    assert_eq!(
+        image_metadata.as_ref().unwrap()["futureKey"]["nestedKey"][1],
+        false
+    );
+    assert_eq!(
+        serde_json::to_value(&with_metadata).unwrap()["imageMetadata"],
+        metadata
+    );
+    assert!(older_wire.get("imageMetadata").is_none());
 }
 
 /// An `mcpToolCall` item carries the new `mcpAppUi` block beside the legacy
