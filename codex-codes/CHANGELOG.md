@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.169.10] - 2026-11-20
+
+Tracks `openai/codex@main` schema drift (snapshot pinned at `e3a398d3e4`).
+Still tested against Codex CLI 0.171.0; none of these shapes are in the
+0.171.0 release schema yet. Bundled model catalog re-checked
+(`models-manager/models.json` @ `e3a398d3e4`): no new slugs, all 14 modeled.
+
+### Added
+
+- `GatewayOAuthTarget` (`kind`-tagged, currently only `configServer`) and
+  `GatewayOAuthLoginParams.target`: an explicit service to authorize on the
+  dedicated `codex app-server --startup-oauth` connection, mutually exclusive
+  with `model_provider` (openai/codex#62859). **Breaking** for code
+  constructing `GatewayOAuthLoginParams` with an exhaustive struct literal.
+- `StartupGatewayOAuthChangedNotification` (`target`, `status`, `auth_url`;
+  `Debug` redacts the URL): the browser handoff sent as
+  `account/gatewayOAuth/changed` params on the `--startup-oauth` connection
+  only. The regular app-server stream keeps `GatewayOAuthChangedNotification`
+  for that method, so no `Notification` variant was added.
+- `ThreadItemPayload::ImageGeneration.image_metadata` (wire `imageMetadata`):
+  free-form per-image metadata from the image backend, omitted when empty
+  (openai/codex#62871). **Breaking** for code constructing or exhaustively
+  destructuring the variant without `..`.
+
 ## [0.169.9] - 2026-11-20
 
 Tracks `openai/codex@main` schema drift (snapshot pinned at `df6064096a`).
