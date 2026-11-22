@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.332] - 2026-11-22
+
+Crate-side release: still tested against Claude CLI **2.1.330**. Types the
+rest of the per-turn settings part of the control channel, makes
+`can_use_tool` lossless for what hosts route on, tolerates a few missing fields, and brings the control
+channel into the drift check.
+
+### Added
+
+- `ControlRequestPayload::{SetPermissionMode, SetModel, GetSettings}` with
+  `SetPermissionModeRequest` and `SetModelRequest`, plus the matching
+  `ClaudeInput` constructors. The docs of `ApplyFlagSettings` (2.1.322) now say
+  that an invalid value is acknowledged and ignored, so confirm a change with
+  `GetSettings`.
+- `GetSettingsResponse` (`AppliedSettings`, `SettingsSource`) and
+  `SetPermissionModeResponse`, read with
+  `ControlResponse::get_settings_response` and `set_permission_mode_response`.
+  A read-back without `applied` still parses, and a success with no payload
+  reads as an acknowledgement with no echoed mode.
+- `ControlResponsePayload::Error::error_code`.
+- `ToolPermissionRequest::{agent_id, title, display_name, description,
+  decision_reason_type, requires_user_interaction}`, and `Default` for the
+  struct. Other `can_use_tool` fields are still not modeled.
+- `directories` on `PermissionSuggestion` and `Permission`.
+- `PermissionType::{ReplaceRules, RemoveRules, AddDirectories,
+  RemoveDirectories}`, `PermissionDestination::{UserSettings, ProjectSettings,
+  LocalSettings, CliArg}`, `PermissionModeName::{Default, Plan, DontAsk, Auto}`
+  and `PermissionBehavior::Ask`. These values used to parse as `Unknown`, so a
+  match on `Unknown("plan")` and the like no longer sees them.
+
+### Changed
+
+- **Source-breaking:** code building `ToolPermissionRequest`,
+  `PermissionSuggestion`, `Permission` or `ControlResponsePayload::Error` with a
+  struct literal, or matching `Error` without `..`, needs the new fields, and
+  exhaustive `match`es on `ControlRequestPayload` need three new arms.
+- **Breaking:** `PermissionRule::rule_content` is now `Option<String>`. `None`
+  is a rule for the whole tool, which the wire spells by omitting
+  `ruleContent`; the builders take a pattern as before and send it, even when
+  empty, so an empty pattern is never a whole-tool grant.
+- `scripts/check_claude_schema_drift.py` and its snapshot now cover
+  `control_request/<subtype>`, `control_response/{success,error}`, `active_goal`
+  and `autocompact_state`. The two frames are found even when the control union
+  is not, from the definition nearest the SDK output union.
+- The `allow_tool_with_destination` example uses `LocalSettings`, one of the
+  CLI's destinations, instead of `Project`, which the CLI does not have.
+
+### Fixed
+
+- `permission_suggestions: null`, which the CLI sends on an `ExitPlanMode` ask,
+  no longer fails the whole `can_use_tool` frame.
+- A suggested rule without `ruleContent` now parses and round-trips, and
+  `Permission::from_suggestion` keeps it as `rule_content: None`, where it used
+  to drop it silently. Such a rule allows the whole tool, and so does
+  `allow_and_remember_suggestion` on it: check what a suggestion grants before
+  passing it on.
+- `addDirectories` and `removeDirectories` suggestions keep their directories
+  through a typed round trip and `Permission::from_suggestion`.
+- A `result` missing `total_cost_usd`, an `assistant` message missing `id` or
+  `model`, and a `thinking` block missing `signature` now parse, with `0.0` or an
+  empty string, instead of failing the frame.
+
 ## [2.1.331] - 2026-11-20
 
 Tested against Claude CLI **2.1.330**. Models the 2.1.329 → 2.1.330

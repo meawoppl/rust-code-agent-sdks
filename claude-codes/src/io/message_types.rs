@@ -7036,11 +7036,16 @@ impl<'de> Deserialize<'de> for ApiErrorRemedy {
 /// Nested message content for assistant messages
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssistantMessageContent {
+    /// The API message id. Empty when the frame omits it, so that the content
+    /// is not lost with the frame.
+    #[serde(default)]
     pub id: String,
     /// The Anthropic API message type — always `"message"`.
     #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
     pub message_type: Option<String>,
     pub role: MessageRole,
+    /// The model that answered. Empty when the frame omits it.
+    #[serde(default)]
     pub model: String,
     pub content: Vec<ContentBlock>,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -177,6 +177,43 @@ impl ClaudeInput {
         })
     }
 
+    /// Create a `set_permission_mode` control request.
+    pub fn set_permission_mode(
+        request_id: impl Into<String>,
+        mode: super::PermissionModeName,
+    ) -> Self {
+        Self::control_request(
+            request_id,
+            super::ControlRequestPayload::SetPermissionMode(super::SetPermissionModeRequest {
+                mode,
+            }),
+        )
+    }
+
+    /// Create a `set_model` control request. `None` resets to the session's
+    /// default model.
+    pub fn set_model(request_id: impl Into<String>, model: Option<String>) -> Self {
+        Self::control_request(
+            request_id,
+            super::ControlRequestPayload::SetModel(super::SetModelRequest { model }),
+        )
+    }
+
+    /// Create a `get_settings` control request.
+    pub fn get_settings(request_id: impl Into<String>) -> Self {
+        Self::control_request(request_id, super::ControlRequestPayload::GetSettings)
+    }
+
+    fn control_request(
+        request_id: impl Into<String>,
+        request: super::ControlRequestPayload,
+    ) -> Self {
+        ClaudeInput::ControlRequest(ControlRequest {
+            request_id: request_id.into(),
+            request,
+        })
+    }
+
     /// Create a user message with an image and optional text
     /// Only supports JPEG, PNG, GIF, and WebP media types
     pub fn user_message_with_image(

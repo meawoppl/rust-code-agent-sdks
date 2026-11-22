@@ -333,6 +333,8 @@ pub struct ImageSource {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThinkingBlock {
     pub thinking: String,
+    /// Opaque signature. Empty when the frame omits it.
+    #[serde(default)]
     pub signature: String,
 }
 

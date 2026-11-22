@@ -623,6 +623,9 @@ pub struct ResultMessage {
 
     #[serde(alias = "sessionId")]
     pub session_id: String,
+    /// Cost of the session so far. `0.0` when the frame omits it, so that a
+    /// missing figure cannot cost a host the result that ends its turn.
+    #[serde(default)]
     pub total_cost_usd: f64,
 
     #[serde(skip_serializing_if = "Option::is_none")]
