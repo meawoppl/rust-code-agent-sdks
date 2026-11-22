@@ -15,7 +15,9 @@ The minified schema *variable* names churn every CLI release, so we key on the
 stable parts only:
 
   - the set of wire **labels** — a message's `type` literal, or `type/subtype`
-    for `system` frames, and
+    for `system` frames, `control_request/<subtype>` for each member of the
+    control-request union, `control_response/success` and `/error`, and the
+    top-level frames the output union omits (`active_goal`, `autocompact_state`), and
   - each labeled schema's **top-level field keys** (the object keys are real
     wire names; nested objects and `.describe()` prose are ignored).
 
@@ -143,6 +145,9 @@ def top_level_keys(body: str, opener: str) -> list[str]:
     return keys
 
 
+_OPENER = re.compile(r"[A-Za-z_$][\w$.]*\(\{(?=subtype:|type:)")
+
+
 def build_fingerprint(data: bytes) -> tuple[int, dict[str, list[str]]]:
     """`(union_member_count, {label: sorted top-level keys})` for labeled schemas."""
     extraction = extract_schemas(data)
@@ -153,6 +158,12 @@ def build_fingerprint(data: bytes) -> tuple[int, dict[str, list[str]]]:
             continue
         keys = sorted(set(top_level_keys(body, extraction.object_open)))
         # First definition wins on the rare label collision; keep it deterministic.
+        labeled.setdefault(label, keys)
+    for _name, label, body in extraction.out_of_union:
+        # Some control schemas use a loose object combinator rather than the
+        # one the anchor discovered, so read each schema's own opener.
+        opener = _OPENER.search(body)
+        keys = sorted(set(top_level_keys(body, opener.group(0)))) if opener else []
         labeled.setdefault(label, keys)
     return members, labeled
 

@@ -17,8 +17,16 @@ use crate::tool_inputs::AskUserQuestionInput;
 pub enum PermissionType {
     /// Add fine-grained rules for specific tools.
     AddRules,
+    /// Replace the rules at a destination.
+    ReplaceRules,
+    /// Remove rules from a destination.
+    RemoveRules,
     /// Set a broad permission mode (e.g., accept all edits).
     SetMode,
+    /// Add working directories.
+    AddDirectories,
+    /// Remove working directories.
+    RemoveDirectories,
     /// A type not yet known to this version of the crate.
     Unknown(String),
 }
@@ -27,7 +35,11 @@ impl PermissionType {
     pub fn as_str(&self) -> &str {
         match self {
             Self::AddRules => "addRules",
+            Self::ReplaceRules => "replaceRules",
+            Self::RemoveRules => "removeRules",
             Self::SetMode => "setMode",
+            Self::AddDirectories => "addDirectories",
+            Self::RemoveDirectories => "removeDirectories",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -43,7 +55,11 @@ impl From<&str> for PermissionType {
     fn from(s: &str) -> Self {
         match s {
             "addRules" => Self::AddRules,
+            "replaceRules" => Self::ReplaceRules,
+            "removeRules" => Self::RemoveRules,
             "setMode" => Self::SetMode,
+            "addDirectories" => Self::AddDirectories,
+            "removeDirectories" => Self::RemoveDirectories,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -68,7 +84,19 @@ pub enum PermissionDestination {
     /// Applies only to the current session.
     Session,
     /// Persists across sessions for the project.
+    ///
+    /// The CLI's own destinations do not include `project`; this spelling is
+    /// kept for existing callers. Use [`Self::ProjectSettings`] for the
+    /// project's settings file.
     Project,
+    /// The user's settings file.
+    UserSettings,
+    /// The project's shared settings file.
+    ProjectSettings,
+    /// The project's local settings file, which is not checked in.
+    LocalSettings,
+    /// The command-line layer of the current process.
+    CliArg,
     /// A destination not yet known to this version of the crate.
     Unknown(String),
 }
@@ -78,6 +106,10 @@ impl PermissionDestination {
         match self {
             Self::Session => "session",
             Self::Project => "project",
+            Self::UserSettings => "userSettings",
+            Self::ProjectSettings => "projectSettings",
+            Self::LocalSettings => "localSettings",
+            Self::CliArg => "cliArg",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -94,6 +126,10 @@ impl From<&str> for PermissionDestination {
         match s {
             "session" => Self::Session,
             "project" => Self::Project,
+            "userSettings" => Self::UserSettings,
+            "projectSettings" => Self::ProjectSettings,
+            "localSettings" => Self::LocalSettings,
+            "cliArg" => Self::CliArg,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -119,6 +155,8 @@ pub enum PermissionBehavior {
     Allow,
     /// Deny the tool action.
     Deny,
+    /// Ask before the tool action.
+    Ask,
     /// A behavior not yet known to this version of the crate.
     Unknown(String),
 }
@@ -128,6 +166,7 @@ impl PermissionBehavior {
         match self {
             Self::Allow => "allow",
             Self::Deny => "deny",
+            Self::Ask => "ask",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -144,6 +183,7 @@ impl From<&str> for PermissionBehavior {
         match s {
             "allow" => Self::Allow,
             "deny" => Self::Deny,
+            "ask" => Self::Ask,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -165,10 +205,18 @@ impl<'de> Deserialize<'de> for PermissionBehavior {
 /// Named permission modes that can be set via `setMode`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PermissionModeName {
+    /// Standard behavior: prompt for dangerous operations.
+    Default,
     /// Accept all file edits without prompting.
     AcceptEdits,
     /// Bypass all permission checks.
     BypassPermissions,
+    /// Planning mode: no tool execution with an effect.
+    Plan,
+    /// Deny instead of prompting.
+    DontAsk,
+    /// Let the classifier decide.
+    Auto,
     /// A mode not yet known to this version of the crate.
     Unknown(String),
 }
@@ -176,8 +224,12 @@ pub enum PermissionModeName {
 impl PermissionModeName {
     pub fn as_str(&self) -> &str {
         match self {
+            Self::Default => "default",
             Self::AcceptEdits => "acceptEdits",
             Self::BypassPermissions => "bypassPermissions",
+            Self::Plan => "plan",
+            Self::DontAsk => "dontAsk",
+            Self::Auto => "auto",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -192,8 +244,12 @@ impl fmt::Display for PermissionModeName {
 impl From<&str> for PermissionModeName {
     fn from(s: &str) -> Self {
         match s {
+            "default" => Self::Default,
             "acceptEdits" => Self::AcceptEdits,
             "bypassPermissions" => Self::BypassPermissions,
+            "plan" => Self::Plan,
+            "dontAsk" => Self::DontAsk,
+            "auto" => Self::Auto,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -262,7 +318,18 @@ pub enum ControlRequestPayload {
     Interrupt,
     /// Merge settings into the live session's flag-settings layer (sent by
     /// SDK to CLI), e.g. to change effort mid-session.
+    ///
+    /// **An invalid value is answered with success and silently ignored**, so
+    /// confirm a change with [`Self::GetSettings`].
     ApplyFlagSettings(ApplyFlagSettingsRequest),
+    /// Set the permission mode (SDK to CLI). A change is followed by a
+    /// `system/status` frame carrying `permissionMode`.
+    SetPermissionMode(SetPermissionModeRequest),
+    /// Switch the session's model (SDK to CLI), with no respawn.
+    SetModel(SetModelRequest),
+    /// Read back the settings in effect (SDK to CLI). Parse the answer with
+    /// [`ControlResponse::get_settings_response`].
+    GetSettings,
 }
 
 /// Body of an `apply_flag_settings` control request.
@@ -343,6 +410,87 @@ impl ApplyFlagSettingsRequest {
     }
 }
 
+/// `set_permission_mode` request.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SetPermissionModeRequest {
+    /// The mode to set, in the CLI's names: `default`, not the flag's `manual`.
+    pub mode: PermissionModeName,
+}
+
+/// `set_model` request.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SetModelRequest {
+    /// Model to switch to. Absent, or `default`, resets to the session's
+    /// default model. A refusal's `error_code` is `not_found` when the API
+    /// serves no such model, or `catalog_unknown` when the name is not shaped
+    /// like a model id, among others.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+}
+
+/// Success payload answering `set_permission_mode`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct SetPermissionModeResponse {
+    /// The mode now in effect. Headless CLIs echo it; other hosts may
+    /// acknowledge with an empty object.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mode: Option<PermissionModeName>,
+}
+
+/// Success payload answering `get_settings`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GetSettingsResponse {
+    /// The settings in effect, merged across sources. A valid effort level can
+    /// be absent here, so confirm an effort change with [`Self::applied`].
+    #[serde(default)]
+    pub effective: HashMap<String, Value>,
+    /// The raw settings of each source, ordered low to high priority.
+    #[serde(default)]
+    pub sources: Vec<SettingsSource>,
+    /// What the session is actually using. Defaults to empty when the answer
+    /// omits it, so `effective` and `sources` are still readable.
+    #[serde(default)]
+    pub applied: AppliedSettings,
+}
+
+/// One source's settings in a [`GetSettingsResponse`].
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SettingsSource {
+    /// `userSettings`, `projectSettings`, `localSettings`, `flagSettings` or
+    /// `policySettings`.
+    pub source: String,
+    /// That source's settings.
+    #[serde(default)]
+    pub settings: HashMap<String, Value>,
+}
+
+/// The `applied` part of a [`GetSettingsResponse`]: the only proof that an
+/// `apply_flag_settings` effort change landed.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AppliedSettings {
+    /// The resolved model id. Optional here so that a host's read-back survives
+    /// an answer without it, though the CLI's schema requires it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    /// The model-effective effort level. `None` on a model without effort,
+    /// whatever the settings say.
+    #[serde(default)]
+    pub effort: Option<String>,
+    /// The advisor model attached to API requests, if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub advisor: Option<String>,
+    /// Whether ultracode is active.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ultracode: Option<bool>,
+    /// Whether ultracode is requested, whether or not it can take effect.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ultracode_requested: Option<bool>,
+    /// Whether ultracode can be turned on for the session.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ultracode_available: Option<bool>,
+}
+
 /// A permission to grant for "remember this decision" functionality.
 ///
 /// When responding to a tool permission request, you can include permissions
@@ -375,6 +523,9 @@ pub struct Permission {
     /// The rules to add (for addRules type)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rules: Option<Vec<PermissionRule>>,
+    /// The directories (for addDirectories and removeDirectories types)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub directories: Option<Vec<String>>,
 }
 
 /// A rule within a permission grant.
@@ -383,9 +534,15 @@ pub struct PermissionRule {
     /// The name of the tool this rule applies to
     #[serde(rename = "toolName")]
     pub tool_name: String,
-    /// The rule content (glob pattern or command pattern)
-    #[serde(rename = "ruleContent")]
-    pub rule_content: String,
+    /// The rule content (glob pattern or command pattern). `None` is a rule
+    /// covering the **whole tool**, which the wire spells by omitting the
+    /// field. An empty string is sent as `""`, never as a whole-tool rule.
+    #[serde(
+        rename = "ruleContent",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub rule_content: Option<String>,
 }
 
 impl Permission {
@@ -409,8 +566,9 @@ impl Permission {
             behavior: Some(PermissionBehavior::Allow),
             rules: Some(vec![PermissionRule {
                 tool_name: tool_name.into(),
-                rule_content: rule_content.into(),
+                rule_content: Some(rule_content.into()),
             }]),
+            directories: None,
         }
     }
 
@@ -420,8 +578,8 @@ impl Permission {
     /// ```
     /// use claude_codes::{Permission, PermissionDestination};
     ///
-    /// // Allow for the entire project, not just session
-    /// let perm = Permission::allow_tool_with_destination("Bash", "npm test", PermissionDestination::Project);
+    /// // Allow in the project's local settings, not just the session
+    /// let perm = Permission::allow_tool_with_destination("Bash", "npm test", PermissionDestination::LocalSettings);
     /// ```
     pub fn allow_tool_with_destination(
         tool_name: impl Into<String>,
@@ -435,8 +593,9 @@ impl Permission {
             behavior: Some(PermissionBehavior::Allow),
             rules: Some(vec![PermissionRule {
                 tool_name: tool_name.into(),
-                rule_content: rule_content.into(),
+                rule_content: Some(rule_content.into()),
             }]),
+            directories: None,
         }
     }
 
@@ -456,12 +615,17 @@ impl Permission {
             mode: Some(mode),
             behavior: None,
             rules: None,
+            directories: None,
         }
     }
 
     /// Create a permission from a PermissionSuggestion.
     ///
     /// This is useful when you want to grant a permission that Claude suggested.
+    ///
+    /// The permission grants exactly what was suggested. A suggested rule with
+    /// no `ruleContent` keeps `rule_content: None` and **allows the whole
+    /// tool**; check the rules before granting if that is not wanted.
     ///
     /// # Example
     /// ```
@@ -474,6 +638,7 @@ impl Permission {
     ///     mode: Some(PermissionModeName::AcceptEdits),
     ///     behavior: None,
     ///     rules: None,
+    ///     directories: None,
     /// };
     /// let perm = Permission::from_suggestion(&suggestion);
     /// ```
@@ -489,11 +654,16 @@ impl Permission {
                     .filter_map(|v| {
                         Some(PermissionRule {
                             tool_name: v.get("toolName")?.as_str()?.to_string(),
-                            rule_content: v.get("ruleContent")?.as_str()?.to_string(),
+                            // A rule without content covers the whole tool.
+                            rule_content: v
+                                .get("ruleContent")
+                                .and_then(Value::as_str)
+                                .map(str::to_string),
                         })
                     })
                     .collect()
             }),
+            directories: suggestion.directories.clone(),
         }
     }
 }
@@ -524,6 +694,19 @@ pub struct PermissionSuggestion {
     /// The rules to add (for addRules type)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rules: Option<Vec<Value>>,
+    /// The directories (for addDirectories and removeDirectories types)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub directories: Option<Vec<String>>,
+}
+
+/// Treat an explicit `null` like an absent field. The CLI sends
+/// `permission_suggestions: null` on an `ExitPlanMode` ask.
+fn null_as_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Default + Deserialize<'de>,
+{
+    Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
 }
 
 /// Tool permission request details
@@ -551,14 +734,14 @@ pub struct PermissionSuggestion {
 ///     req.allow(request_id)
 /// }
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ToolPermissionRequest {
     /// Name of the tool Claude wants to use (e.g., "Bash", "Write", "Read")
     pub tool_name: String,
     /// Input parameters for the tool
     pub input: Value,
     /// Suggested permissions that could be granted to avoid repeated prompts
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     pub permission_suggestions: Vec<PermissionSuggestion>,
     /// Path that was blocked (if this is a retry after path-based denial)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -566,9 +749,30 @@ pub struct ToolPermissionRequest {
     /// Reason why this tool use requires approval
     #[serde(skip_serializing_if = "Option::is_none")]
     pub decision_reason: Option<String>,
+    /// Structured reason the ask escalated, such as `rule` or `safetyCheck`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decision_reason_type: Option<String>,
     /// The tool use ID for this request
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_use_id: Option<String>,
+    /// The sub-agent asking, as its task id. Absent for the primary agent. An
+    /// ask carries no `parent_tool_use_id`, so this is how it is routed, and
+    /// it can arrive before the frame carrying its `tool_use` block.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
+    /// Title the CLI suggests for the prompt.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// Short display name for the tool.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    /// Description of the action being asked about.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// True when one-tap approve or deny must not be offered, because the
+    /// tool's approval card is its user interaction.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requires_user_interaction: Option<bool>,
 }
 
 impl ToolPermissionRequest {
@@ -585,6 +789,7 @@ impl ToolPermissionRequest {
     ///     blocked_path: None,
     ///     decision_reason: None,
     ///     tool_use_id: None,
+    ///     ..Default::default()
     /// };
     /// let response = req.allow("req-123");
     /// ```
@@ -608,6 +813,7 @@ impl ToolPermissionRequest {
     ///     blocked_path: None,
     ///     decision_reason: None,
     ///     tool_use_id: None,
+    ///     ..Default::default()
     /// };
     /// // Redirect to safe location
     /// let safe_input = json!({"file_path": "/tmp/safe/passwd", "content": "test"});
@@ -649,6 +855,7 @@ impl ToolPermissionRequest {
     ///     blocked_path: None,
     ///     decision_reason: None,
     ///     tool_use_id: None,
+    ///     ..Default::default()
     /// };
     ///
     /// // Allow and remember this decision for the session
@@ -688,6 +895,9 @@ impl ToolPermissionRequest {
     /// This is a convenience method for the common case of accepting Claude's
     /// first suggested permission (usually the most relevant one).
     ///
+    /// The suggestion is granted as is, through [`Permission::from_suggestion`]:
+    /// a suggested rule without `ruleContent` allows the whole tool.
+    ///
     /// Returns `None` if there are no permission suggestions.
     ///
     /// # Example
@@ -702,6 +912,7 @@ impl ToolPermissionRequest {
     ///     blocked_path: None,
     ///     decision_reason: None,
     ///     tool_use_id: None,
+    ///     ..Default::default()
     /// };
     ///
     /// // Try to allow with first suggestion, or just allow without remembering
@@ -730,6 +941,7 @@ impl ToolPermissionRequest {
     ///     blocked_path: None,
     ///     decision_reason: None,
     ///     tool_use_id: None,
+    ///     ..Default::default()
     /// };
     /// let response = req.deny("Dangerous command blocked by policy", "req-123");
     /// ```
@@ -1016,12 +1228,38 @@ impl ControlResponse {
             response: ControlResponsePayload::Error {
                 request_id: request_id.to_string(),
                 error: error_message.into(),
+                error_code: None,
             },
         }
     }
 
     /// Parse a successful response payload as the CLI `get_usage` response.
     pub fn get_usage_response(&self) -> Option<Result<GetUsageResponse, serde_json::Error>> {
+        self.success_payload()
+    }
+
+    /// Parse a successful response payload as the CLI `get_settings` response.
+    pub fn get_settings_response(&self) -> Option<Result<GetSettingsResponse, serde_json::Error>> {
+        self.success_payload()
+    }
+
+    /// Parse a successful response payload as the CLI `set_permission_mode`
+    /// response. A success with no payload is an acknowledgement with no echo
+    /// (`mode: None`); `None` means the response is an error.
+    pub fn set_permission_mode_response(
+        &self,
+    ) -> Option<Result<SetPermissionModeResponse, serde_json::Error>> {
+        match &self.response {
+            ControlResponsePayload::Success { response: None, .. } => {
+                Some(Ok(SetPermissionModeResponse::default()))
+            }
+            _ => self.success_payload(),
+        }
+    }
+
+    fn success_payload<T: serde::de::DeserializeOwned>(
+        &self,
+    ) -> Option<Result<T, serde_json::Error>> {
         match &self.response {
             ControlResponsePayload::Success {
                 response: Some(value),
@@ -1044,6 +1282,11 @@ pub enum ControlResponsePayload {
     Error {
         request_id: String,
         error: String,
+        /// Machine-readable reason, such as `not_found`, `invalid_mode` or
+        /// `bypass_not_launched`. An open set the CLI marks internal, so it
+        /// stays a string. Absent on many errors.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        error_code: Option<String>,
     },
 }
 
@@ -1294,6 +1537,7 @@ mod tests {
             blocked_path: None,
             decision_reason: None,
             tool_use_id: None,
+            ..Default::default()
         };
 
         let response = req.allow("req-123");
@@ -1316,6 +1560,7 @@ mod tests {
             blocked_path: None,
             decision_reason: None,
             tool_use_id: None,
+            ..Default::default()
         };
 
         let modified_input = serde_json::json!({
@@ -1339,6 +1584,7 @@ mod tests {
             blocked_path: None,
             decision_reason: None,
             tool_use_id: None,
+            ..Default::default()
         };
 
         let response = req.deny("Dangerous command blocked", "req-789");
@@ -1359,6 +1605,7 @@ mod tests {
             blocked_path: None,
             decision_reason: None,
             tool_use_id: None,
+            ..Default::default()
         };
 
         let response = req.deny_and_stop("Security violation", "req-000");
@@ -1620,6 +1867,7 @@ mod tests {
             mode: Some(PermissionModeName::AcceptEdits),
             behavior: None,
             rules: None,
+            directories: None,
         };
 
         let json = serde_json::to_string(&suggestion).unwrap();
@@ -1644,6 +1892,7 @@ mod tests {
                 "toolName": "Read",
                 "ruleContent": "//tmp/**"
             })]),
+            directories: None,
         };
 
         let json = serde_json::to_string(&suggestion).unwrap();
@@ -1682,7 +1931,7 @@ mod tests {
         let rules = perm.rules.unwrap();
         assert_eq!(rules.len(), 1);
         assert_eq!(rules[0].tool_name, "Bash");
-        assert_eq!(rules[0].rule_content, "npm test");
+        assert_eq!(rules[0].rule_content.as_deref(), Some("npm test"));
     }
 
     #[test]
@@ -1699,7 +1948,7 @@ mod tests {
 
         let rules = perm.rules.unwrap();
         assert_eq!(rules[0].tool_name, "Read");
-        assert_eq!(rules[0].rule_content, "/tmp/**");
+        assert_eq!(rules[0].rule_content.as_deref(), Some("/tmp/**"));
     }
 
     #[test]
@@ -1736,6 +1985,7 @@ mod tests {
             mode: Some(PermissionModeName::AcceptEdits),
             behavior: None,
             rules: None,
+            directories: None,
         };
 
         let perm = Permission::from_suggestion(&suggestion);
@@ -1756,6 +2006,7 @@ mod tests {
                 "toolName": "Read",
                 "ruleContent": "/tmp/**"
             })]),
+            directories: None,
         };
 
         let perm = Permission::from_suggestion(&suggestion);
@@ -1766,7 +2017,7 @@ mod tests {
         let rules = perm.rules.unwrap();
         assert_eq!(rules.len(), 1);
         assert_eq!(rules[0].tool_name, "Read");
-        assert_eq!(rules[0].rule_content, "/tmp/**");
+        assert_eq!(rules[0].rule_content.as_deref(), Some("/tmp/**"));
     }
 
     #[test]
@@ -1791,6 +2042,7 @@ mod tests {
             blocked_path: None,
             decision_reason: None,
             tool_use_id: None,
+            ..Default::default()
         };
 
         let response =
@@ -1815,10 +2067,12 @@ mod tests {
                 mode: Some(PermissionModeName::AcceptEdits),
                 behavior: None,
                 rules: None,
+                directories: None,
             }],
             blocked_path: None,
             decision_reason: None,
             tool_use_id: None,
+            ..Default::default()
         };
 
         let response = req.allow_and_remember_suggestion("req-123");
@@ -1840,6 +2094,7 @@ mod tests {
             blocked_path: None,
             decision_reason: None,
             tool_use_id: None,
+            ..Default::default()
         };
 
         let response = req.allow_and_remember_suggestion("req-123");
@@ -1875,6 +2130,7 @@ mod tests {
             blocked_path: None,
             decision_reason: None,
             tool_use_id: None,
+            ..Default::default()
         }
     }
 
@@ -1958,6 +2214,7 @@ mod tests {
             blocked_path: None,
             decision_reason: None,
             tool_use_id: None,
+            ..Default::default()
         };
 
         let answers = HashMap::new();

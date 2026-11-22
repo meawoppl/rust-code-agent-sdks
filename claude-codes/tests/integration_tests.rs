@@ -1826,6 +1826,7 @@ fn test_permission_struct_integration() {
         mode: Some(PermissionModeName::AcceptEdits),
         behavior: None,
         rules: None,
+        directories: None,
     };
     let from_suggestion = Permission::from_suggestion(&suggestion);
     assert_eq!(from_suggestion.permission_type, PermissionType::SetMode);

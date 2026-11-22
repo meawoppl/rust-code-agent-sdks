@@ -64,6 +64,15 @@ the bytes around it, rebuilds its patterns from the discovered aliases, finds
 the union that references the anchor, and dumps every member schema plus
 transitive references, each labeled with its resolved `type`/`subtype`.
 
+It then adds what the output union omits: each member of the control-request
+union (the largest union naming both `can_use_tool` and `interrupt`), labeled
+`control_request/<subtype>`; `control_response/success` and `/error`; and the
+top-level `active_goal` and `autocompact_state` frames. If every `control_*`
+label shows as removed in a drift report, the control union was not found: the
+bundle layout changed, not the protocol. Most control labels are not modeled by
+`ControlRequestPayload`, so a change to one is only actionable if the crate
+types that subtype or a host needs it.
+
 If the script fails to find the anchor or union, the bundle layout changed
 more fundamentally than an alias rename; fall back to manual spelunking
 (below) and update the script.

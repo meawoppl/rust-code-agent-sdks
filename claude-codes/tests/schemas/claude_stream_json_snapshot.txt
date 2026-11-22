@@ -5,10 +5,120 @@
 # see the header of check_claude_schema_drift.py for the comparison contract.
 # union_members: 68
 
+active_goal: session_id, type, uuid, value
 assistant: aborted, advisor_model, agent_id, api_error, api_error_code, api_error_origin, api_error_params, api_error_status, api_error_type, attribution_agent, attribution_mcp_server, attribution_mcp_tool, attribution_plugin, attribution_skill, batch_tool_uses, context_usage, error, error_details, historical, is_api_error_message, is_meta, is_virtual, local_command_outcome, local_command_run, local_command_source, message, narration_block_indexes, narration_hint, parent_tool_use_id, refused_message_id, request_id, resume_reason, resumed_from_incomplete_thinking, session_id, subagent_type, supersedes, task_description, thinking_display, thinking_duration_ms, timestamp, tool_use_meta, type, usage_report, user_message_uuid, user_message_uuids, uuid, wire_ingest_context, wire_tool_inputs
 auth_status: error, isAuthenticating, output, session_id, type, uuid
+autocompact_state: session_id, type, uuid, value
 command_lifecycle: command_uuid, ran_ahead, scheduled_for, session_id, state, type, uuid, wakeup_source
 content: content, type
+control_request/apply_flag_settings: settings, subtype
+control_request/background_tasks: subtype, tool_use_id
+control_request/can_use_tool: agent_id, auto_modes_check_raised, blocked_path, classifier_approvable, computer_folder, decision_reason, decision_reason_code, decision_reason_hook_event, decision_reason_hook_plugin_id, decision_reason_hook_source, decision_reason_rule_source, decision_reason_type, default_to_no, description, display_name, input, matched_ask_rule, mcp_server, mcp_skill, permission_suggestions, plugin, provenance_prompt_line, requires_user_interaction, rule_usually_offered, server_policy_ask_only, server_prompt, subtype, suppress_always_allow_rule, title, tool_kind, tool_name, tool_use_id
+control_request/cancel_async_message: message_uuid, subtype
+control_request/claim_session: additional_directories, agents, append_system_prompt, cwd, env, include_initialize, permission_mode, sdk_mcp_servers, subtype, system_prompt, title, workspace_trust
+control_request/comparison_fork: comparison_id, fork_mode, subtype, turn_event_uuid
+control_request/dictate: language, op, pcm, subtype
+control_request/elicitation: description, display_name, elicitation_id, mcp_server_name, message, mode, property_order, requested_schema, subtype, title, url
+control_request/export_conversation: subtype
+control_request/file_suggestions: query, subtype
+control_request/get_binary_version: subtype
+control_request/get_chrome_browsers: subtype
+control_request/get_chrome_dialog: subtype
+control_request/get_cloud_session: session_id, subtype
+control_request/get_cloud_session_transcript: agent_id, cursor, limit, session_id, subtype
+control_request/get_context_usage: detail, subtype
+control_request/get_hooks_listing: subtype
+control_request/get_memory_dialog: subtype
+control_request/get_plan: subtype
+control_request/get_sandbox_dialog: subtype
+control_request/get_session_cost: subtype
+control_request/get_settings: subtype
+control_request/get_skills_dialog: subtype
+control_request/get_status: subtype
+control_request/get_task_output: after, before, follow, liveReply, subtype, task_id
+control_request/get_usage: detached, skip_behaviors, subtype
+control_request/get_workspace_diff: subtype
+control_request/hook_callback: callback_id, deadline_ms, input, issued_at, subtype, tool_use_id
+control_request/host_auth_token_refresh: status, subtype, token_state
+control_request/initialize: agentProgressSummaries, agents, appendSubagentSystemPrompt, appendSystemPrompt, attachServeRequest, cloudEchoBeforeInit, cloudStatusBeforeInit, codeRunningMcpTools, disallowedTools, excludeDynamicSections, forwardNestedSubagentToolCalls, forwardSubagentText, hooks, jsonSchema, keepsBypassHeld, managedSettings, mcpServers, offersBypassSwitchBack, perTaskStopAffordance, planModeInstructions, plugins, promptSuggestions, rapidFollowupPreempt, rendersChromeSetupOffer, sdkMcpServerConfigs, sdkMcpServerManifests, sdkMcpServerManifestsOrigin, sdkMcpServers, settings, skills, subtype, supportedDialogKinds, systemPrompt, systemPromptSnapshot, title, toolAliases, webSearchIsolationExemptMcpServers, workspaceTrust
+control_request/interrupt: cancel_queued, for_user_message_uuids, message_uuid, reason, send_now, spare_background_tasks, subtype, worker_epoch
+control_request/list_cloud_sessions: cursor, only_archived, only_runs, subtype, user_initiated
+control_request/list_directory: path, subtype
+control_request/list_models: subtype
+control_request/list_permission_rules: subtype
+control_request/log_host_events: events, host, subtype
+control_request/mcp_call: arguments, check_permissions, expires_at, input_files, output_files, result_not_for_model, subtype, timeout_ms, tool
+control_request/mcp_message: message, server_name, subtype
+control_request/mcp_read_resource: serverName, subtype, uri
+control_request/mcp_reconnect: serverName, subtype
+control_request/mcp_set_servers: denied_tools, hint, servers, subtype
+control_request/mcp_status: liveReply, subtype
+control_request/mcp_toggle: enabled, serverName, subtype
+control_request/message_rated: cleared, messageUuid, sentiment, subtype, surface
+control_request/oauth_token_refresh: kind, refused_bearer_sha256, refused_call, subtype, token_state
+control_request/prompt_draft_activity: subtype
+control_request/read_file: anchor, encoding, for_upload, liveReply, max_bytes, offset, path, subtype
+control_request/register_device_hooks: display_name, held, hooks, instance_id, lease_s, subtype, templates, worker_epoch
+control_request/register_repo_root: directory, reload_claude_md, reload_plugins, reload_skills, subtype
+control_request/reload_connectors: subtype
+control_request/reload_output_styles: subtype
+control_request/reload_plugins: add_plugins, hold_on_cache_impact, refuse_if_busy, subtype
+control_request/reload_skills: subtype
+control_request/remote_control_work_secret: session_id, subtype
+control_request/remote_plumbing_call: args, deadline_ms, host, instance_id, issued_at, name, subtype
+control_request/remote_tool_call: deadline_ms, envelope, host, input, instance_id, issued_at, name, subtype, tool_use_id
+control_request/remote_tools_announce: host, instance_id, passthrough, plumbing, subtype, tools, worker_epoch
+control_request/remote_tools_probe: deadline_ms, instance_id, issued_at, subtype
+control_request/remote_tools_reannounce: deadline_ms, subtype, worker_epoch
+control_request/rename_session: names_chrome_tab_group, session_id, source, subtype, title
+control_request/request_user_dialog: dialog_kind, payload, subtype, tool_use_id
+control_request/rewind_files: dry_run, subtype, user_message_id
+control_request/seed_read_state: mtime, path, subtype
+control_request/select_chrome_browser: device_id, subtype
+control_request/set_chrome_browser_hints: hostPlatform, localDeviceIds, preferredDeviceId, subtype
+control_request/set_color: color, subtype
+control_request/set_cwd: path, subtype, trust_accepted, trusted_directory
+control_request/set_has_subscribers: has_subscribers, subtype
+control_request/set_max_thinking_tokens: max_thinking_tokens, subtype, thinking_display
+control_request/set_mcp_permission_mode_override: askForTools, mode, serverName, subtype
+control_request/set_message_waiting: subtype, waiting
+control_request/set_model: model, only_if_model_is_current, subtype, system_prompt
+control_request/set_permission_mode: answers_bypass_switch_back, from_settings, mode, subtype, ultraplan
+control_request/set_prompt_suggestions_paused: paused, subtype
+control_request/start_shell_task: args, command, cwd, description, env, subtype, timeout_ms
+control_request/stop_task: subtype, task_id
+control_request/submit_feedback: area, attach_transcript, description, draft_id, save_locally, subtype, surface, title, type
+control_request/submit_survey_feedback: appearance_id, description, subtype, surface, survey_response, survey_type
+control_request/turn_handoff: file_names, memory_context, message_client_platform, messages, relay_marker, requires_rewind_request_id, stopped, subtype, tool_use_ids
+control_request/ui_attach: answers, client_id, draws, later_answers, subtype, surface, viewport
+control_request/ui_client_fault: phase, reason, subtype
+control_request/ui_client_module: plugin, subtype
+control_request/ui_client_press: element, event, subtype
+control_request/ui_close: client_id, id, subtype
+control_request/ui_copy: answers_press, client_id, plugin, subtype, surface, text
+control_request/ui_detach: client_id, subtype
+control_request/ui_focus: by, client_id, component, element, instance_id, is_held, subtype, surface
+control_request/ui_input: client_id, component, handle, instance_id, key, kind, plugin, subtype, surface, value
+control_request/ui_message: client_id, data, subtype, surface
+control_request/ui_pane_focus: client_id, id, subtype, surface
+control_request/ui_pane_show: client_id, id, subtype, surface
+control_request/ui_panes: client_id, subtype
+control_request/ui_press: client_id, handle, href, key, plugin, press_id, render, subtype, surface
+control_request/ui_prompt_autocomplete: client_id, cursor, subtype, surface, text
+control_request/ui_prompt_edit: by, client_id, cursor, key, subtype, surface, text
+control_request/ui_prompt_fill: answers_press, client_id, cursor, decorations, mode, subtype, surface, text
+control_request/ui_prompt_paint: client_id, decorations, layer, subtype, surface, text
+control_request/ui_prompt_read: client_id, subtype, surface
+control_request/ui_prompt_suggest: client_id, subtype, surface, text
+control_request/ui_read_selection: client_id, subtype, surface
+control_request/ui_render: bench, client_id, component, content_rows, instance_id, keyed, liveReply, on_screen, props, subtype, surface, viewport
+control_request/ui_scroll: body_rows, by, client_id, component, content_rows, instance_id, keyed, offset, pointer, subtype, surface
+control_request/ui_select: client_id, component, handle, instance_id, key, plugin, subtype, surface, value
+control_request/update_cloud_session: action, at, cause, session_id, subtype, title
+control_request/update_settings: settings, source, subtype
+control_request/upload_device_hook_template: content_base64, digest, subtype, template, worker_epoch
+control_response/error: error, error_code, model, pending_elicitation_requests, pending_permission_requests, pending_user_dialog_requests, request_id, subtype
+control_response/success: pending_elicitation_requests, pending_permission_requests, pending_user_dialog_requests, request_id, response, subtype
 conversation_reset: new_conversation_id, session_id, timestamp, trigger, type, user_message_from_human, user_message_uuid, uuid
 document: cache_control, citations, context, source, title, type
 ephemeral: text, toolUseId, warning

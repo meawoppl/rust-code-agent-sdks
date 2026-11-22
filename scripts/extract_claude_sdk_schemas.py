@@ -158,6 +158,10 @@ class Extraction(NamedTuple):
     # match the `ref()` shape, not schemas. Reported for transparency; they
     # carry no wire fields.
     unresolved: list[str]
+    # Schemas outside the SDK output union, as (minified_name, label, body_text):
+    # the control channel and the top-level frames the union omits. See
+    # [`extract_out_of_union`].
+    out_of_union: list[tuple[str, str, str]]
 
 
 class SchemaExtractionError(RuntimeError):
@@ -247,6 +251,102 @@ def label_of(body: str, literal: str) -> str:
     return "(nested)"
 
 
+# Top-level frames the CLI writes to stdout that the SDK output union omits.
+# Their literals are stable wire names; `ClaudeOutput` has no variant for them.
+OUT_OF_UNION_FRAMES = ("active_goal", "autocompact_state")
+
+
+def _literal_value(body: str, key: str, literal: str) -> str | None:
+    """The string literal of `key` in a schema body, or None."""
+    # The lookbehind keeps `type` from matching inside `subtype`.
+    m = re.search(r"(?<![\w$])" + key + r":" + re.escape(literal) + r'\("([a-z_0-9]+)"\)', body)
+    return m.group(1) if m else None
+
+
+def extract_out_of_union(
+    data: bytes,
+    pats: WirePatterns,
+    idx: dict[str, list[tuple[int, bytes]]],
+    lo: int,
+    hi: int,
+    anchor: int,
+) -> list[tuple[str, str, str]]:
+    """Control-channel schemas and the top-level frames outside the output union.
+
+    The control requests have a union of their own (`q1=p(()=>Ue([...]))` on
+    CLI 2.1.317), found as the largest union naming both the `can_use_tool` and
+    `interrupt` schemas. Each member is labeled `control_request/<subtype>`.
+    `control_response/success` and `/error` are the definitions whose subtype
+    is that word and whose body has a `request_id` field, the first one nearest
+    the request union winning.
+
+    The out-of-union frames are found whether or not the request union is: the
+    definition with the frame's `type` literal nearest `anchor` (the SDK output
+    union) wins, since minified names collide across modules.
+
+    When the request union cannot be found, no `control_*` label is returned.
+    The drift check then reports every control label as removed, which is the
+    loud signal wanted, instead of skipping the stream-json comparison too.
+    """
+    by_subtype: dict[str, list[str]] = {}
+    texts: dict[str, list[tuple[int, str]]] = {}
+    for name, cands in idx.items():
+        for offset, raw in cands:
+            head = raw[:200_000].decode("utf-8", "replace")
+            texts.setdefault(name, []).append((offset, head))
+            value = _literal_value(head, "subtype", pats.literal)
+            if value in ("can_use_tool", "interrupt"):
+                by_subtype.setdefault(value, []).append(name)
+
+    union = None
+    for um in pats.union.finditer(data, lo, hi):
+        refs = set(REF_CALL.findall(um.group(0).decode("utf-8", "replace")))
+        if refs & set(by_subtype.get("can_use_tool", [])) and refs & set(
+            by_subtype.get("interrupt", [])
+        ):
+            if union is None or len(um.group(0)) > len(union.group(0)):
+                union = um
+    out: list[tuple[str, str, str]] = []
+    for frame in OUT_OF_UNION_FRAMES:
+        nearest_frame: tuple[int, str, str] | None = None
+        for name, cands in texts.items():
+            for offset, text in cands:
+                if _literal_value(text, "type", pats.literal) == frame:
+                    distance = abs(offset - anchor)
+                    if nearest_frame is None or distance < nearest_frame[0]:
+                        nearest_frame = (distance, name, text)
+        if nearest_frame:
+            out.append((nearest_frame[1], frame, nearest_frame[2]))
+
+    if union is None:
+        return out
+
+    for name in dict.fromkeys(REF_CALL.findall(union.group(0).decode("utf-8", "replace"))):
+        body = pick_definition(idx.get(name, []), union.start())
+        if body is None:
+            continue
+        text = body.decode("utf-8", "replace")
+        subtype = _literal_value(text, "subtype", pats.literal)
+        if subtype:
+            out.append((name, f"control_request/{subtype}", text))
+
+    for word in ("success", "error"):
+        nearest: tuple[int, str, str] | None = None
+        for name, cands in texts.items():
+            for offset, text in cands:
+                if (
+                    _literal_value(text, "subtype", pats.literal) == word
+                    and _literal_value(text, "type", pats.literal) is None
+                    and "request_id:" in text
+                ):
+                    distance = abs(offset - union.start())
+                    if nearest is None or distance < nearest[0]:
+                        nearest = (distance, name, text)
+        if nearest:
+            out.append((nearest[1], f"control_response/{word}", nearest[2]))
+    return out
+
+
 def _extract_with(data: bytes, anchor: re.Match[bytes], pats: WirePatterns) -> Extraction:
     anchor_name = anchor.group(1).decode()
 
@@ -260,7 +360,8 @@ def _extract_with(data: bytes, anchor: re.Match[bytes], pats: WirePatterns) -> E
     union_text = union.group(0).decode()
     members = REF_CALL.findall(union_text)
 
-    idx = index_definitions(data, pats, *chunk_bounds(data, union.start()))
+    lo, hi = chunk_bounds(data, union.start())
+    idx = index_definitions(data, pats, lo, hi)
     results: list[tuple[str, str, str]] = []
     unresolved: list[str] = []
     seen: set[str] = set()
@@ -285,7 +386,8 @@ def _extract_with(data: bytes, anchor: re.Match[bytes], pats: WirePatterns) -> E
         for ref in REF_CALL.findall(text):
             if ref not in seen and ref not in queue:
                 queue.append(ref)
-    return Extraction(union_text, results, pats.object_open, unresolved)
+    out_of_union = extract_out_of_union(data, pats, idx, lo, hi, union.start())
+    return Extraction(union_text, results, pats.object_open, unresolved, out_of_union)
 
 
 def extract_schemas(data: bytes) -> Extraction:
@@ -342,6 +444,8 @@ def main() -> None:
     blocks = [f"// SDK output union\n{union_text}"]
     for name, label, text in results:
         blocks.append(f"// {name}: {label}\n{text}" if text else f"// {name}: {label}")
+    for name, label, text in extraction.out_of_union:
+        blocks.append(f"// {name}: {label}\n{text}")
 
     out = "\n\n".join(blocks) + "\n"
     if args.out:
