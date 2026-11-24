@@ -1925,6 +1925,27 @@ fn mcp_environment_id_round_trips() {
     assert_eq!(environment_id.as_deref(), Some("env_1"));
 }
 
+/// Per-server MCP startup duration on status updates (openai/codex#63613).
+#[test]
+fn mcp_server_status_updated_duration_round_trips() {
+    use codex_codes::protocol::McpServerStatusUpdatedNotification;
+
+    let update = serde_json::json!({
+        "durationMs": 1234, "name": "docs", "status": "ready"
+    });
+    let u: McpServerStatusUpdatedNotification = serde_json::from_value(update.clone()).unwrap();
+    assert_eq!(u.duration_ms, Some(1234));
+    assert_eq!(serde_json::to_value(&u).unwrap(), update);
+
+    let legacy: McpServerStatusUpdatedNotification =
+        serde_json::from_value(serde_json::json!({"name": "docs", "status": "starting"})).unwrap();
+    assert_eq!(legacy.duration_ms, None);
+    assert!(serde_json::to_value(legacy)
+        .unwrap()
+        .get("durationMs")
+        .is_none());
+}
+
 /// `thread/items/list` output deferral (openai/codex#59601).
 #[test]
 fn thread_items_list_defer_output_round_trips() {
