@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.169.12] - 2026-11-24
+
+### Added
+
+- `McpServerStatusUpdatedNotification.duration_ms` (`durationMs`, optional
+  `u64`): elapsed startup time for a measured MCP server startup attempt
+  (openai/codex#63613). Older servers omit it.
+
+Snapshot refreshed against `openai/codex@main` (`20c7f26cd2`). Closes #591.
+Bundled model catalog re-checked (`models-manager/models.json` @
+`20c7f26cd2`): no new slugs, all modeled.
+
 ## [0.169.11] - 2026-11-23
 
 Pin-only release: tested against Codex CLI **0.172.0**. No crate types

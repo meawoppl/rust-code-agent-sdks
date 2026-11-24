@@ -4838,6 +4838,13 @@ pub struct McpServerStatusUpdatedNotification {
         skip_serializing_if = "Option::is_none"
     )]
     pub environment_id: Option<String>,
+    /// Elapsed startup time for a measured attempt. Older servers omit this field.
+    #[serde(
+        rename = "durationMs",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub duration_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
     #[serde(
