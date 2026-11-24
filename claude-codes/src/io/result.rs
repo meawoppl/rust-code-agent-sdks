@@ -421,6 +421,14 @@ pub struct ResultMessage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub first_content_frame_ms: Option<u64>,
 
+    /// When the session's files were usable, for a session whose launcher
+    /// can hold tool calls while its hooks still fetch those files. Sent only
+    /// by an internal build that a self-hosted runner started, together with
+    /// [`time_to_request_ms`](Self::time_to_request_ms). Marked `@internal`
+    /// upstream (CLI 2.1.331+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_hold_detail: Option<ToolHoldDetail>,
+
     /// Time until the first stream POST was issued, in milliseconds
     /// (CLI 2.1.260+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1416,6 +1424,11 @@ pub enum StartupFailureReason {
     /// names; also when a named field's own flag (`--settings`,
     /// `--disallowedTools`) is passed too (CLI 2.1.327+).
     InitializeFieldsNotDelivered,
+    /// `sideload_flags_disabled` — managed settings set
+    /// `disableSideloadFlags`, and the launch names plugins, agents or MCP
+    /// servers of its own; a start without them is not refused
+    /// (CLI 2.1.331+).
+    SideloadFlagsDisabled,
     /// A cause not yet known to this version of the crate.
     Unknown(String),
 }
@@ -1447,6 +1460,7 @@ impl StartupFailureReason {
             Self::ConfigFileInvalid => "config_file_invalid",
             Self::ManagedSettingsNotDelivered => "managed_settings_not_delivered",
             Self::InitializeFieldsNotDelivered => "initialize_fields_not_delivered",
+            Self::SideloadFlagsDisabled => "sideload_flags_disabled",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -1485,6 +1499,7 @@ impl From<&str> for StartupFailureReason {
             "config_file_invalid" => Self::ConfigFileInvalid,
             "managed_settings_not_delivered" => Self::ManagedSettingsNotDelivered,
             "initialize_fields_not_delivered" => Self::InitializeFieldsNotDelivered,
+            "sideload_flags_disabled" => Self::SideloadFlagsDisabled,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -1497,6 +1512,94 @@ impl Serialize for StartupFailureReason {
 }
 
 impl<'de> Deserialize<'de> for StartupFailureReason {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// [`ResultMessage::tool_hold_detail`]: how long hooks held tool calls while
+/// they still fetched the session's files (CLI 2.1.331+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ToolHoldDetail {
+    /// From the turn's start until the end of the first call that a hold
+    /// can stop, made by the model or a subagent, whether or not a hold
+    /// stood and whether the call ran, failed or was refused. It includes
+    /// the permission step. Absent where the turn had no such call.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_result_ms: Option<u64>,
+    /// One entry for each name under which hooks held tool calls since the
+    /// previous result that carried this field; empty where none stood.
+    pub holds: Vec<ToolHold>,
+}
+
+/// One entry of [`ToolHoldDetail::holds`] (CLI 2.1.331+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ToolHold {
+    /// The hook's `holdTools` value, or empty if it cannot be shown.
+    pub name: String,
+    /// How the last hold under this name ended.
+    pub end: ToolHoldEnd,
+    /// When the first hold began, from the turn's start; below zero if
+    /// earlier.
+    pub began_ms: i64,
+    /// From [`began_ms`](Self::began_ms) until the last hold ended.
+    pub held_ms: i64,
+}
+
+/// [`ToolHold::end`]: how the last hold under a name ended (CLI 2.1.331+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ToolHoldEnd {
+    /// `well`
+    Well,
+    /// `failed`
+    Failed,
+    /// `timed_out`
+    TimedOut,
+    /// `open` — a hold still stood as the result was built; `held_ms` runs
+    /// to then, and the hold is listed again on the next result.
+    Open,
+    /// A value not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl ToolHoldEnd {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Well => "well",
+            Self::Failed => "failed",
+            Self::TimedOut => "timed_out",
+            Self::Open => "open",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for ToolHoldEnd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for ToolHoldEnd {
+    fn from(s: &str) -> Self {
+        match s {
+            "well" => Self::Well,
+            "failed" => Self::Failed,
+            "timed_out" => Self::TimedOut,
+            "open" => Self::Open,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for ToolHoldEnd {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ToolHoldEnd {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let s = String::deserialize(deserializer)?;
         Ok(Self::from(s.as_str()))

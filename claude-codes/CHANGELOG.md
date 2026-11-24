@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.332] - 2026-11-23
+
+Tested against Claude CLI **2.1.331**. Models the 2.1.330 → 2.1.331
+stream-json drift: seven optional fields, six new types and one startup
+failure reason, all additive. The CLI's model ids are unchanged from
+2.1.330.
+
+### Added
+
+- `ResultMessage::tool_hold_detail` with the new `ToolHoldDetail`,
+  `ToolHold` and open `ToolHoldEnd` (`well` / `failed` / `timed_out` /
+  `open`) types: how long hooks held tool calls while they fetched the
+  session's files. Sent only by an internal build that a self-hosted
+  runner started.
+- `InformationalMessage::agent_note` with the new `AgentNote`,
+  `AgentNoteTarget` and open `AgentNoteKind` (`main` / `agent` /
+  `session`) types: a note a plugin left for an agent about another's
+  work, so a host can draw it instead of showing `content`.
+- `InitMessage::sandbox_enabled` with the new `SandboxEnabled` enum (wire
+  `true` / `false` / `"unknown"`): whether this process runs its shell
+  commands in the command sandbox. Absent means no claim, never off.
+- `ModelRefusalFallbackMessage::served_notice` with the new
+  `ServedRefusalNotice` struct (`text`, `learn_more_url`): the refusal's
+  wording as the model list serves it, with `{model}` in place of the
+  name.
+- `ToolResultMeta::mcp_own_output`: `true` when the writing process ran
+  the MCP call and no hook changed its input or result.
+- `StartupFailureReason::SideloadFlagsDisabled` (`sideload_flags_disabled`):
+  managed settings set `disableSideloadFlags` and the launch names its own
+  plugins, agents or MCP servers.
+- Documented `page_count` on a user frame's untyped `file_attachments`
+  entries.
+
+### Changed
+
+- `agent_note` and `mcp_own_output` deserialize leniently, as upstream
+  declares them with `.catch(undefined)`: a malformed value reads as
+  `None` instead of failing the frame.
+
 ## [2.1.331] - 2026-11-20
 
 Tested against Claude CLI **2.1.330**. Models the 2.1.329 → 2.1.330
