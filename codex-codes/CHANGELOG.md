@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.169.11] - 2026-11-23
+
+Pin-only release: tested against Codex CLI **0.172.0**. No crate types
+changed. The snapshot still matches `openai/codex@main` (`1985925638`).
+The 0.172.0 release schema is a subset of that snapshot: its only
+differences are shapes main has already moved past (`Config.client_search_provider`
+and `WebSearchProvider` are still present; `GatewayOAuthLoginParams.target`
+and `FsGetMetadataResponse.sizeBytes` are not yet there). Bundled model
+catalog re-checked (`models-manager/models.json` @ `1985925638`): no new
+slugs, all 14 modeled.
+
 ## [0.169.10] - 2026-11-20
 
 Tracks `openai/codex@main` schema drift (snapshot pinned at `e3a398d3e4`).
