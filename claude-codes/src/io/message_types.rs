@@ -722,6 +722,29 @@ pub struct ToolResultMeta {
     /// read absence, and any value you do not know, as no (CLI 2.1.325+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub run_input: Option<String>,
+    /// `true` says the process that wrote this message ran the MCP call and
+    /// no hook changed its input or its `tool_result`. Only a worker whose
+    /// `system/init` lists `mcp_own_output_v1` sets it. It does not vouch for
+    /// the server. Read absence as unverified, `is_error` included; a
+    /// malformed value reads as absent. Marked `@internal` upstream
+    /// (CLI 2.1.331+).
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_lenient_option"
+    )]
+    pub mcp_own_output: Option<bool>,
+}
+
+/// Deserializes an optional field the CLI declares with `.catch(undefined)`:
+/// a value that does not parse reads as absent instead of failing the frame.
+fn deserialize_lenient_option<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: serde::de::DeserializeOwned,
+{
+    let value = Option::<Value>::deserialize(deserializer)?;
+    Ok(value.and_then(|v| serde_json::from_value(v).ok()))
 }
 
 /// [`ToolResultMeta::permission_decision`] — how a tool call's permission
@@ -1463,6 +1486,10 @@ pub struct UserMessage {
     pub keeps_request_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", rename = "isReplay")]
     pub is_replay: Option<bool>,
+    /// Files a remote client attached to this prompt, each `{file_uuid,
+    /// file_name, is_image?, sha256?, file_size?, from_connector?,
+    /// project_folder_name?, from_connector_marker?, page_count?}`
+    /// (`page_count` since CLI 2.1.331). Kept untyped as upstream does.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub file_attachments: Option<Vec<Value>>,
     /// Desktop host only: the host's own seeded summon (CLI 2.1.239+).
@@ -2637,6 +2664,12 @@ pub struct ModelRefusalFallbackMessage {
     /// known values to your own text; never display them (CLI 2.1.317+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_refusal_cyber_verification: Option<CyberVerificationStatus>,
+    /// The wording for this refusal as the model list serves it, for a
+    /// consumer that composes its own notice around it. Absent where the CLI
+    /// used its built-in wording. Marked `@internal` upstream
+    /// (CLI 2.1.331+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub served_notice: Option<ServedRefusalNotice>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub retracted_message_uuids: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2646,6 +2679,18 @@ pub struct ModelRefusalFallbackMessage {
     pub uuid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_id: Option<String>,
+}
+
+/// [`ModelRefusalFallbackMessage::served_notice`]: the refusal's wording as
+/// the model list serves it (CLI 2.1.331+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ServedRefusalNotice {
+    /// The opening of `content` with `{model}` where the model's name goes,
+    /// for a consumer that names the model its own way.
+    pub text: String,
+    /// A link to more about the refusal, when the model list serves one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub learn_more_url: Option<String>,
 }
 
 /// [`ModelRefusalFallbackMessage::api_refusal_cyber_verification`]: the
@@ -3140,6 +3185,16 @@ pub struct InformationalMessage {
     /// (CLI 2.1.330+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub saved_from: Option<ConnectorFilesSaved>,
+    /// Present on the line by which a plugin says it left a note for an
+    /// agent about another's work, so a host can draw the note itself
+    /// instead of showing `content`. A malformed value reads as absent.
+    /// Marked `@internal` upstream (CLI 2.1.331+).
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_lenient_option"
+    )]
+    pub agent_note: Option<AgentNote>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3176,6 +3231,91 @@ pub struct ConnectorFilesSaved {
     /// The connector's name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub app: Option<String>,
+}
+
+/// [`InformationalMessage::agent_note`]: a note a plugin left for an agent
+/// about another's work (CLI 2.1.331+).
+///
+/// [`text`](Self::text) and each target's `description` are a model's
+/// words: render them as plain text.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AgentNote {
+    /// Whom the note is for.
+    pub to: AgentNoteTarget,
+    /// Whose work the note is about; that party did not write it.
+    pub about: AgentNoteTarget,
+    /// The note.
+    pub text: String,
+    /// The plugin's id as Claude Code loaded it, `<name>@builtin` for one
+    /// built in. A host that draws the note as its own words goes by it.
+    pub source: String,
+}
+
+/// One side of an [`AgentNote`] (CLI 2.1.331+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AgentNoteTarget {
+    /// Which conversation the side is.
+    pub kind: AgentNoteKind,
+    /// An agent's task, where known.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// The call that started the agent, where known.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_use_id: Option<String>,
+}
+
+/// [`AgentNoteTarget::kind`] (CLI 2.1.331+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AgentNoteKind {
+    /// `main` — this session's main conversation.
+    Main,
+    /// `agent` — one of this session's agents.
+    Agent,
+    /// `session` — another session.
+    Session,
+    /// A kind not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl AgentNoteKind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Main => "main",
+            Self::Agent => "agent",
+            Self::Session => "session",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for AgentNoteKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for AgentNoteKind {
+    fn from(s: &str) -> Self {
+        match s {
+            "main" => Self::Main,
+            "agent" => Self::Agent,
+            "session" => Self::Session,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for AgentNoteKind {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for AgentNoteKind {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// [`InformationalMessage::hook_no_verdict`]: a PreToolUse hook gave no
@@ -3636,6 +3776,51 @@ pub struct InitMessage {
     /// Remote Control bridge's init, and on CLIs before 2.1.327.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub host_dropped_env: Option<Vec<HostDroppedEnv>>,
+
+    /// Whether this process runs its shell commands in Claude Code's command
+    /// sandbox as this frame is built, whichever setting, policy or force
+    /// turned it on. Omitted from the redacted init sent over the Remote
+    /// Control bridge and by the hosted worker; `None` means no claim, never
+    /// off. Marked `@internal` upstream (CLI 2.1.331+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sandbox_enabled: Option<SandboxEnabled>,
+}
+
+/// [`InitMessage::sandbox_enabled`]: wire `true`, `false` or `"unknown"`
+/// (CLI 2.1.331+).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SandboxEnabled {
+    /// `true` — shell commands run in the sandbox, so what this session
+    /// wrote in its folders is a sandboxed writer's.
+    On,
+    /// `false`
+    Off,
+    /// `"unknown"` — the read failed; treat the sandbox as possibly on.
+    /// Any other string the crate does not know reads as this too.
+    Unknown,
+}
+
+impl Serialize for SandboxEnabled {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::On => serializer.serialize_bool(true),
+            Self::Off => serializer.serialize_bool(false),
+            Self::Unknown => serializer.serialize_str("unknown"),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for SandboxEnabled {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match Value::deserialize(deserializer)? {
+            Value::Bool(true) => Ok(Self::On),
+            Value::Bool(false) => Ok(Self::Off),
+            Value::String(_) => Ok(Self::Unknown),
+            other => Err(serde::de::Error::custom(format!(
+                "expected bool or \"unknown\" for sandbox_enabled, got {other}"
+            ))),
+        }
+    }
 }
 
 /// One entry of [`InitMessage::host_dropped_env`] (CLI 2.1.327+).
