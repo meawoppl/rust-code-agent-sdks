@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.333] - 2026-11-24
+
+Tested against Claude CLI **2.1.332**. Models the 2.1.331 → 2.1.332
+stream-json drift: fifteen optional fields, seven new types and two remedy
+kinds, all additive. The CLI's model ids are unchanged from 2.1.331.
+
+### Added
+
+- `PeerMessageHoldMessage` answerable-hold fields: `hold_id`,
+  `can_deliver`, `always_scope` (new open `PeerAlwaysScope`: `mine` /
+  `anyone`), `session_class` (new open `PeerSessionClass`: `prompting` /
+  `bypass`), `verified_pid`, and `preview` (new `HeldPeerMessagePreview`:
+  `text`, `total_chars`, `other_blocks`, `is_whole`). A held frame may now
+  omit `cause` when the message only waits for room in the queue.
+- `TaskNotificationMessage::mcp_task` with the new `McpTaskTimes`
+  (`start_time`, `end_time`, `server_elapsed_ms`): an ended MCP task's
+  times.
+- `UserMessage::refusal_retry`: marks the synthetic messages the CLI
+  writes to re-ask the model after a refusal.
+- `ToolResultMeta::call_ended` with the new open `ToolCallEnded`
+  (`not_started`), and `ToolResultMeta::rewritten_by_plugin`: a plugin's
+  `session.append` hook changed the `tool_result`.
+- `ToolResultRemedyKind::NeedsPerson` and `::AdviceToClaude`, plus
+  `ToolResultRemedy::blocker` with the new open `RemedyBlocker`
+  (`switched_off`, `publish_limit`, `no_edit_access`, `owner_only`,
+  `other_org`, `network_off`, `restricted_sandbox`).
+- `ApiErrorParams::hold_wording` (new open `ApiErrorHoldWording`:
+  `verify_now` / `owner_must_verify` / `contact`), `hold_admin_required`
+  and `hold_url`, carried on error `verification_required`.
+- `RateLimitInfo::overage_enabled` (`overageEnabled`): long in the CLI's
+  schema but first seen on the wire by the 2.1.332 live wrapping audit.
+
+### Changed
+
+- `call_ended`, `hold_wording`, `hold_admin_required` and `hold_url`
+  deserialize leniently (upstream `.catch(undefined)`): a malformed value
+  reads as `None`. `rewritten_by_plugin` follows upstream's `.catch(true)`:
+  a malformed value reads as `Some(true)`.
+
+### Not modeled
+
+- The new host→CLI control requests `decide_held_peer_message` and
+  `set_peer_delivery` (and their `always_deliver` results), which answer
+  held peer messages. Like `set_has_subscribers`, they are outside the
+  crate's control-request set.
+
 ## [2.1.332] - 2026-11-23
 
 Tested against Claude CLI **2.1.331**. Models the 2.1.330 → 2.1.331

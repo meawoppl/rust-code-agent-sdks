@@ -684,8 +684,9 @@ pub struct ToolResultMeta {
     /// Harness-stamped reason an `is_error: true` result did not carry the
     /// tool's own execution output (`user-rejected`, `permission-rule`,
     /// `automode-*`, `interrupted`, `cancelled`). Open set — treat
-    /// unrecognized values as valid reasons; absent means the tool ran to
-    /// completion. Optional since CLI 2.1.276, when an entry may carry a
+    /// unrecognized values as valid reasons; absent usually means the tool
+    /// ran to completion, but see [`call_ended`](Self::call_ended) (CLI
+    /// 2.1.332+). Optional since CLI 2.1.276, when an entry may carry a
     /// [`remedy`](Self::remedy) alone.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub non_execution_kind: Option<String>,
@@ -734,6 +735,94 @@ pub struct ToolResultMeta {
         deserialize_with = "deserialize_lenient_option"
     )]
     pub mcp_own_output: Option<bool>,
+    /// How the call ended, where [`non_execution_kind`](Self::non_execution_kind)
+    /// does not say so or is absent. Often absent even for a call that did
+    /// not run, so read absence, and any value you do not know, as no
+    /// claim — never as proof that the call ran. A malformed value reads as
+    /// absent. Marked `@internal` upstream (CLI 2.1.332+).
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_lenient_option"
+    )]
+    pub call_ended: Option<ToolCallEnded>,
+    /// `true` says a plugin's `session.append` hook changed this
+    /// `tool_result` after the tool made it. The wrapper's
+    /// `tool_use_result` is still the tool's own, so it may hold what the
+    /// plugin took out: draw from the `tool_result` content instead. Stored
+    /// with the message, so history and resumed sessions carry it. Absence
+    /// proves nothing (older builds set none). A malformed value reads as
+    /// `true`, as upstream declares it with `.catch(true)`. Marked
+    /// `@internal` upstream (CLI 2.1.332+).
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_rewritten_by_plugin"
+    )]
+    pub rewritten_by_plugin: Option<bool>,
+}
+
+/// Deserializes [`ToolResultMeta::rewritten_by_plugin`]: absent or `null`
+/// reads as `None`, a bool as itself, and any other value as `Some(true)`.
+fn deserialize_rewritten_by_plugin<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(match Option::<Value>::deserialize(deserializer)? {
+        None => None,
+        Some(Value::Bool(b)) => Some(b),
+        Some(_) => Some(true),
+    })
+}
+
+/// [`ToolResultMeta::call_ended`] — how a tool call ended where
+/// `non_execution_kind` does not say (CLI 2.1.332+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ToolCallEnded {
+    /// As far as Claude Code can tell the call had not started, and nobody
+    /// stopped or refused it: show it as not run. Marks a call asked for in
+    /// the same message as an earlier call that waited at a permission
+    /// prompt while the process running the session was replaced.
+    NotStarted,
+    /// A value not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl ToolCallEnded {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::NotStarted => "not_started",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for ToolCallEnded {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for ToolCallEnded {
+    fn from(s: &str) -> Self {
+        match s {
+            "not_started" => Self::NotStarted,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for ToolCallEnded {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ToolCallEnded {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// Deserializes an optional field the CLI declares with `.catch(undefined)`:
@@ -1067,6 +1156,7 @@ pub struct ToolResultRemedy {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub managed: Option<bool>,
     /// `feature_disabled` / `policy_denied`: the feature that is off.
+    /// `needs_person`: the feature that was refused (CLI 2.1.332+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub feature: Option<RemedyFeature>,
     /// `feature_disabled`: why the feature is off.
@@ -1075,6 +1165,81 @@ pub struct ToolResultRemedy {
     /// `policy_denied`: the verdict.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub policy_kind: Option<RemedyPolicyKind>,
+    /// `needs_person`: what stands in the way, for the host to word. Absent
+    /// where the result text says it to the person (CLI 2.1.332+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blocker: Option<RemedyBlocker>,
+}
+
+/// What stands in the way of a `needs_person` remedy
+/// ([`ToolResultRemedy::blocker`], CLI 2.1.332+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RemedyBlocker {
+    /// `switched_off`.
+    SwitchedOff,
+    /// `publish_limit`.
+    PublishLimit,
+    /// `no_edit_access`.
+    NoEditAccess,
+    /// `owner_only`.
+    OwnerOnly,
+    /// `other_org`.
+    OtherOrg,
+    /// `network_off`.
+    NetworkOff,
+    /// `restricted_sandbox`.
+    RestrictedSandbox,
+    /// A blocker not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl RemedyBlocker {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::SwitchedOff => "switched_off",
+            Self::PublishLimit => "publish_limit",
+            Self::NoEditAccess => "no_edit_access",
+            Self::OwnerOnly => "owner_only",
+            Self::OtherOrg => "other_org",
+            Self::NetworkOff => "network_off",
+            Self::RestrictedSandbox => "restricted_sandbox",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for RemedyBlocker {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for RemedyBlocker {
+    fn from(s: &str) -> Self {
+        match s {
+            "switched_off" => Self::SwitchedOff,
+            "publish_limit" => Self::PublishLimit,
+            "no_edit_access" => Self::NoEditAccess,
+            "owner_only" => Self::OwnerOnly,
+            "other_org" => Self::OtherOrg,
+            "network_off" => Self::NetworkOff,
+            "restricted_sandbox" => Self::RestrictedSandbox,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for RemedyBlocker {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for RemedyBlocker {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// What a host can fix for a tool result ([`ToolResultRemedy::kind`]).
@@ -1113,6 +1278,13 @@ pub enum ToolResultRemedyKind {
     /// environment was refused at the limit on containers running at once
     /// (CLI 2.1.328+).
     ContainerLimit,
+    /// The model cannot lift the cause, so the person should see it; see
+    /// [`ToolResultRemedy::blocker`] and [`ToolResultRemedy::feature`]
+    /// (CLI 2.1.332+).
+    NeedsPerson,
+    /// The error tells the model what to do next and usually asks nothing
+    /// of the person (CLI 2.1.332+).
+    AdviceToClaude,
     /// A remedy kind not yet known to this version of the crate.
     Unknown(String),
 }
@@ -1135,6 +1307,8 @@ impl ToolResultRemedyKind {
             Self::SpawnArgLimit => "spawn_arg_limit",
             Self::StagedForReview => "staged_for_review",
             Self::ContainerLimit => "container_limit",
+            Self::NeedsPerson => "needs_person",
+            Self::AdviceToClaude => "advice_to_claude",
             Self::Unknown(s) => s.as_str(),
         }
     }
@@ -1164,6 +1338,8 @@ impl From<&str> for ToolResultRemedyKind {
             "spawn_arg_limit" => Self::SpawnArgLimit,
             "staged_for_review" => Self::StagedForReview,
             "container_limit" => Self::ContainerLimit,
+            "needs_person" => Self::NeedsPerson,
+            "advice_to_claude" => Self::AdviceToClaude,
             other => Self::Unknown(other.to_string()),
         }
     }
@@ -1495,6 +1671,13 @@ pub struct UserMessage {
     /// Desktop host only: the host's own seeded summon (CLI 2.1.239+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub seeded_summon: Option<bool>,
+    /// Output only, and to be read only on a message the CLI wrote: on each
+    /// synthetic message the CLI writes to re-ask the same model after a
+    /// refusal — the re-ask itself and the `tool_result` of each call the
+    /// refused response left unfinished, a subagent's too. Absent from older
+    /// CLIs. Marked `@internal` upstream (CLI 2.1.332+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub refusal_retry: Option<bool>,
     /// True when the client composed this turn from content the user did not
     /// type; its text is delivered as written (CLI 2.1.259+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4372,6 +4555,15 @@ pub struct TaskNotificationMessage {
     /// `text`. Absent for `withheld` (CLI 2.1.292+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub handback_report: Option<HandbackReport>,
+    /// Present where an MCP task's (`task_type` `mcp_task`) entry in Claude
+    /// Code's task list ended: with `tool_use_id` and `status` it tells a
+    /// host that missed `task_started` what ended and how long it ran. The
+    /// server may still finish the work after a stop. Absent on other task
+    /// types, where the originating call still waited for the task, and
+    /// where the entry's end says nothing of how the work ended. Marked
+    /// `@internal` upstream (CLI 2.1.332+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mcp_task: Option<McpTaskTimes>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub skip_transcript: Option<bool>,
     /// True for housekeeping tasks the CLI does not surface as user work;
@@ -4380,6 +4572,27 @@ pub struct TaskNotificationMessage {
     pub ambient: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
+}
+
+/// An MCP task's times as it ended ([`TaskNotificationMessage::mcp_task`],
+/// CLI 2.1.332+).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub struct McpTaskTimes {
+    /// When Claude Code launched the task, in epoch ms; for a call it moved
+    /// to the background, when it moved it. A later process that takes the
+    /// task up keeps the first one's time unless that lies ahead of its own
+    /// clock; one with no record of it has only its own take-up time.
+    pub start_time: i64,
+    /// When Claude Code learned of the end, in epoch ms, as in the
+    /// `task_updated` patch. Can be hours after the end itself if nothing
+    /// was polling, or minutes later where result files were downloaded.
+    pub end_time: i64,
+    /// How long the MCP server says the task took (its final
+    /// `lastUpdatedAt` minus its `createdAt`, both on the server's clock).
+    /// Absent unless the server itself reported the end with both times as
+    /// RFC 3339 with a zone.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_elapsed_ms: Option<i64>,
 }
 
 /// How a subagent's hand-back report reached its caller
@@ -5063,12 +5276,17 @@ pub struct TurnPreemptedMessage {
 /// resolved. Lets a host show the human that a message arrived but has not
 /// reached the model (and may never) instead of nothing at all; the sending
 /// session is told separately over its own transport where one exists.
-/// Informational only — there is no host-side approval through this frame.
+/// Since CLI 2.1.332 a local host answers a held frame with the
+/// `decide_held_peer_message` control request (keyed by
+/// [`hold_id`](PeerMessageHoldMessage::hold_id)), and opts into previews
+/// with `set_peer_delivery`; neither request is modeled by this crate.
 /// Emitted in `-p`/SDK sessions (CLI 2.1.273+).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PeerMessageHoldMessage {
-    /// `held` once per message per hold cause (a re-announcement under a
-    /// different cause emits again); then at most one of `released` (it
+    /// `held` when the policy parks the message (again when the cause
+    /// changes, and — for a host that shows held messages — when it says so
+    /// and when the message waits for room in the queue; a repeat updates
+    /// the same message, CLI 2.1.332+); then at most one of `released` (it
     /// enters the queue — its `command_lifecycle` `queued` and user replay
     /// echo follow under `message_uuid`) or `dropped` (this process will not
     /// give it to the model; see `outcome`). A frame for a message the
@@ -5096,20 +5314,167 @@ pub struct PeerMessageHoldMessage {
     /// scrubbed the same way. A claim, like `from`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub from_name: Option<String>,
-    /// State `held` only: why the policy parked it.
+    /// State `held` only: why the policy parked it. Absent where it only
+    /// waits for room in the queue (CLI 2.1.332+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cause: Option<PeerMessageHoldCause>,
-    /// State `dropped` only: how the hold ended.
+    /// State `dropped` only: how the hold ended. Since CLI 2.1.332
+    /// `expired` also covers a message pushed out by newer held ones.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub outcome: Option<PeerMessageHoldOutcome>,
     /// Outcome `dropped` only: which check discarded the message, where the
     /// frame says (CLI 2.1.328+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<PeerMessageDropReason>,
+    /// The handle for `decide_held_peer_message`, the same on every frame of
+    /// one message. Minted by this session and never sent over a remote
+    /// transport (CLI 2.1.332+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hold_id: Option<String>,
+    /// State `held`, with `hold_id`: whether a person may deliver it now.
+    /// `false` where a setting holds it or it only waits for room in the
+    /// queue. A person may always drop it (CLI 2.1.332+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub can_deliver: Option<bool>,
+    /// With `can_deliver`: the narrowest "always" choice that covers this
+    /// sender. Absent where none does (CLI 2.1.332+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub always_scope: Option<PeerAlwaysScope>,
+    /// State `held`, with `hold_id`: whether this session asks before
+    /// acting, which decides the risk to show beside "Always"
+    /// (CLI 2.1.332+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_class: Option<PeerSessionClass>,
+    /// State `held`, with `hold_id`: the pid the kernel reported for a
+    /// socket sender (CLI 2.1.332+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verified_pid: Option<i64>,
+    /// State `held`, for a host that set `shows_held_messages`: the
+    /// sender's words. Untrusted — keep them from every model until the
+    /// message is released (CLI 2.1.332+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preview: Option<HeldPeerMessagePreview>,
     pub uuid: String,
     pub session_id: String,
     #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
     pub extra: serde_json::Map<String, Value>,
+}
+
+/// The sender's words on a held peer message
+/// ([`PeerMessageHoldMessage::preview`], CLI 2.1.332+).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HeldPeerMessagePreview {
+    /// The message text. Untrusted.
+    pub text: String,
+    /// The full text's length, in UTF-16 code units.
+    pub total_chars: u64,
+    /// Images, documents and other blocks the text leaves out.
+    pub other_blocks: u64,
+    /// `false` where the text was cut, had hidden characters removed or
+    /// leaves blocks out: say so beside it.
+    pub is_whole: bool,
+}
+
+/// The narrowest "always deliver" choice that covers a held message's sender
+/// ([`PeerMessageHoldMessage::always_scope`], CLI 2.1.332+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PeerAlwaysScope {
+    /// Messages from the person's own sessions.
+    Mine,
+    /// Messages from any session.
+    Anyone,
+    /// A scope not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl PeerAlwaysScope {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Mine => "mine",
+            Self::Anyone => "anyone",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for PeerAlwaysScope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for PeerAlwaysScope {
+    fn from(s: &str) -> Self {
+        match s {
+            "mine" => Self::Mine,
+            "anyone" => Self::Anyone,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for PeerAlwaysScope {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PeerAlwaysScope {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
+}
+
+/// Whether the receiving session asks before acting
+/// ([`PeerMessageHoldMessage::session_class`], CLI 2.1.332+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PeerSessionClass {
+    /// The session asks before running tools.
+    Prompting,
+    /// The session runs tools without asking.
+    Bypass,
+    /// A class not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl PeerSessionClass {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Prompting => "prompting",
+            Self::Bypass => "bypass",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for PeerSessionClass {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for PeerSessionClass {
+    fn from(s: &str) -> Self {
+        match s {
+            "prompting" => Self::Prompting,
+            "bypass" => Self::Bypass,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for PeerSessionClass {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PeerSessionClass {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// Lifecycle state carried by a [`PeerMessageHoldMessage`].
@@ -6928,6 +7293,86 @@ pub struct ApiErrorParams {
     /// which [`AssistantMessage::api_error_code`] names (CLI 2.1.321+).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cut: Option<ApiErrorCut>,
+    /// Error `verification_required` (which has no `api_error`): how to word
+    /// the account hold. A malformed value reads as absent. Marked
+    /// `@internal` upstream (CLI 2.1.332+).
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_lenient_option"
+    )]
+    pub hold_wording: Option<ApiErrorHoldWording>,
+    /// Error `verification_required`: whether an admin must lift the hold.
+    /// A malformed value reads as absent (CLI 2.1.332+).
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_lenient_option"
+    )]
+    pub hold_admin_required: Option<bool>,
+    /// Error `verification_required`: where the person resolves the hold.
+    /// A malformed value reads as absent (CLI 2.1.332+).
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_lenient_option"
+    )]
+    pub hold_url: Option<String>,
+}
+
+/// How to word an account hold on error `verification_required`
+/// ([`ApiErrorParams::hold_wording`], CLI 2.1.332+).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ApiErrorHoldWording {
+    /// `verify_now`: the person can verify now.
+    VerifyNow,
+    /// `owner_must_verify`: the account's owner must verify.
+    OwnerMustVerify,
+    /// `contact`: the person should get in touch.
+    Contact,
+    /// A wording not yet known to this version of the crate.
+    Unknown(String),
+}
+
+impl ApiErrorHoldWording {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::VerifyNow => "verify_now",
+            Self::OwnerMustVerify => "owner_must_verify",
+            Self::Contact => "contact",
+            Self::Unknown(s) => s.as_str(),
+        }
+    }
+}
+
+impl fmt::Display for ApiErrorHoldWording {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&str> for ApiErrorHoldWording {
+    fn from(s: &str) -> Self {
+        match s {
+            "verify_now" => Self::VerifyNow,
+            "owner_must_verify" => Self::OwnerMustVerify,
+            "contact" => Self::Contact,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for ApiErrorHoldWording {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ApiErrorHoldWording {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
+    }
 }
 
 /// Which API stop reason cut a reply short ([`ApiErrorParams::cut`]).

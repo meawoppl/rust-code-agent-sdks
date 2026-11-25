@@ -470,6 +470,10 @@ pub struct RateLimitInfo {
     /// Whether overage billing is in use for the account
     #[serde(rename = "overageInUse", skip_serializing_if = "Option::is_none")]
     pub overage_in_use: Option<bool>,
+    /// Whether extra usage is turned on for the account. In the CLI's schema
+    /// since before 2.1.331; first seen on the wire in a 2.1.332 live audit.
+    #[serde(rename = "overageEnabled", skip_serializing_if = "Option::is_none")]
+    pub overage_enabled: Option<bool>,
     /// Utilization warning threshold that was crossed (0.0 to 1.0)
     #[serde(rename = "surpassedThreshold", skip_serializing_if = "Option::is_none")]
     pub surpassed_threshold: Option<f64>,
