@@ -1952,6 +1952,13 @@ pub struct DynamicToolCallParams {
     pub call_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub namespace: Option<String>,
+    /// Optional response format supported by the runtime serving this call.
+    #[serde(
+        rename = "supportedResultFormat",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub supported_result_format: Option<DynamicToolResultFormat>,
     #[serde(rename = "threadId", default)]
     pub thread_id: String,
     #[serde(default)]
@@ -1960,6 +1967,10 @@ pub struct DynamicToolCallParams {
     pub turn_id: String,
 }
 
+/// Content-items reply to an `item/tool/call` request.
+///
+/// Published in the schema as `DynamicToolCallContentItems`; the full reply
+/// union is [`DynamicToolCallResult`].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DynamicToolCallResponse {
@@ -1967,6 +1978,71 @@ pub struct DynamicToolCallResponse {
     pub content_items: Vec<DynamicToolCallOutputContentItem>,
     #[serde(default)]
     pub success: bool,
+}
+
+/// A dynamic tool reply carrying content items, structured JSON, or an error message.
+///
+/// Exactly one of `contentItems`, `structuredContent` or `errorMessage` must be
+/// present; an `errorMessage` reply requires `success: false`. Unknown fields are
+/// ignored.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(untagged)]
+pub enum DynamicToolCallResult {
+    ContentItems(DynamicToolCallResponse),
+    StructuredContent {
+        #[serde(rename = "structuredContent")]
+        structured_content: Value,
+        success: bool,
+    },
+    Error {
+        #[serde(rename = "errorMessage")]
+        error_message: String,
+        success: bool,
+    },
+}
+
+impl<'de> Deserialize<'de> for DynamicToolCallResult {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        use serde::de::Error;
+
+        let mut reply = serde_json::Map::<String, Value>::deserialize(deserializer)?;
+        let success = reply
+            .get("success")
+            .ok_or_else(|| D::Error::missing_field("success"))?
+            .as_bool()
+            .ok_or_else(|| D::Error::custom("success must be a boolean"))?;
+        match (
+            reply.remove("contentItems"),
+            reply.remove("structuredContent"),
+            reply.remove("errorMessage"),
+        ) {
+            (Some(content_items), None, None) => Ok(Self::ContentItems(DynamicToolCallResponse {
+                content_items: serde_json::from_value(content_items).map_err(D::Error::custom)?,
+                success,
+            })),
+            (None, Some(structured_content), None) => Ok(Self::StructuredContent {
+                structured_content,
+                success,
+            }),
+            (None, None, Some(error_message)) if !success => Ok(Self::Error {
+                error_message: serde_json::from_value(error_message).map_err(D::Error::custom)?,
+                success,
+            }),
+            (None, None, Some(_)) => Err(D::Error::custom(
+                "a dynamic tool error requires success: false",
+            )),
+            _ => Err(D::Error::custom(
+                "expected exactly one of contentItems, structuredContent or errorMessage",
+            )),
+        }
+    }
+}
+
+/// Result formats a runtime can accept for an `item/tool/call` reply.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DynamicToolResultFormat {
+    #[serde(rename = "structuredContent")]
+    StructuredContent,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
