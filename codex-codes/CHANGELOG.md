@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.169.14] - 2026-11-25
+
+### Added
+
+- `AgentMessageModeration.prompt_wellbeing_results`
+  (`promptWellbeingResults`, optional) and the new `PromptWellbeingResult`
+  type (`inputItemId`, `scores`, `labels`): per-input wellbeing scores carried
+  through answer moderation (openai/codex#63886). `scores` values are kept as
+  `serde_json::Number` to mirror upstream and preserve `Eq`.
+
+### Changed
+
+- Re-snapshotted the Codex app-server schemas against `openai/codex@main`.
+  `McpToolConfiguredHookHandler.additionalContextLimit` (openai/codex#63922)
+  only appears under `ManagedHooksRequirements`, which the crate does not
+  model, so it is snapshot-only; the `HookMetadata` change is doc text only.
+
 ## [0.169.13] - 2026-11-24
 
 ### Added
