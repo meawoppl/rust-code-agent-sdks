@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-11-25
+
+Re-pin to pi **1.6.1**. `dist/modes/json-event.d.ts`, `dist/modes/rpc/*.d.ts`,
+`dist/cli/args.d.ts` and pi-ai's `dist/types.d.ts` are byte-identical to 1.6.0.
+
+- **Breaking (struct field):** the `bash` RPC result and `bashExecution`
+  messages now carry `fullOutputError` when truncated output could not be
+  saved to a temp file (full, over-quota or unwritable temp dir). Modeled as
+  `BashResult::full_output_error` and
+  `PiMessage::BashExecution::full_output_error`. Previously pi crashed in
+  that case; now it keeps the truncated output and reports the reason here.
+- RPC JSONL reading no longer rescans incomplete lines per chunk (large
+  lines such as image messages are now linear-time upstream); framing is
+  unchanged.
+- Ending RPC mode while a `bash` command runs now kills it on Windows too.
+
 ## [1.6.0] - 2026-11-20
 
 Re-pin to pi **1.6.0**. No RPC wire changes: `dist/modes/json-event.d.ts`,

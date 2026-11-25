@@ -234,6 +234,13 @@ pub enum PiMessage {
             skip_serializing_if = "Option::is_none"
         )]
         full_output_path: Option<String>,
+        /// Why the full output could not be saved when it was truncated.
+        #[serde(
+            rename = "fullOutputError",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        full_output_error: Option<String>,
         #[serde(default)]
         timestamp: f64,
         #[serde(flatten, default, skip_serializing_if = "serde_json::Map::is_empty")]
@@ -558,6 +565,37 @@ mod tests {
         });
         let m: PiMessage = serde_json::from_value(v).unwrap();
         assert!(matches!(m, PiMessage::BashExecution { .. }));
+    }
+
+    #[test]
+    fn bash_execution_full_output_error_is_typed() {
+        let v = serde_json::json!({
+            "role": "bashExecution",
+            "command": "seq 1 100000",
+            "output": "99999\n100000",
+            "exitCode": 0,
+            "cancelled": false,
+            "truncated": true,
+            "fullOutputError": "ENOSPC: no space left on device",
+            "timestamp": 1733234567890.0
+        });
+        let m: PiMessage = serde_json::from_value(v.clone()).unwrap();
+        let PiMessage::BashExecution {
+            full_output_path,
+            full_output_error,
+            extra,
+            ..
+        } = &m
+        else {
+            panic!("wrong role")
+        };
+        assert_eq!(*full_output_path, None);
+        assert_eq!(
+            full_output_error.as_deref(),
+            Some("ENOSPC: no space left on device")
+        );
+        assert!(extra.is_empty());
+        assert_eq!(serde_json::to_value(&m).unwrap(), v);
     }
 
     #[test]
