@@ -7285,6 +7285,23 @@ pub struct AgentMessageModeration {
     pub moderated: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display: Option<AgentMessageDisplay>,
+    /// Wellbeing results for the scored prompt input items, when the server
+    /// carried them through answer moderation.
+    #[serde(
+        rename = "promptWellbeingResults",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub prompt_wellbeing_results: Option<Vec<PromptWellbeingResult>>,
+}
+
+/// Wellbeing results for a single scored input item.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromptWellbeingResult {
+    pub input_item_id: String,
+    pub scores: std::collections::BTreeMap<String, serde_json::Number>,
+    pub labels: Vec<String>,
 }
 
 /// The only supported version of the answer display contract (wire value `1`).

@@ -298,12 +298,28 @@ fn agent_message_moderation_and_queued_metadata_round_trip() {
                 Some(AgentMessageModeration {
                     moderated: true,
                     display: None,
+                    prompt_wellbeing_results: None,
                 })
             );
         }
         other => panic!("expected agentMessage, got {other:?}"),
     }
     assert_eq!(serde_json::to_value(&item).unwrap(), json);
+
+    let scored = serde_json::json!({
+        "moderated": false,
+        "promptWellbeingResults": [{
+            "inputItemId": "item-1",
+            "scores": { "distress": 0.125 },
+            "labels": ["ok"]
+        }]
+    });
+    let moderation: AgentMessageModeration = serde_json::from_value(scored.clone()).unwrap();
+    let results = moderation.prompt_wellbeing_results.as_ref().unwrap();
+    assert_eq!(results[0].input_item_id, "item-1");
+    assert_eq!(results[0].scores["distress"].as_f64(), Some(0.125));
+    assert_eq!(results[0].labels, vec!["ok".to_string()]);
+    assert_eq!(serde_json::to_value(&moderation).unwrap(), scored);
 
     let bare: ThreadItemPayload = serde_json::from_value(serde_json::json!({
         "type": "agentMessage", "id": "msg-2", "text": ""
