@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.169.13] - 2026-11-24
+
+### Added
+
+- `DynamicToolCallParams.supported_result_format` (`supportedResultFormat`,
+  optional): the reply format the runtime serving an `item/tool/call` accepts,
+  via the new `DynamicToolResultFormat` enum (`structuredContent`)
+  (openai/codex#63766). Older servers omit it.
+- `DynamicToolCallResult`: the full `item/tool/call` reply union — content
+  items (`DynamicToolCallResponse`), `structuredContent` JSON, or an
+  `errorMessage` with `success: false`. Deserialization mirrors upstream:
+  exactly one result field must be present and unknown fields are ignored.
+
+`AccountVoiceOption` (openai/codex#63810) is not modeled: it backs the
+`#[experimental]` `account/voiceSettings/{read,write}` methods, whose
+params/responses are stripped from the published schema.
+
+Snapshot refreshed against `openai/codex@main` (`3f65e9f131`). Bundled model
+catalog re-checked (`models-manager/models.json` @ `3f65e9f131`): no new
+slugs, all 14 modeled.
+
 ## [0.169.12] - 2026-11-24
 
 ### Added

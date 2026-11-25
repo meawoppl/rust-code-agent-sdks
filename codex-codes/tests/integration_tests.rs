@@ -1987,3 +1987,89 @@ fn thread_items_list_defer_output_round_trips() {
         .get("outputDeferred")
         .is_none());
 }
+
+/// `item/tool/call` advertises an optional result format, and replies may carry
+/// content items, structured JSON, or an error message.
+#[test]
+fn dynamic_tool_call_result_formats() {
+    use codex_codes::protocol::{
+        DynamicToolCallOutputContentItem, DynamicToolCallParams, DynamicToolCallResponse,
+        DynamicToolCallResult, DynamicToolResultFormat,
+    };
+    use serde_json::json;
+
+    let params: DynamicToolCallParams = serde_json::from_value(json!({
+        "arguments": {"q": 1}, "callId": "c", "threadId": "t", "tool": "x", "turnId": "u",
+        "supportedResultFormat": "structuredContent"
+    }))
+    .unwrap();
+    assert_eq!(
+        params.supported_result_format,
+        Some(DynamicToolResultFormat::StructuredContent)
+    );
+    assert_eq!(
+        serde_json::to_value(&params).unwrap()["supportedResultFormat"],
+        "structuredContent"
+    );
+    let legacy: DynamicToolCallParams = serde_json::from_value(json!({
+        "arguments": null, "callId": "c", "threadId": "t", "tool": "x", "turnId": "u"
+    }))
+    .unwrap();
+    assert_eq!(legacy.supported_result_format, None);
+    assert!(serde_json::to_value(&legacy)
+        .unwrap()
+        .get("supportedResultFormat")
+        .is_none());
+
+    let cases = [
+        (
+            json!({"contentItems": [{"type": "inputText", "text": "hi"}], "success": true}),
+            DynamicToolCallResult::ContentItems(DynamicToolCallResponse {
+                content_items: vec![DynamicToolCallOutputContentItem::InputText {
+                    text: "hi".into(),
+                }],
+                success: true,
+            }),
+        ),
+        (
+            json!({"structuredContent": {"rows": [1, 2]}, "success": true}),
+            DynamicToolCallResult::StructuredContent {
+                structured_content: json!({"rows": [1, 2]}),
+                success: true,
+            },
+        ),
+        (
+            json!({"structuredContent": null, "success": false}),
+            DynamicToolCallResult::StructuredContent {
+                structured_content: serde_json::Value::Null,
+                success: false,
+            },
+        ),
+        (
+            json!({"errorMessage": "boom", "success": false}),
+            DynamicToolCallResult::Error {
+                error_message: "boom".into(),
+                success: false,
+            },
+        ),
+    ];
+    for (wire, expected) in cases {
+        let parsed: DynamicToolCallResult = serde_json::from_value(wire.clone()).unwrap();
+        assert_eq!(parsed, expected);
+        assert_eq!(serde_json::to_value(&parsed).unwrap(), wire);
+    }
+
+    let extended: DynamicToolCallResult =
+        serde_json::from_value(json!({"errorMessage": "boom", "success": false, "extra": 1}))
+            .unwrap();
+    assert!(matches!(extended, DynamicToolCallResult::Error { .. }));
+
+    for bad in [
+        json!({"errorMessage": "boom", "success": true}),
+        json!({"contentItems": [], "structuredContent": {}, "success": true}),
+        json!({"success": true}),
+        json!({"contentItems": []}),
+    ] {
+        assert!(serde_json::from_value::<DynamicToolCallResult>(bad).is_err());
+    }
+}
