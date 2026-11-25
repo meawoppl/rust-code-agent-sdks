@@ -48,7 +48,7 @@ system/mirror_error: error, key, session_id, subtype, type, uuid
 system/model_refusal_fallback: api_refusal_category, api_refusal_cyber_verification, api_refusal_explanation, content, direction, fallback_model, original_model, refused_user_message_uuid, request_id, retracted_message_uuids, saw_cyber_refusal, scope, served_notice, session_id, subtype, trigger, type, uuid
 system/model_refusal_no_fallback: api_refusal_category, api_refusal_explanation, content, original_model, refused_user_message_uuid, request_id, session_id, subtype, type, uuid
 system/notification: color, key, priority, session_id, subtype, text, timeout_ms, type, uuid
-system/peer_message_hold: cause, from, from_name, lane, message_uuid, outcome, reason, session_id, state, subtype, type, uuid
+system/peer_message_hold: always_scope, can_deliver, cause, from, from_name, hold_id, lane, message_uuid, outcome, preview, reason, session_class, session_id, state, subtype, type, uuid, verified_pid
 system/per_turn_effort_changed: per_turn_effort_active, session_id, subtype, type, uuid
 system/permission_check_status: agent_id, session_id, status, subtype, tool_use_id, type, uuid
 system/permission_denied: agent_id, decision_reason, decision_reason_code, decision_reason_type, message, session_id, subtype, tool_name, tool_use_id, type, uuid
@@ -59,7 +59,7 @@ system/session_writes_lost: error_code, lost, session_id, subtype, transcript_se
 system/shell_cwd: cwd, session_id, subtype, type, uuid
 system/status: compact_error, compact_output_chars, compact_result, permissionMode, resume_held_for_plan, session_id, status, subtype, type, uuid
 system/task_list_statuses: session_id, statuses, subtype, type, uuid
-system/task_notification: ambient, handback, handback_report, output_file, reason, resource_links, run_id, session_id, skip_transcript, status, subtype, summary, summary_is_report, task_id, tool_use_id, type, usage, uuid
+system/task_notification: ambient, handback, handback_report, mcp_task, output_file, reason, resource_links, run_id, session_id, skip_transcript, status, subtype, summary, summary_is_report, task_id, tool_use_id, type, usage, uuid
 system/task_progress: description, last_tool_name, run_id, session_id, subagent_type, subtype, summary, task_id, tool_use_id, type, usage, uuid
 system/task_started: ambient, awaited, description, is_backgrounded, parent_task_id, prompt, run_id, session_id, skip_transcript, spawn_depth, subagent_type, subtype, task_id, task_type, tool_use_id, type, uuid, workflow_name
 system/task_updated: patch, run_id, session_id, subtype, task_id, type, uuid
@@ -86,4 +86,4 @@ tool_result: cache_control, content, is_error, tool_use_id, type
 tool_use: caller, id, input, name, type
 tool_use_summary: preceding_tool_use_ids, session_id, summary, timestamp, type, uuid
 url: type, url
-user: client_composed, client_content_width, client_platform, historical, image_paste_ids, inbound_origin, initiator, interrupted_message_id, isSynthetic, is_compact_summary, is_meta, is_virtual, is_visible_in_transcript_only, keeps_request_id, mcp_meta, message, origin, parent_tool_use_id, permission_mode, plan_content, plugin_prompt, priority, refused_message_id, requeue_if_interrupted_within_ms, retracted_message_uuids, seeded_summon, server_received_wall_ms, shouldQuery, source_tool_assistant_uuid, source_tool_use_id, summarize_metadata, text_not_typed, timestamp, tool_result_meta, tool_use_result, type
+user: client_composed, client_content_width, client_platform, historical, image_paste_ids, inbound_origin, initiator, interrupted_message_id, isSynthetic, is_compact_summary, is_meta, is_virtual, is_visible_in_transcript_only, keeps_request_id, mcp_meta, message, origin, parent_tool_use_id, permission_mode, plan_content, plugin_prompt, priority, refusal_retry, refused_message_id, requeue_if_interrupted_within_ms, retracted_message_uuids, seeded_summon, server_received_wall_ms, shouldQuery, source_tool_assistant_uuid, source_tool_use_id, summarize_metadata, text_not_typed, timestamp, tool_result_meta, tool_use_result, type
