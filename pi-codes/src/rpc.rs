@@ -326,6 +326,15 @@ pub struct BashResult {
         skip_serializing_if = "Option::is_none"
     )]
     pub full_output_path: Option<String>,
+    /// Why the full output could not be saved to a temp file when it was
+    /// truncated (for example a full or unwritable temp directory). Set
+    /// instead of `full_output_path`.
+    #[serde(
+        rename = "fullOutputError",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub full_output_error: Option<String>,
 }
 
 /// Typed view of `get_messages` response data.
@@ -375,6 +384,25 @@ mod tests {
         .unwrap();
         assert!(!r.success);
         assert!(r.error.unwrap().contains("Model not found"));
+    }
+
+    #[test]
+    fn bash_result_types_full_output_error() {
+        let v = serde_json::json!({
+            "output": "99999\n100000",
+            "exitCode": 0,
+            "cancelled": false,
+            "truncated": true,
+            "fullOutputError": "EACCES: permission denied"
+        });
+        let r: BashResult = serde_json::from_value(v.clone()).unwrap();
+        assert!(r.truncated);
+        assert_eq!(r.full_output_path, None);
+        assert_eq!(
+            r.full_output_error.as_deref(),
+            Some("EACCES: permission denied")
+        );
+        assert_eq!(serde_json::to_value(&r).unwrap(), v);
     }
 
     #[test]
