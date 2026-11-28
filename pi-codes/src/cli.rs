@@ -45,6 +45,7 @@ pub struct PiCliBuilder {
     system_prompt: Option<String>,
     session: Option<String>,
     session_dir: Option<PathBuf>,
+    agent_dir: Option<PathBuf>,
     session_id: Option<String>,
     fork: Option<String>,
     continue_session: bool,
@@ -110,8 +111,18 @@ impl PiCliBuilder {
         self
     }
 
+    /// `--session-dir <dir>` — session storage and lookup directory.
+    /// Overrides `PI_CODING_AGENT_SESSION_DIR` and the `sessionDir` setting.
     pub fn session_dir(mut self, dir: impl Into<PathBuf>) -> Self {
         self.session_dir = Some(dir.into());
+        self
+    }
+
+    /// `--agent-dir <dir>` — config directory for settings, auth and
+    /// resources (pi 1.7.0+). The command-line form of
+    /// `PI_CODING_AGENT_DIR`, which it overrides; defaults to `~/.pi/agent`.
+    pub fn agent_dir(mut self, dir: impl Into<PathBuf>) -> Self {
+        self.agent_dir = Some(dir.into());
         self
     }
 
@@ -267,6 +278,10 @@ impl PiCliBuilder {
             a.push("--session-dir".into());
             a.push(dir.into());
         }
+        if let Some(dir) = &self.agent_dir {
+            a.push("--agent-dir".into());
+            a.push(dir.into());
+        }
         if self.continue_session {
             a.push("--continue".into());
         }
@@ -336,5 +351,15 @@ mod tests {
         assert_eq!(args.last().unwrap(), "--no-mcp");
         let args = PiCliBuilder::new().no_mcp(false).assembled_args();
         assert!(!args.iter().any(|a| a == "--no-mcp"));
+    }
+
+    #[test]
+    fn agent_dir_flag() {
+        let args = PiCliBuilder::new()
+            .agent_dir("/tmp/pi-profile")
+            .assembled_args();
+        assert_eq!(args[2..], ["--agent-dir", "/tmp/pi-profile"]);
+        let args = PiCliBuilder::new().assembled_args();
+        assert!(!args.iter().any(|a| a == "--agent-dir"));
     }
 }
