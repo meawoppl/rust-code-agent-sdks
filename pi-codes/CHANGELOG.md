@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-11-27
+
+Re-pin to pi **1.7.0**. `dist/modes/json-event.d.ts`, `dist/modes/rpc/*`,
+`dist/core/{messages,bash-executor}.d.ts` and `docs/{rpc,rpc-commands,json,message-types}.md`
+are identical to 1.6.1.
+
+- **Added:** `PiCliBuilder::agent_dir` emits `--agent-dir <dir>`, pi 1.7.0's
+  command-line form of `PI_CODING_AGENT_DIR` (config directory for settings,
+  auth, models and resources; overrides the env var).
+- pi-ai's `Usage` gained an optional `imageOutput` token count (a subset of
+  `output`, like `reasoning`). It rides `Usage::extra` alongside the other
+  optional breakdowns.
+- Upstream removed install telemetry (`enableInstallTelemetry`,
+  `PI_TELEMETRY`); nothing in this crate referenced it.
+
 ## [1.6.1] - 2026-11-25
 
 Re-pin to pi **1.6.1**. `dist/modes/json-event.d.ts`, `dist/modes/rpc/*.d.ts`,
